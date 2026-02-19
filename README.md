@@ -14,15 +14,8 @@ dm+d prices and Drug Tariff files can be used together directly.
 ## Installation
 
 ```r
-# install.packages("pak")
-pak::pak("w-hardy/dmdprices")
-```
-
-Or install from a local clone:
-
-```r
 # install.packages("devtools")
-devtools::install("path/to/dmdprices")
+devtools::install_github("w-hardy/dmdprices")
 ```
 
 ---
