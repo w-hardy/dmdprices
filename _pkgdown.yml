@@ -1,0 +1,43 @@
+url: https://w-hardy.github.io/dmdprices/
+
+template:
+  bootstrap: 5
+
+home:
+  title: dmdprices
+  description: Look up medicine prices from the NHS dm+d
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [github]
+  components:
+    github:
+      icon: fab fa-github fa-lg
+      href: https://github.com/w-hardy/dmdprices
+      aria-label: GitHub
+
+reference:
+  - title: "Price lookup"
+    desc: "Query medicine prices from the dm+d"
+    contents:
+      - dmd_price_lookup
+      - dmd_load
+  - title: "Data"
+    desc: "Bundled dataset"
+    contents:
+      - dmd_master
+  - title: "Package"
+    contents:
+      - dmdprices-package
+
+articles:
+  - title: "Get started"
+    navbar: ~
+    contents:
+      - dmdprices
+
+news:
+  releases:
+    - text: "Version 0.2.0"
+      href: news/index.html

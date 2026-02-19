@@ -1,0 +1,9 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "{dmdprices}: Look Up Medicine Prices from the NHS dm+d",
+  author   = person("Will", "Hardy", email = "w.hardy@bangor.ac.uk",
+                    role = c("aut", "cre")),
+  year     = "2026",
+  note     = "R package version 0.2.0",
+  url      = "https://github.com/w-hardy/dmdprices"
+)

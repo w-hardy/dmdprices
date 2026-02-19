@@ -29,7 +29,8 @@ Suggests:
     tibble,
     knitr,
     rmarkdown,
-    pkgload
+    pkgload,
+    pkgdown
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://github.com/w-hardy/dmdprices
