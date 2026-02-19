@@ -1,0 +1,36 @@
+Package: dmdprices
+Title: Look Up Medicine Prices from the NHS dm+d
+Version: 0.2.0
+Authors@R: person("Will", "Hardy", email = "w.hardy@bangor.ac.uk", role = c("aut", "cre"))
+Description: Provides the bundled NHS dm+d (Dictionary of Medicines and
+    Devices) pricing dataset (Week 34 2025) and tools to query Drug Tariff
+    and NHS Indicative Prices by medicine name. Also supports loading updated
+    releases from the NHSBSA dmdDataLoader CSV output. Output columns mirror
+    the NHS Drug Tariff Part VIIIA CSV format so that dm+d and Drug Tariff
+    files can be used together directly. The dm+d data is Crown copyright,
+    licensed under the Open Government Licence v3.0
+    <https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/>.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+LazyDataCompression: xz
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    dplyr,
+    readr,
+    stringr,
+    stringdist,
+    rlang,
+    cli
+Suggests:
+    testthat (>= 3.0.0),
+    withr,
+    tibble,
+    knitr,
+    rmarkdown,
+    pkgload
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://github.com/w-hardy/dmdprices
+BugReports: https://github.com/w-hardy/dmdprices/issues

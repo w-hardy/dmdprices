@@ -1,0 +1,10 @@
+^data-raw$
+^\.github$
+^docs$
+^README\.Rmd$
+^\.gitignore$
+^pkgdown$
+^_pkgdown\.yml$
+^CRAN-SUBMISSION$
+^revdep$
+^LICENSE\.md$

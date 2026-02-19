@@ -1,0 +1,128 @@
+---
+title: "Getting started with dmdprices"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with dmdprices}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(dmdprices)
+```
+
+## Overview
+
+`dmdprices` provides price lookups against the NHS Dictionary of Medicines and
+Devices (dm+d). A bundled dataset (Week 34 2025) is included so no setup is
+needed for immediate use.
+
+There are two main functions:
+
+| Function | Purpose |
+|---|---|
+| `dmd_price_lookup()` | Search for medicines by name and return pricing |
+| `dmd_load()` | Load a more recent dm+d release from a local directory |
+
+---
+
+## Using the bundled data
+
+### Partial match (default)
+
+Returns all rows where the medicine name contains the query string
+(case-insensitive):
+
+```{r partial}
+dmd_price_lookup("metformin")
+```
+
+### Exact match
+
+Case-insensitive match against the full VMP name:
+
+```{r exact}
+dmd_price_lookup("Metformin 500mg tablets", method = "exact")
+```
+
+### Fuzzy match
+
+Tolerates typos using optimal string alignment distance. Tune sensitivity with
+`max_dist` (default `3`):
+
+```{r fuzzy}
+dmd_price_lookup("metfromin 500mg tablets", method = "fuzzy", max_dist = 4)
+```
+
+### Including products without prices
+
+By default, rows where both `Basic Price` and `NHS Indicative Price` are `NA`
+are dropped. Set `active_only = FALSE` to keep them:
+
+```{r active-only}
+dmd_price_lookup("metformin", active_only = FALSE)
+```
+
+### Checking the bundled release
+
+```{r release}
+attr(dmd_master, "dmd_release_label")
+```
+
+---
+
+## Using a more recent release
+
+If you have the NHSBSA dm+d extract tool (`dmdDataLoader`), load a newer
+release with `dmd_load()` and pass the result to `dmd_price_lookup()`:
+
+```{r load, eval = FALSE}
+db <- dmd_load("path/to/dmdDataLoader")
+dmd_price_lookup("metformin", db = db)
+```
+
+You can set a project-wide default path in your `.Rprofile` to avoid repeating
+it each session:
+
+```{r option, eval = FALSE}
+options(dmdprices.path = "~/dmdDataLoader")
+# Then simply:
+db <- dmd_load()
+```
+
+---
+
+## Output columns
+
+Prices are in **pence**, matching the NHS Drug Tariff Part VIIIA CSV
+convention. One row is returned per branded pack (AMPP).
+
+| Column | Description |
+|---|---|
+| `Medicine` | VMP (generic) name |
+| `Pack size` | Pack quantity |
+| `Unit` | Unit of measure (tablet, ml, etc.) |
+| `VMP Snomed Code` | VMP SNOMED CT identifier |
+| `VMPP Snomed Code` | VMPP SNOMED CT identifier |
+| `Drug Tariff Category` | e.g. "Part VIIIA Category M" |
+| `Basic Price` | Drug Tariff basic price (pence) |
+| `NHS Indicative Price` | NHS Indicative Price (pence) |
+| `Price Basis` | Basis of NHS Indicative Price |
+| `Price Date` | Date of NHS Indicative Price |
+| `AMPP Name` | Branded pack name |
+| `AMPP Snomed Code` | AMPP SNOMED CT identifier |
+
+---
+
+## Data attribution
+
+The bundled `dmd_master` dataset is derived from the **NHS Dictionary of
+Medicines and Devices (dm+d)**, Week 34 2025 (14 August 2025), published by
+the **NHS Business Services Authority (NHSBSA)**.
+
+© Crown copyright. Licensed under the
+[Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).

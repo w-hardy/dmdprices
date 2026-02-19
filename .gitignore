@@ -1,0 +1,31 @@
+# R
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+*.Rproj
+
+# Package build artefacts
+*.tar.gz
+*.zip
+src/*.o
+src/*.so
+src/*.dll
+inst/doc/
+
+# devtools / roxygen / pkgdown
+/doc/
+/Meta/
+/man/
+
+# testthat snapshots (keep if you want reproducible snaps)
+# tests/testthat/_snaps/
+
+# pkgdown site output
+docs/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
