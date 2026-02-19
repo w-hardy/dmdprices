@@ -24,33 +24,33 @@
 #'   multiple manufacturers supply the same pack size.
 #'
 #' \describe{
-#'   \item{Medicine}{`character`. Virtual Medicinal Product (VMP) name — the
+#'   \item{medicine}{`character`. Virtual Medicinal Product (VMP) name — the
 #'     generic medicine name including strength and dose form,
 #'     e.g. `"Metformin 500mg tablets"`.}
-#'   \item{Pack size}{`numeric`. Numeric pack quantity.}
-#'   \item{Unit}{`character`. Unit of measure for the pack quantity
+#'   \item{pack_size}{`numeric`. Numeric pack quantity.}
+#'   \item{unit}{`character`. Unit of measure for the pack quantity
 #'     (e.g. `"tablet"`, `"ml"`, `"capsule"`, `"ampoule"`).}
-#'   \item{VMP Snomed Code}{`character`. SNOMED CT identifier for the VMP.}
-#'   \item{VMPP Snomed Code}{`character`. SNOMED CT identifier for the VMPP.}
-#'   \item{Drug Tariff Category}{`character`. Drug Tariff reimbursement
+#'   \item{vmp_snomed_code}{`character`. SNOMED CT identifier for the VMP.}
+#'   \item{vmpp_snomed_code}{`character`. SNOMED CT identifier for the VMPP.}
+#'   \item{drug_tariff_category}{`character`. Drug Tariff reimbursement
 #'     category, e.g. `"Part VIIIA Category M"`, `"Part VIIIA Category C"`.
 #'     `NA` if the product is not reimbursed via the Drug Tariff.}
-#'   \item{Basic Price}{`integer`. Drug Tariff basic price in **pence**.
+#'   \item{basic_price}{`integer`. Drug Tariff basic price in **pence**.
 #'     This is the reimbursement rate paid to pharmacies and is the same for
 #'     all brands of the same VMPP. `NA` if not in the Drug Tariff.}
-#'   \item{NHS Indicative Price}{`integer`. NHS Indicative Price in **pence**.
+#'   \item{nhs_indicative_price}{`integer`. NHS Indicative Price in **pence**.
 #'     This is the list price for the specific branded pack (AMPP) and may
 #'     differ between manufacturers. `NA` where no indicative price is
 #'     available.}
-#'   \item{Price Basis}{`character`. Basis of the NHS Indicative Price,
+#'   \item{price_basis}{`character`. Basis of the NHS Indicative Price,
 #'     e.g. `"NHS Indicative Price"`. `NA` where not applicable.}
-#'   \item{Price Date}{`character`. Date the NHS Indicative Price took effect
+#'   \item{price_date}{`character`. Date the NHS Indicative Price took effect
 #'     (`"YYYY-MM-DD"`). `NA` where not applicable.}
-#'   \item{AMPP Name}{`character`. Actual Medicinal Product Pack (AMPP) name —
+#'   \item{ampp_name}{`character`. Actual Medicinal Product Pack (AMPP) name —
 #'     the full branded product name including manufacturer and pack
 #'     description, e.g.
 #'     `"Metformin 500mg tablets (A A H Pharmaceuticals Ltd) 28 tablet"`.}
-#'   \item{AMPP Snomed Code}{`character`. SNOMED CT identifier for the AMPP.}
+#'   \item{ampp_snomed_code}{`character`. SNOMED CT identifier for the AMPP.}
 #' }
 #'
 #' @source

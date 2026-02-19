@@ -80,11 +80,11 @@ dmd_load <- function(path = getOption("dmdprices.path")) {
 
 #' @export
 print.dmd_db <- function(x, ...) {
-  n_vmp <- dplyr::n_distinct(x$master$`VMP Snomed Code`, na.rm = TRUE)
-  n_vmpp <- dplyr::n_distinct(x$master$`VMPP Snomed Code`, na.rm = TRUE)
-  n_ampp <- dplyr::n_distinct(x$master$`AMPP Snomed Code`, na.rm = TRUE)
-  n_dt <- sum(!is.na(x$master$`Basic Price`))
-  n_ip <- sum(!is.na(x$master$`NHS Indicative Price`))
+  n_vmp <- dplyr::n_distinct(x$master$vmp_snomed_code, na.rm = TRUE)
+  n_vmpp <- dplyr::n_distinct(x$master$vmpp_snomed_code, na.rm = TRUE)
+  n_ampp <- dplyr::n_distinct(x$master$ampp_snomed_code, na.rm = TRUE)
+  n_dt <- sum(!is.na(x$master$basic_price))
+  n_ip <- sum(!is.na(x$master$nhs_indicative_price))
 
   cli::cli_inform(c(
     "v" = "dm+d database loaded at {format(x$loaded_at, '%Y-%m-%d %H:%M')}",

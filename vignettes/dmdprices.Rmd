@@ -60,7 +60,7 @@ dmd_price_lookup("metfromin 500mg tablets", method = "fuzzy", max_dist = 4)
 
 ### Including products without prices
 
-By default, rows where both `Basic Price` and `NHS Indicative Price` are `NA`
+By default, rows where both `basic_price` and `nhs_indicative_price` are `NA`
 are dropped. Set `active_only = FALSE` to keep them:
 
 ```{r active-only}
@@ -103,18 +103,18 @@ convention. One row is returned per branded pack (AMPP).
 
 | Column | Description |
 |---|---|
-| `Medicine` | VMP (generic) name |
-| `Pack size` | Pack quantity |
-| `Unit` | Unit of measure (tablet, ml, etc.) |
-| `VMP Snomed Code` | VMP SNOMED CT identifier |
-| `VMPP Snomed Code` | VMPP SNOMED CT identifier |
-| `Drug Tariff Category` | e.g. "Part VIIIA Category M" |
-| `Basic Price` | Drug Tariff basic price (pence) |
-| `NHS Indicative Price` | NHS Indicative Price (pence) |
-| `Price Basis` | Basis of NHS Indicative Price |
-| `Price Date` | Date of NHS Indicative Price |
-| `AMPP Name` | Branded pack name |
-| `AMPP Snomed Code` | AMPP SNOMED CT identifier |
+| `medicine` | VMP (generic) name |
+| `pack_size` | Pack quantity |
+| `unit` | Unit of measure (tablet, ml, etc.) |
+| `vmp_snomed_code` | VMP SNOMED CT identifier |
+| `vmpp_snomed_code` | VMPP SNOMED CT identifier |
+| `drug_tariff_category` | e.g. "Part VIIIA Category M" |
+| `basic_price` | Drug Tariff basic price (pence) |
+| `nhs_indicative_price` | NHS Indicative Price (pence) |
+| `price_basis` | Basis of NHS Indicative Price |
+| `price_date` | Date of NHS Indicative Price |
+| `ampp_name` | Branded pack name |
+| `ampp_snomed_code` | AMPP SNOMED CT identifier |
 
 ---
 

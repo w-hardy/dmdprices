@@ -35,3 +35,5 @@ Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://github.com/w-hardy/dmdprices
 BugReports: https://github.com/w-hardy/dmdprices/issues
+Depends: 
+    R (>= 4.1)

@@ -20,26 +20,25 @@
 #'     sensitivity with `max_dist`.
 #' @param max_dist Maximum edit distance for `method = "fuzzy"` (default `3`).
 #'   Increase for looser matching; decrease for stricter matching.
-#' @param active_only If `TRUE` (default), rows where both `Basic Price` and
-#'   `NHS Indicative Price` are `NA` are dropped.
+#' @param active_only If `TRUE` (default), rows where both `basic_price` and
+#'   `nhs_indicative_price` are `NA` are dropped.
 #'
-#' @return A [tibble][tibble::tibble] with the following columns, in the same
-#'   order and format as the NHS Drug Tariff Part VIIIA CSV:
+#' @return A [tibble][tibble::tibble] with the following columns:
 #'
 #'   | Column | Description |
 #'   |---|---|
-#'   | `Medicine` | VMP (generic) name |
-#'   | `Pack size` | Pack quantity |
-#'   | `Unit` | Unit of measure (tablet, ml, etc.) |
-#'   | `VMP Snomed Code` | VMP SNOMED CT identifier |
-#'   | `VMPP Snomed Code` | VMPP SNOMED CT identifier |
-#'   | `Drug Tariff Category` | e.g. "Part VIIIA Category M" |
-#'   | `Basic Price` | Drug Tariff basic price (pence) |
-#'   | `NHS Indicative Price` | NHS Indicative Price (pence) |
-#'   | `Price Basis` | Basis of NHS Indicative Price |
-#'   | `Price Date` | Date of NHS Indicative Price |
-#'   | `AMPP Name` | Branded pack name |
-#'   | `AMPP Snomed Code` | AMPP SNOMED CT identifier |
+#'   | `medicine` | VMP (generic) name |
+#'   | `pack_size` | Pack quantity |
+#'   | `unit` | Unit of measure (tablet, ml, etc.) |
+#'   | `vmp_snomed_code` | VMP SNOMED CT identifier |
+#'   | `vmpp_snomed_code` | VMPP SNOMED CT identifier |
+#'   | `drug_tariff_category` | e.g. "Part VIIIA Category M" |
+#'   | `basic_price` | Drug Tariff basic price (pence) |
+#'   | `nhs_indicative_price` | NHS Indicative Price (pence) |
+#'   | `price_basis` | Basis of NHS Indicative Price |
+#'   | `price_date` | Date of NHS Indicative Price |
+#'   | `ampp_name` | Branded pack name |
+#'   | `ampp_snomed_code` | AMPP SNOMED CT identifier |
 #'
 #' @export
 #'
@@ -74,9 +73,9 @@ dmd_price_lookup <- function(
   # (e.g. the bundled dmd_master)
   master <- if (inherits(db, "dmd_db")) db$master else db
 
-  if (!is.data.frame(master) || !"Medicine" %in% names(master)) {
+  if (!is.data.frame(master) || !"medicine" %in% names(master)) {
     cli::cli_abort(c(
-      "{.arg db} must be a {.cls dmd_db} object or a tibble with a {.col Medicine} column.",
+      "{.arg db} must be a {.cls dmd_db} object or a tibble with a {.col medicine} column.",
       "i" = "Use the bundled {.code dmd_master} dataset or create a {.cls dmd_db} with {.code dmd_load()}."
     ))
   }
@@ -88,18 +87,18 @@ dmd_price_lookup <- function(
     method,
     exact = dplyr::filter(
       master,
-      stringr::str_to_upper(.data$Medicine) == stringr::str_to_upper(q)
+      stringr::str_to_upper(.data$medicine) == stringr::str_to_upper(q)
     ),
 
     partial = dplyr::filter(
       master,
-      stringr::str_detect(.data$Medicine, stringr::regex(q, ignore_case = TRUE))
+      stringr::str_detect(.data$medicine, stringr::regex(q, ignore_case = TRUE))
     ),
 
     fuzzy = {
       dists <- stringdist::stringdist(
         stringr::str_to_lower(q),
-        stringr::str_to_lower(master$Medicine),
+        stringr::str_to_lower(master$medicine),
         method = "osa"
       )
       master[dists <= max_dist, ]
@@ -109,7 +108,7 @@ dmd_price_lookup <- function(
   if (active_only) {
     results <- dplyr::filter(
       results,
-      !is.na(.data$`Basic Price`) | !is.na(.data$`NHS Indicative Price`)
+      !is.na(.data$basic_price) | !is.na(.data$nhs_indicative_price)
     )
   }
 
@@ -119,5 +118,5 @@ dmd_price_lookup <- function(
     )
   }
 
-  dplyr::arrange(results, .data$Medicine, .data$`Pack size`)
+  dplyr::arrange(results, .data$medicine, .data$pack_size)
 }

@@ -164,17 +164,17 @@
       "NHS Indicative Price" := suppressWarnings(as.integer(.data$NHSIP_PRICE))
     ) |>
     dplyr::select(
-      Medicine = "VMP_NM",
-      `Pack size` = "Pack_size",
-      "Unit",
-      `VMP Snomed Code` = "VPID",
-      `VMPP Snomed Code` = "VPPID",
-      `Drug Tariff Category` = "DT_CAT",
-      "Basic Price",
-      "NHS Indicative Price",
-      `Price Basis` = "NHSIP_BASIS",
-      `Price Date` = "NHSIP_DATE",
-      `AMPP Name` = "AMPP_NM",
-      `AMPP Snomed Code` = "APPID"
+      medicine = "VMP_NM",
+      pack_size = "Pack_size",
+      unit = "Unit",
+      vmp_snomed_code = "VPID",
+      vmpp_snomed_code = "VPPID",
+      drug_tariff_category = "DT_CAT",
+      basic_price = "Basic Price",
+      nhs_indicative_price = "NHS Indicative Price",
+      price_basis = "NHSIP_BASIS",
+      price_date = "NHSIP_DATE",
+      ampp_name = "AMPP_NM",
+      ampp_snomed_code = "APPID"
     )
 }

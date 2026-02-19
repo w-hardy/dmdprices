@@ -91,18 +91,18 @@ options(dmdprices.path = "~/dmdDataLoader")
 
 | Column | Description |
 |---|---|
-| `Medicine` | VMP (generic) name |
-| `Pack size` | Numeric pack quantity |
-| `Unit` | Unit of measure (tablet, ml, capsule, …) |
-| `VMP Snomed Code` | VMP SNOMED CT identifier |
-| `VMPP Snomed Code` | VMPP SNOMED CT identifier |
-| `Drug Tariff Category` | e.g. "Part VIIIA Category M" |
-| `Basic Price` | Drug Tariff basic price (pence) |
-| `NHS Indicative Price` | NHS Indicative Price (pence) |
-| `Price Basis` | Basis of NHS Indicative Price |
-| `Price Date` | Date of NHS Indicative Price |
-| `AMPP Name` | Branded pack name |
-| `AMPP Snomed Code` | AMPP SNOMED CT identifier |
+| `medicine` | VMP (generic) name |
+| `pack_size` | Numeric pack quantity |
+| `unit` | Unit of measure (tablet, ml, capsule, …) |
+| `vmp_snomed_code` | VMP SNOMED CT identifier |
+| `vmpp_snomed_code` | VMPP SNOMED CT identifier |
+| `drug_tariff_category` | e.g. "Part VIIIA Category M" |
+| `basic_price` | Drug Tariff basic price (pence) |
+| `nhs_indicative_price` | NHS Indicative Price (pence) |
+| `price_basis` | Basis of NHS Indicative Price |
+| `price_date` | Date of NHS Indicative Price |
+| `ampp_name` | Branded pack name |
+| `ampp_snomed_code` | AMPP SNOMED CT identifier |
 
 Prices are in **pence**, matching the Drug Tariff CSV convention. One row is
 returned per branded pack (AMPP); the `Basic Price` (Drug Tariff) is the same

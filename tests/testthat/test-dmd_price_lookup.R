@@ -2,30 +2,30 @@
 
 .fake_db <- function() {
   master <- tibble::tibble(
-    Medicine = c(
+    medicine = c(
       "Metformin 500mg tablets",
       "Metformin 500mg tablets",
       "Atenolol 100mg tablets"
     ),
-    `Pack size` = c(28, 28, 28),
-    Unit = c("tablet", "tablet", "tablet"),
-    `VMP Snomed Code` = c("A", "A", "B"),
-    `VMPP Snomed Code` = c("AA", "AA", "BB"),
-    `Drug Tariff Category` = c(
+    pack_size = c(28, 28, 28),
+    unit = c("tablet", "tablet", "tablet"),
+    vmp_snomed_code = c("A", "A", "B"),
+    vmpp_snomed_code = c("AA", "AA", "BB"),
+    drug_tariff_category = c(
       "Part VIIIA Category M",
       "Part VIIIA Category M",
       "Part VIIIA Category C"
     ),
-    `Basic Price` = c(58L, 58L, 90L),
-    `NHS Indicative Price` = c(63L, 70L, NA_integer_),
-    `Price Basis` = c("NHS Indicative Price", "NHS Indicative Price", NA),
-    `Price Date` = c("2025-08-08", "2025-08-08", NA),
-    `AMPP Name` = c(
+    basic_price = c(58L, 58L, 90L),
+    nhs_indicative_price = c(63L, 70L, NA_integer_),
+    price_basis = c("NHS Indicative Price", "NHS Indicative Price", NA),
+    price_date = c("2025-08-08", "2025-08-08", NA),
+    ampp_name = c(
       "Metformin 500mg (Brand A) 28 tablet",
       "Metformin 500mg (Brand B) 28 tablet",
       "Atenolol 100mg (Brand A) 28 tablet"
     ),
-    `AMPP Snomed Code` = c("AAA", "AAB", "BBA")
+    ampp_snomed_code = c("AAA", "AAB", "BBA")
   )
   structure(list(master = master, loaded_at = Sys.time()), class = "dmd_db")
 }
@@ -36,7 +36,7 @@ test_that("partial match returns correct rows", {
   res <- dmd_price_lookup("metformin", db = db)
   expect_s3_class(res, "tbl_df")
   expect_equal(nrow(res), 2)
-  expect_true(all(grepl("metformin", res$Medicine, ignore.case = TRUE)))
+  expect_true(all(grepl("metformin", res$medicine, ignore.case = TRUE)))
 })
 
 test_that("exact match is case-insensitive", {
@@ -71,21 +71,21 @@ test_that("active_only = FALSE keeps NA-price rows", {
   expect_equal(nrow(res_active), nrow(res_all))
 })
 
-test_that("output has correct Drug Tariff column names", {
+test_that("output has correct snake_case column names", {
   res <- dmd_price_lookup("metformin", db = db)
   expected_cols <- c(
-    "Medicine",
-    "Pack size",
-    "Unit",
-    "VMP Snomed Code",
-    "VMPP Snomed Code",
-    "Drug Tariff Category",
-    "Basic Price",
-    "NHS Indicative Price",
-    "Price Basis",
-    "Price Date",
-    "AMPP Name",
-    "AMPP Snomed Code"
+    "medicine",
+    "pack_size",
+    "unit",
+    "vmp_snomed_code",
+    "vmpp_snomed_code",
+    "drug_tariff_category",
+    "basic_price",
+    "nhs_indicative_price",
+    "price_basis",
+    "price_date",
+    "ampp_name",
+    "ampp_snomed_code"
   )
   expect_named(res, expected_cols)
 })
