@@ -6,34 +6,38 @@
 \alias{dmdprices-package}
 \title{dmdprices: Look Up Medicine Prices from the NHS dm+d}
 \description{
-\code{dmdprices} provides two main functions:
+\code{dmdprices} provides tools for querying NHS medicine prices and adjusting
+costs for inflation:
 }
 \details{
 \itemize{
-\item \code{\link[=dmd_load]{dmd_load()}} — reads the CSV output of the NHSBSA dm+d extract tool and
-builds a joined pricing database.
-\item \code{\link[=dmd_price_lookup]{dmd_price_lookup()}} — queries that database by medicine name, returning a
-tibble in Drug Tariff Part VIIIA format.
+\item \code{\link[=dmd_price_lookup]{dmd_price_lookup()}} — search the bundled dm+d dataset by medicine name.
+\item \code{\link[=dmd_load]{dmd_load()}} — load a more recent dm+d release from a local
+\code{dmdDataLoader} CSV directory.
+\item \code{\link[=nhscii]{nhscii()}} — compute NHS Cost Inflation Index factors between financial
+years.
+\item \code{\link[=inflate_nhscii]{inflate_nhscii()}} — adjust costs using NHS CII rates.
+\item \code{\link[=run_dmd_price_lookup]{run_dmd_price_lookup()}} — launch the price lookup Shiny app locally.
+\item \code{\link[=run_inflate_nhscii]{run_inflate_nhscii()}} — launch the cost adjuster Shiny app locally.
 }
 \subsection{Typical workflow}{
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{library(dmdprices)
 
-# Load once per session (or set options(dmdprices.path = "...") in .Rprofile)
-db <- dmd_load("path/to/dmdDataLoader")
+# Search bundled data — no setup needed
+dmd_price_lookup("metformin")
 
-# Query
-dmd_price_lookup(db, "metformin")
+# Adjust a cost for inflation
+inflate_nhscii(100, "2019/20", "2023/24")
+
+# Load a more recent dm+d release
+db <- dmd_load("path/to/dmdDataLoader")
+dmd_price_lookup("metformin", db = db)
 }\if{html}{\out{</div>}}
 }
 }
 \seealso{
-Useful links:
-\itemize{
-  \item \url{https://github.com/w-hardy/dmdprices}
-  \item Report bugs at \url{https://github.com/w-hardy/dmdprices/issues}
-}
-
+\url{https://w-hardy.github.io/dmdprices/}
 }
 \author{
 \strong{Maintainer}: Will Hardy \email{w.hardy@bangor.ac.uk}

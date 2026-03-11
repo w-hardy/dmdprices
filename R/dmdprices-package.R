@@ -1,24 +1,34 @@
 #' dmdprices: Look Up Medicine Prices from the NHS dm+d
 #'
-#' `dmdprices` provides two main functions:
+#' `dmdprices` provides tools for querying NHS medicine prices and adjusting
+#' costs for inflation:
 #'
-#' * [dmd_load()] — reads the CSV output of the NHSBSA dm+d extract tool and
-#'   builds a joined pricing database.
-#' * [dmd_price_lookup()] — queries that database by medicine name, returning a
-#'   tibble in Drug Tariff Part VIIIA format.
+#' * [dmd_price_lookup()] — search the bundled dm+d dataset by medicine name.
+#' * [dmd_load()] — load a more recent dm+d release from a local
+#'   `dmdDataLoader` CSV directory.
+#' * [nhscii()] — compute NHS Cost Inflation Index factors between financial
+#'   years.
+#' * [inflate_nhscii()] — adjust costs using NHS CII rates.
+#' * [run_dmd_price_lookup()] — launch the price lookup Shiny app locally.
+#' * [run_inflate_nhscii()] — launch the cost adjuster Shiny app locally.
 #'
 #' ## Typical workflow
 #'
 #' ```r
 #' library(dmdprices)
 #'
-#' # Load once per session (or set options(dmdprices.path = "...") in .Rprofile)
-#' db <- dmd_load("path/to/dmdDataLoader")
+#' # Search bundled data — no setup needed
+#' dmd_price_lookup("metformin")
 #'
-#' # Query
-#' dmd_price_lookup(db, "metformin")
+#' # Adjust a cost for inflation
+#' inflate_nhscii(100, "2019/20", "2023/24")
+#'
+#' # Load a more recent dm+d release
+#' db <- dmd_load("path/to/dmdDataLoader")
+#' dmd_price_lookup("metformin", db = db)
 #' ```
 #'
+#' @seealso <https://w-hardy.github.io/dmdprices/>
 #' @keywords internal
 "_PACKAGE"
 
