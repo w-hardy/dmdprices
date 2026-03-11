@@ -16,7 +16,6 @@ inst/doc/
 # devtools / roxygen / pkgdown
 /doc/
 /Meta/
-/man/
 
 # testthat snapshots (keep if you want reproducible snaps)
 # tests/testthat/_snaps/
