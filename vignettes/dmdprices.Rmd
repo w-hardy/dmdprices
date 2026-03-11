@@ -17,9 +17,7 @@ library(dmdprices)
 
 ## Overview
 
-`dmdprices` provides price lookups against the NHS Dictionary of Medicines and
-Devices (dm+d). A bundled dataset (Week 34 2025) is included so no setup is
-needed for immediate use.
+`dmdprices` provides price lookups against the NHS Dictionary of Medicines and Devices (dm+d). A bundled dataset (Week 34 2025) is included so no setup is needed for immediate use.
 
 There are two main functions:
 
@@ -34,8 +32,7 @@ There are two main functions:
 
 ### Partial match (default)
 
-Returns all rows where the medicine name contains the query string
-(case-insensitive):
+Returns all rows where the medicine name contains the query string (case-insensitive):
 
 ```{r partial}
 dmd_price_lookup("metformin")

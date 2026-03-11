@@ -31,6 +31,7 @@ library(dmdprices)
 **Update frequency:** Weekly (every Thursday)
 
 **Content:**
+
 - Virtual Medicinal Products (VMPs) — generic medicines
 - Virtual Medicinal Product Packs (VMPPs) — packs/strengths
 - Actual Medicinal Products (AMPs) — branded products
@@ -39,7 +40,8 @@ library(dmdprices)
 
 **Coverage:** All medicines approved for use in UK NHS
 
-**Access:** NHSBSA TRUD (Technology Reference Data Update) service  
+**Access:** NHSBSA TRUD (Technology Reference Data Update) service
+
 📍 https://isd.digital.nhs.uk/trud
 
 **In dmdprices:**
@@ -59,16 +61,19 @@ nrow(dmd_master)
 **Update frequency:** Monthly (published mid-month)
 
 **Content:**
+
 - Basic prices (pence)
 - Drug Tariff part and category
 - Uplift and discount schedules
 
 **Published by:** NHSBSA
 
-**Access:** NHSBSA website  
+**Access:** NHSBSA website
+
 📍 https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff
 
 **Important notes:**
+
 - England only (Scotland/Wales have separate arrangements)
 - Prices typically lower due to cost-containment policies
 - Updated monthly; old prices may not reflect current reimbursement
@@ -82,16 +87,19 @@ nrow(dmd_master)
 **Update frequency:** Quarterly
 
 **Content:**
+
 - Indicative prices (pence)
 - Basis of price (DT = Drug Tariff, MIMS, other)
 - Date price became effective
 
 **Published by:** NHS England
 
-**Access:** NHS England Cost Collection  
+**Access:** NHS England Cost Collection
+
 📍 https://www.england.nhs.uk/publication/national-cost-collection-ncc/
 
 **Important notes:**
+
 - Indicative only (hospitals negotiate contracts)
 - Broader supply chain reflected
 - Usually higher than Drug Tariff (due to distribution markup)
@@ -105,6 +113,7 @@ nrow(dmd_master)
 **Update frequency:** Annually (usually in autumn/winter for the next year)
 
 **Content:**
+
 - Pay inflation rates
 - Price inflation rates
 - Combined pay+prices indices
@@ -112,7 +121,8 @@ nrow(dmd_master)
 
 **Published by:** Personal Social Services Research Unit (PSSRU), University of Kent
 
-**Access:** PSSRU website  
+**Access:** PSSRU website
+
 📍 https://www.pssru.ac.uk/project-pages/unit-costs/
 
 **In dmdprices:** Function `nhscii()`
@@ -127,17 +137,20 @@ nhscii("2015/16", "2023/24", index = "prices")
 ## How often should you update?
 
 ### Use bundled data if:
+
 - You're doing academic analysis (reproducibility matters)
 - Your project isn't time-sensitive
 - You're learning the package
 
 ### Load fresh dm+d if:
+
 - You're running operational systems (pharmacy, procurement)
 - You need current Drug Tariff prices
 - New medicines are important to your analysis
 - More than 3 months have passed
 
 ### Update NHS CII if:
+
 - You're inflating costs to future years
 - New PSSRU manual has been published
 - Your analysis year has changed
@@ -251,23 +264,27 @@ analysis_metadata <- list(
 If you're building on `dmdprices`, here are direct feeds:
 
 ### dm+d download
+
 ```
 https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6
 ```
 (Free registration required)
 
 ### Drug Tariff CSV
+
 ```
 https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff
 ```
 (Monthly archive available)
 
 ### NHS Indicative Prices
+
 ```
 https://www.england.nhs.uk/publication/national-cost-collection-ncc/
 ```
 
 ### PSSRU Unit Costs
+
 ```
 https://www.pssru.ac.uk/project-pages/unit-costs/
 ```
@@ -275,6 +292,7 @@ https://www.pssru.ac.uk/project-pages/unit-costs/
 ## Licensing and attribution
 
 ### dm+d
+
 © Crown copyright. Licensed under the Open Government Licence v3.0  
 📍 https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
 
@@ -285,6 +303,7 @@ Devices (dm+d). Available: https://isd.digital.nhs.uk/trud
 ```
 
 ### Drug Tariff and NHS Indicative Prices
+
 Published by NHSBSA and NHS England respectively. No special licence required for analysis (educational/research use).
 
 **Citation:**
@@ -294,6 +313,7 @@ https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug
 ```
 
 ### NHS CII
+
 Published by PSSRU under Open Government Licence.
 
 **Citation:**
@@ -313,6 +333,7 @@ University of Kent. https://doi.org/10.22024/UniKent/01.02.109563
 ### "Why is there no price?"
 
 See vignette "Working with Drug Tariff and NHS Indicative Prices" for common reasons:
+
 - Centrally procured (vaccines, infusions)
 - Specialty/rare disease medicine
 - Recently added to formulary

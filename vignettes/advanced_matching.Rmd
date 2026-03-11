@@ -36,6 +36,7 @@ dmd_price_lookup("metformin", method = "partial")
 ```
 
 **Use when:**
+
 - You don't know the exact name
 - You want all related products
 - Searching broad categories
@@ -50,6 +51,7 @@ dmd_price_lookup("Metformin 500mg tablets", method = "exact")
 ```
 
 **Use when:**
+
 - You have clean, standardized data
 - You want to avoid false matches
 - Building reproducible workflows
@@ -64,6 +66,7 @@ dmd_price_lookup("metformin 500 mg tabets", method = "fuzzy", max_dist = 3)
 ```
 
 **Parameters:**
+
 - `max_dist`: Maximum character distance (default 2)
   - Lower = stricter (fewer false matches)
   - Higher = more permissive (catches typos)
