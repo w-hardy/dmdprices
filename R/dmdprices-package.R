@@ -28,6 +28,11 @@
 #' dmd_price_lookup("metformin", db = db)
 #' ```
 #'
+#' @section Disclaimer:
+#' This package is under active development and has **not been formally
+#' validated**. Outputs should be independently verified before use in
+#' research or clinical decision-making. Use at your own risk.
+#'
 #' @seealso <https://w-hardy.github.io/dmdprices/>
 #' @keywords internal
 "_PACKAGE"

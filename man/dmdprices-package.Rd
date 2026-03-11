@@ -36,6 +36,13 @@ dmd_price_lookup("metformin", db = db)
 }\if{html}{\out{</div>}}
 }
 }
+\section{Disclaimer}{
+
+This package is under active development and has \strong{not been formally
+validated}. Outputs should be independently verified before use in
+research or clinical decision-making. Use at your own risk.
+}
+
 \seealso{
 \url{https://w-hardy.github.io/dmdprices/}
 }

@@ -5,6 +5,20 @@ library(DT)
 ui <- fluidPage(
   theme = bslib::bs_theme(version = 5),
   titlePanel("dm+d Medicine Price Lookup"),
+  tags$div(
+    class = "alert alert-warning alert-dismissible fade show mt-2",
+    role = "alert",
+    tags$strong("⚠️ Under development — not validated."),
+    " This tool has not been formally validated. Outputs should be",
+    " independently verified before use in research or clinical decision-making.",
+    " Use at your own risk.",
+    tags$button(
+      type = "button",
+      class = "btn-close",
+      `data-bs-dismiss` = "alert",
+      `aria-label` = "Close"
+    )
+  ),
   sidebarLayout(
     sidebarPanel(
       width = 3,
@@ -27,7 +41,8 @@ ui <- fluidPage(
       actionButton("search", "Search", class = "btn-primary w-100"),
       hr(),
       helpText(
-        tags$b("Data:"), "NHS dm+d Week 34 2025 (14 August 2025).",
+        tags$b("Data:"),
+        "NHS dm+d Week 34 2025 (14 August 2025).",
         "Prices are NHS Indicative or Drug Tariff Basic Prices (pence).",
         tags$br(),
         "© Crown copyright. NHS Business Services Authority (NHSBSA).",

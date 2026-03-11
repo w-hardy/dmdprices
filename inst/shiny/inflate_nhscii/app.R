@@ -6,6 +6,20 @@ fin_years <- names(dmdprices:::.nhscii_rates$pay_and_prices)
 ui <- fluidPage(
   theme = bslib::bs_theme(version = 5),
   titlePanel("NHS Cost Inflation Index — Cost Adjuster"),
+  tags$div(
+    class = "alert alert-warning alert-dismissible fade show mt-2",
+    role = "alert",
+    tags$strong("⚠️ Under development — not validated."),
+    " This tool has not been formally validated. Outputs should be",
+    " independently verified before use in research or clinical decision-making.",
+    " Use at your own risk.",
+    tags$button(
+      type = "button",
+      class = "btn-close",
+      `data-bs-dismiss` = "alert",
+      `aria-label` = "Close"
+    )
+  ),
   sidebarLayout(
     sidebarPanel(
       width = 4,
