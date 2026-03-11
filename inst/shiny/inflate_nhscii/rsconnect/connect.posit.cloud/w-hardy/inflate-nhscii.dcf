@@ -1,0 +1,10 @@
+name: inflate-nhscii
+title:
+username: w-hardy
+account: w-hardy
+server: connect.posit.cloud
+hostUrl: https://api.connect.posit.cloud/v1
+appId: 019cddbf-fd60-3242-87eb-4552fdb36513
+bundleId:
+url:
+version: 1

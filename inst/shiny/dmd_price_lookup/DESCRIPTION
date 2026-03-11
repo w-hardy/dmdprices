@@ -1,0 +1,4 @@
+Package: dmdPriceLookupApp
+Title: dm+d Price Lookup
+Version: 0.0.1
+Remotes: w-hardy/dmdprices

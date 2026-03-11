@@ -9,13 +9,20 @@ home:
 
 navbar:
   structure:
-    left: [intro, reference, articles, news]
+    left: [intro, reference, articles, apps, news]
     right: [github]
   components:
     github:
       icon: fab fa-github fa-lg
       href: https://github.com/w-hardy/dmdprices
       aria-label: GitHub
+    apps:
+      text: Apps
+      menu:
+        - text: dm+d Price Lookup
+          href: articles/apps.html#dmd-price-lookup
+        - text: NHS CII Cost Adjuster
+          href: articles/apps.html#nhs-cii-cost-adjuster
 
 reference:
   - title: "Price lookup"
@@ -28,6 +35,11 @@ reference:
     contents:
       - nhscii
       - inflate_nhscii
+  - title: "Shiny apps"
+    desc: "Launch interactive apps locally"
+    contents:
+      - run_dmd_price_lookup
+      - run_inflate_nhscii
   - title: "Data"
     desc: "Bundled dataset"
     contents:
@@ -41,6 +53,7 @@ articles:
     navbar: ~
     contents:
       - dmdprices
+      - apps
   - title: "Inflation"
     contents:
       - nhscii

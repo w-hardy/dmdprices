@@ -1,0 +1,98 @@
+---
+title: "Interactive Apps"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Interactive Apps}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+Two Shiny apps are available for interactive use without writing any R code.
+You can access them online (hosted on Posit Connect Cloud) or run them locally
+if you have `dmdprices` installed.
+
+---
+
+## dm+d Price Lookup {#dmd-price-lookup}
+
+Search for medicine prices from the bundled dm+d dataset by name, with
+partial, exact, or fuzzy matching.
+
+**Run locally:**
+
+```r
+dmdprices::run_dmd_price_lookup()
+```
+
+**Online (hosted):**
+
+<!-- Replace the src URL after deploying to Posit Connect Cloud -->
+<iframe
+  src="https://PLACEHOLDER.connect.posit.cloud/dmd-price-lookup/"
+  width="100%"
+  height="650"
+  frameborder="0"
+  allow="fullscreen"
+  title="dm+d Price Lookup">
+  <p>Your browser does not support iframes.
+     <a href="https://PLACEHOLDER.connect.posit.cloud/dmd-price-lookup/">
+       Open the app directly.
+     </a>
+  </p>
+</iframe>
+
+---
+
+## NHS CII Cost Adjuster {#nhs-cii-cost-adjuster}
+
+Inflate or deflate a cost between NHS financial years using the PSSRU
+NHS Cost Inflation Index.
+
+**Run locally:**
+
+```r
+dmdprices::run_inflate_nhscii()
+```
+
+**Online (hosted):**
+
+<!-- Replace the src URL after deploying to Posit Connect Cloud -->
+<iframe
+  src="https://PLACEHOLDER.connect.posit.cloud/inflate-nhscii/"
+  width="100%"
+  height="580"
+  frameborder="0"
+  allow="fullscreen"
+  title="NHS CII Cost Adjuster">
+  <p>Your browser does not support iframes.
+     <a href="https://PLACEHOLDER.connect.posit.cloud/inflate-nhscii/">
+       Open the app directly.
+     </a>
+  </p>
+</iframe>
+
+---
+
+## Deploying your own instance
+
+Both apps are included in the package under `inst/shiny/` and can be
+deployed to any Shiny-compatible host:
+
+```r
+# Deploy to Posit Connect Cloud (free tier)
+rsconnect::deployApp(
+  appDir    = system.file("shiny", "dmd_price_lookup", package = "dmdprices"),
+  appName   = "dmd-price-lookup",
+  appTitle  = "dm+d Price Lookup"
+)
+
+rsconnect::deployApp(
+  appDir    = system.file("shiny", "inflate_nhscii", package = "dmdprices"),
+  appName   = "inflate-nhscii",
+  appTitle  = "NHS CII Cost Adjuster"
+)
+```
