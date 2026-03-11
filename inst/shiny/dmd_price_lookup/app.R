@@ -58,7 +58,7 @@ server <- function(input, output, session) {
 
     tryCatch(
       dmd_price_lookup(
-        name = trimws(input$query),
+        query = trimws(input$query),
         method = input$method,
         active_only = input$active_only
       ),
