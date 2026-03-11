@@ -32,14 +32,14 @@ dmdprices::run_dmd_price_lookup()
 
 <!-- Replace the src URL after deploying to Posit Connect Cloud -->
 <iframe
-  src="https://connect.posit.cloud/w-hardy/content/019cde12-177b-f1f8-6153-366d3effa33c"
+  src="https://connect.posit.cloud/w-hardy/content/019cde17-cd4c-029e-e26d-e0aab4bd4d4d"
   width="100%"
   height="650"
   frameborder="0"
   allow="fullscreen"
   title="dm+d Price Lookup">
   <p>Your browser does not support iframes.
-     <a href="https://connect.posit.cloud/w-hardy/content/019cde12-177b-f1f8-6153-366d3effa33c">
+     <a href="https://connect.posit.cloud/w-hardy/content/019cde17-cd4c-029e-e26d-e0aab4bd4d4d">
        Open the app directly.
      </a>
   </p>
