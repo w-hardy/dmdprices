@@ -8,6 +8,11 @@ adjustment using the NHS Cost Inflation Index (NHS CII).
 A **bundled dataset** (Week 34 2025, 14 August 2025) is included — no
 setup required for immediate use.
 
+**⚠️ Under development — not validated.** This package is under active
+development and has not been formally validated. Outputs should be
+independently verified before use in research or clinical
+decision-making. Use at your own risk.
+
 ------------------------------------------------------------------------
 
 ## Installation

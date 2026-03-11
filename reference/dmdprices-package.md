@@ -38,6 +38,12 @@ adjusting costs for inflation:
     db <- dmd_load("path/to/dmdDataLoader")
     dmd_price_lookup("metformin", db = db)
 
+## Disclaimer
+
+This package is under active development and has **not been formally
+validated**. Outputs should be independently verified before use in
+research or clinical decision-making. Use at your own risk.
+
 ## See also
 
 <https://w-hardy.github.io/dmdprices/>
