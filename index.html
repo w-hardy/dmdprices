@@ -70,202 +70,100 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="dmdprices">dmdprices<a class="anchor" aria-label="anchor" href="#dmdprices"></a>
 </h1></div>
-<p>An R package for looking up medicine prices from the <a href="https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/dictionary-medicines-and-devices-dmd" class="external-link">NHS dm+d</a> (Dictionary of Medicines and Devices).</p>
-<p>A <strong>bundled dataset</strong> (Week 34 2025, 14 August 2025) is included so that no setup is required for immediate use. Users can also load a more recent dm+d release from their own <code>dmdDataLoader</code> CSV output using <code><a href="reference/dmd_load.html">dmd_load()</a></code>.</p>
-<p>Output columns mirror the <strong>NHS Drug Tariff Part VIIIA</strong> CSV format so that dm+d prices and Drug Tariff files can be used together directly.</p>
+<p>An R package for looking up medicine prices from the <a href="https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/dictionary-medicines-and-devices-dmd" class="external-link">NHS dm+d</a> (Dictionary of Medicines and Devices), with tools for inflation adjustment using the NHS Cost Inflation Index (NHS CII).</p>
+<p>A <strong>bundled dataset</strong> (Week 34 2025, 14 August 2025) is included — no setup required for immediate use.</p>
 <hr>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"w-hardy/dmdprices"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"w-hardy/dmdprices"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="quick-start--bundled-data">Quick start — bundled data<a class="anchor" aria-label="anchor" href="#quick-start--bundled-data"></a>
+<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<p>No setup required. The bundled <code>dmd_master</code> dataset is used by default:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://w-hardy.github.io/dmdprices/">dmdprices</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Partial match — all metformin products</span></span>
+<span><span class="co"># Search medicine prices — uses bundled data, no setup needed</span></span>
 <span><span class="fu"><a href="reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"metformin"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Exact VMP name</span></span>
-<span><span class="fu"><a href="reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"Metformin 500mg tablets"</span>, method <span class="op">=</span> <span class="st">"exact"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Fuzzy — tolerates typos</span></span>
-<span><span class="fu"><a href="reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"metfromin 500mg tablets"</span>, method <span class="op">=</span> <span class="st">"fuzzy"</span>, max_dist <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Include rows with no price (e.g. centrally-funded products)</span></span>
-<span><span class="fu"><a href="reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"metformin"</span>, active_only <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Export</span></span>
-<span><span class="fu">readr</span><span class="fu">::</span><span class="fu"><a href="https://readr.tidyverse.org/reference/write_delim.html" class="external-link">write_csv</a></span><span class="op">(</span><span class="fu"><a href="reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"atenolol"</span><span class="op">)</span>, <span class="st">"atenolol_prices.csv"</span><span class="op">)</span></span></code></pre></div>
-<p>Check which release is bundled:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">dmd_master</span>, <span class="st">"dmd_release_label"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Week 34 2025 (14 August 2025)"</span></span></code></pre></div>
+<span><span class="co"># Adjust a cost for inflation between NHS financial years</span></span>
+<span><span class="fu"><a href="reference/inflate_nhscii.html">inflate_nhscii</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"2019/20"</span>, <span class="st">"2023/24"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="inflation-adjustment-with-nhs-cii">Inflation adjustment with NHS CII<a class="anchor" aria-label="anchor" href="#inflation-adjustment-with-nhs-cii"></a>
+<h2 id="interactive-apps">Interactive apps<a class="anchor" aria-label="anchor" href="#interactive-apps"></a>
 </h2>
-<p>Use <code><a href="reference/nhscii.html">nhscii()</a></code> and <code><a href="reference/inflate_nhscii.html">inflate_nhscii()</a></code> to adjust costs for inflation based on NHS Cost Inflation Index rates from the PSSRU Unit Costs of Health and Social Care.</p>
-<div class="section level3">
-<h3 id="get-inflation-factors">Get inflation factors<a class="anchor" aria-label="anchor" href="#get-inflation-factors"></a>
-</h3>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Factor to inflate from 2019/20 to 2023/24</span></span>
-<span><span class="fu"><a href="reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2019/20"</span>, <span class="st">"2023/24"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1.127...</span></span>
-<span></span>
-<span><span class="co"># Same result using numeric end-years</span></span>
-<span><span class="fu"><a href="reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="fl">2020</span>, <span class="fl">2024</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1.127...</span></span>
-<span></span>
-<span><span class="co"># Percentage change</span></span>
-<span><span class="fu"><a href="reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2019/20"</span>, <span class="st">"2023/24"</span>, output_type <span class="op">=</span> <span class="st">"percent"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 12.7...</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="inflate-costs">Inflate costs<a class="anchor" aria-label="anchor" href="#inflate-costs"></a>
-</h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Adjust a single cost</span></span>
-<span><span class="fu"><a href="reference/inflate_nhscii.html">inflate_nhscii</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"2019/20"</span>, <span class="st">"2023/24"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 112.7...</span></span>
-<span></span>
-<span><span class="co"># Adjust multiple costs</span></span>
-<span><span class="fu"><a href="reference/inflate_nhscii.html">inflate_nhscii</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">250</span><span class="op">)</span>, from_year <span class="op">=</span> <span class="fl">2020</span>, to_year <span class="op">=</span> <span class="fl">2024</span>, index <span class="op">=</span> <span class="st">"prices"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="index-options">Index options<a class="anchor" aria-label="anchor" href="#index-options"></a>
-</h3>
+<p>No R required — use the hosted apps directly:</p>
 <ul>
 <li>
-<code>"pay_and_prices"</code> (default)</li>
-<li><code>"pay"</code></li>
-<li><code>"prices"</code></li>
+<a href="articles/apps.html#dmd-price-lookup"><strong>dm+d Price Lookup</strong></a> — search medicine prices by name with partial, exact, or fuzzy matching</li>
+<li>
+<a href="articles/apps.html#nhs-cii-cost-adjuster"><strong>NHS CII Cost Adjuster</strong></a> — adjust costs between NHS financial years</li>
 </ul>
-<p><strong>Note:</strong> 2023/24 figures are provisional and may be revised in later PSSRU releases.</p>
-<hr>
-</div>
-</div>
-<div class="section level2">
-<h2 id="using-a-more-recent-release">Using a more recent release<a class="anchor" aria-label="anchor" href="#using-a-more-recent-release"></a>
-</h2>
-<p>If you have the NHSBSA dm+d extract tool (<code>dmdDataLoader</code>), you can load a newer release. The expected directory layout is:</p>
-<pre><code>dmdDataLoader/
-└── csv/
-    ├── f_vmp_VmpType.csv
-    ├── f_vmpp_VmppType.csv
-    ├── f_vmpp_DtInfoType.csv
-    ├── f_ampp_AmppType.csv
-    ├── f_ampp_PriceInfoType.csv
-    ├── f_lookup_DtPayCatInfoType.csv
-    └── f_lookup_PriceBasisInfoType.csv</code></pre>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dmd_load.html">dmd_load</a></span><span class="op">(</span><span class="st">"path/to/dmdDataLoader"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; ✔ dm+d database loaded at 2026-02-19 12:00</span></span>
-<span><span class="co">#&gt; • 23 720 VMPs  |  35 706 VMPPs  |  106 292 AMPPs</span></span>
-<span><span class="co">#&gt; • 8 799 Drug Tariff prices  |  106 292 NHS Indicative Prices</span></span>
-<span></span>
-<span><span class="fu"><a href="reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"metformin"</span>, db <span class="op">=</span> <span class="va">db</span><span class="op">)</span></span></code></pre></div>
-<p>Set a project-wide default path in <code>.Rprofile</code> to avoid repeating it:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>dmdprices.path <span class="op">=</span> <span class="st">"~/dmdDataLoader"</span><span class="op">)</span></span>
-<span><span class="co"># Then: dmd_load() with no arguments</span></span></code></pre></div>
+<p>Or run locally:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/run_dmd_price_lookup.html">run_dmd_price_lookup</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/run_inflate_nhscii.html">run_inflate_nhscii</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="output-columns">Output columns<a class="anchor" aria-label="anchor" href="#output-columns"></a>
+<h2 id="learn-more">Learn more<a class="anchor" aria-label="anchor" href="#learn-more"></a>
 </h2>
 <table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
 <thead><tr class="header">
-<th>Column</th>
-<th>Description</th>
+<th>Topic</th>
+<th>Article</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>medicine</code></td>
-<td>VMP (generic) name</td>
+<td>Getting started</td>
+<td><a href="articles/dmdprices.html">Introduction to dmdprices</a></td>
 </tr>
 <tr class="even">
-<td><code>pack_size</code></td>
-<td>Numeric pack quantity</td>
+<td>Interactive apps</td>
+<td><a href="articles/apps.html">Apps</a></td>
 </tr>
 <tr class="odd">
-<td><code>unit</code></td>
-<td>Unit of measure (tablet, ml, capsule, …)</td>
+<td>NHS Cost Inflation Index</td>
+<td><a href="articles/nhscii.html">NHS CII adjustment</a></td>
 </tr>
 <tr class="even">
-<td><code>vmp_snomed_code</code></td>
-<td>VMP SNOMED CT identifier</td>
+<td>Cost analysis in practice</td>
+<td><a href="articles/cost_analysis_workflows.html">Cost analysis workflows</a></td>
 </tr>
 <tr class="odd">
-<td><code>vmpp_snomed_code</code></td>
-<td>VMPP SNOMED CT identifier</td>
+<td>Drug Tariff matching</td>
+<td><a href="articles/drug_tariff_matching.html">Drug Tariff matching</a></td>
 </tr>
 <tr class="even">
-<td><code>drug_tariff_category</code></td>
-<td>e.g. “Part VIIIA Category M”</td>
+<td>Advanced matching</td>
+<td><a href="articles/advanced_matching.html">Advanced matching techniques</a></td>
 </tr>
 <tr class="odd">
-<td><code>basic_price</code></td>
-<td>Drug Tariff basic price (pence)</td>
+<td>Data sources &amp; updates</td>
+<td><a href="articles/data_sources_updates.html">Data sources &amp; updates</a></td>
 </tr>
 <tr class="even">
-<td><code>nhs_indicative_price</code></td>
-<td>NHS Indicative Price (pence)</td>
-</tr>
-<tr class="odd">
-<td><code>price_basis</code></td>
-<td>Basis of NHS Indicative Price</td>
-</tr>
-<tr class="even">
-<td><code>price_date</code></td>
-<td>Date of NHS Indicative Price</td>
-</tr>
-<tr class="odd">
-<td><code>ampp_name</code></td>
-<td>Branded pack name</td>
-</tr>
-<tr class="even">
-<td><code>ampp_snomed_code</code></td>
-<td>AMPP SNOMED CT identifier</td>
+<td>Troubleshooting</td>
+<td><a href="articles/troubleshooting.html">Troubleshooting</a></td>
 </tr>
 </tbody>
 </table>
-<p>Prices are in <strong>pence</strong>, matching the Drug Tariff CSV convention. One row is returned per branded pack (AMPP); the <code>Basic Price</code> (Drug Tariff) is the same for all brands of the same VMPP.</p>
 <hr>
 </div>
 <div class="section level2">
 <h2 id="data-attribution">Data attribution<a class="anchor" aria-label="anchor" href="#data-attribution"></a>
 </h2>
-<p>The <code>dmd_master</code> dataset is derived from the <strong>NHS Dictionary of Medicines and Devices (dm+d)</strong>, Week 34 2025 release (14 August 2025).</p>
-<p>Published by the <strong>NHS Business Services Authority (NHSBSA)</strong>.</p>
+<p>The <code>dmd_master</code> dataset is derived from the <strong>NHS Dictionary of Medicines and Devices (dm+d)</strong>, Week 34 2025 release (14 August 2025), published by the <strong>NHS Business Services Authority (NHSBSA)</strong>.</p>
 <p>© Crown copyright. Licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" class="external-link">Open Government Licence v3.0</a>.</p>
-<p>The dm+d is available from the NHSBSA TRUD service: <a href="https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6" class="external-link uri">https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6</a></p>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="development">Development<a class="anchor" aria-label="anchor" href="#development"></a>
-</h2>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Install dependencies</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_deps</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Regenerate documentation</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">document</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Run tests</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Rebuild bundled data after a new dm+d release</span></span>
-<span><span class="co"># (edit dmd_loader_path in data-raw/dmd_master.R first)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"data-raw/dmd_master.R"</span><span class="op">)</span></span></code></pre></div>
+<p>NHS CII rates are from the <a href="https://www.pssru.ac.uk/project-pages/unit-costs/" class="external-link">PSSRU Unit Costs of Health and Social Care</a>, published under the Open Government Licence.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -273,6 +171,10 @@
 <ul class="list-unstyled">
 <li><a href="https://github.com/w-hardy/dmdprices/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/w-hardy/dmdprices/issues" class="external-link">Report a bug</a></li>
+<li><a href="articles/apps.html">Interactive apps</a></li>
+<li><a href="articles/dmdprices.html">Get started</a></li>
+<li><a href="reference/index.html">Reference</a></li>
+<li><a href="https://github.com/w-hardy/dmdprices/issues" class="external-link">Report an issue</a></li>
 </ul>
 </div>
 
