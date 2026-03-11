@@ -1,0 +1,348 @@
+# Data Sources and Updates
+
+## Overview
+
+`dmdprices` combines data from three authoritative NHS sources. This
+vignette explains where the data comes from, how often it updates, and
+how to stay current.
+
+``` r
+library(dmdprices)
+```
+
+## The three data sources
+
+### 1. NHS dm+d (Dictionary of Medicines and Devices)
+
+**What it is:** The authoritative UK medicine and device dictionary,
+maintained by the NHSBSA.
+
+**Update frequency:** Weekly (every Thursday)
+
+**Content:** - Virtual Medicinal Products (VMPs) — generic medicines -
+Virtual Medicinal Product Packs (VMPPs) — packs/strengths - Actual
+Medicinal Products (AMPs) — branded products - SNOMED CT codes for
+each - Links to Drug Tariff and NHS Indicative Prices
+
+**Coverage:** All medicines approved for use in UK NHS
+
+**Access:** NHSBSA TRUD (Technology Reference Data Update) service  
+📍 <https://isd.digital.nhs.uk/trud>
+
+**In dmdprices:**
+
+``` r
+# The bundled dataset
+data(dmd_master)
+
+attr(dmd_master, "dmd_release_label")
+#> [1] "Week 34 2025 (14 August 2025)"
+
+nrow(dmd_master)
+#> [1] 118196
+```
+
+### 2. Drug Tariff
+
+**What it is:** Official reimbursement prices for community pharmacies
+in England.
+
+**Update frequency:** Monthly (published mid-month)
+
+**Content:** - Basic prices (pence) - Drug Tariff part and category -
+Uplift and discount schedules
+
+**Published by:** NHSBSA
+
+**Access:** NHSBSA website  
+📍
+<https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff>
+
+**Important notes:** - England only (Scotland/Wales have separate
+arrangements) - Prices typically lower due to cost-containment
+policies - Updated monthly; old prices may not reflect current
+reimbursement
+
+**In dmdprices:** Column `basic_price`
+
+### 3. NHS Indicative Prices
+
+**What it is:** Reference prices for hospital and NHS secondary care
+purchasing.
+
+**Update frequency:** Quarterly
+
+**Content:** - Indicative prices (pence) - Basis of price (DT = Drug
+Tariff, MIMS, other) - Date price became effective
+
+**Published by:** NHS England
+
+**Access:** NHS England Cost Collection  
+📍
+<https://www.england.nhs.uk/publication/national-cost-collection-ncc/>
+
+**Important notes:** - Indicative only (hospitals negotiate contracts) -
+Broader supply chain reflected - Usually higher than Drug Tariff (due to
+distribution markup)
+
+**In dmdprices:** Columns `nhs_indicative_price`, `price_basis`,
+`price_date`
+
+## NHS Cost Inflation Index (NHS CII)
+
+**What it is:** Annual inflation rates for health and social care costs,
+published by the PSSRU.
+
+**Update frequency:** Annually (usually in autumn/winter for the next
+year)
+
+**Content:** - Pay inflation rates - Price inflation rates - Combined
+pay+prices indices - Coverage: Currently 2015/16–2023/24
+
+**Published by:** Personal Social Services Research Unit (PSSRU),
+University of Kent
+
+**Access:** PSSRU website  
+📍 <https://www.pssru.ac.uk/project-pages/unit-costs/>
+
+**In dmdprices:** Function
+[`nhscii()`](https://w-hardy.github.io/dmdprices/reference/nhscii.md)
+
+``` r
+# Example: current rates available
+nhscii("2015/16", "2023/24", index = "prices")
+#> [1] 1.209727
+```
+
+**Note:** 2023/24 figures are provisional. The 2025 PSSRU manual will
+update with additional data.
+
+## How often should you update?
+
+### Use bundled data if:
+
+- You’re doing academic analysis (reproducibility matters)
+- Your project isn’t time-sensitive
+- You’re learning the package
+
+### Load fresh dm+d if:
+
+- You’re running operational systems (pharmacy, procurement)
+- You need current Drug Tariff prices
+- New medicines are important to your analysis
+- More than 3 months have passed
+
+### Update NHS CII if:
+
+- You’re inflating costs to future years
+- New PSSRU manual has been published
+- Your analysis year has changed
+
+## Checking which versions you’re using
+
+### dm+d release
+
+``` r
+# Check bundled data release
+attr(dmd_master, "dmd_release_label")
+#> [1] "Week 34 2025 (14 August 2025)"
+
+# Check when it was packaged
+attr(dmd_master, "package_date")
+#> NULL
+```
+
+### When did you last download fresh data?
+
+``` r
+# If you've loaded a fresh dm+d via dmd_load()
+# Metadata is attached to the returned object
+# db <- dmd_load("path/to/dmdDataLoader")
+# attr(db, "load_date")
+```
+
+### NHS CII coverage
+
+``` r
+# The rates currently available
+# (from the .nhscii_rates internal object)
+# Coverage: 2015/16 to 2023/24
+# Use nhscii() with any year in that range
+
+nhscii("2015/16", "2015/16")  # Should return 1
+#> [1] 1
+```
+
+## Reproducibility and audit trails
+
+### Document your data in every analysis
+
+``` r
+# Create a data audit section in your report
+data_audit <- list(
+  analysis_date = Sys.Date(),
+  
+  dmd_source = list(
+    source = "dmdprices bundled dataset",
+    release = attr(dmd_master, "dmd_release_label"),
+    medicines_total = nrow(dmd_master)
+  ),
+  
+  inflation_source = list(
+    source = "PSSRU Unit Costs of Health and Social Care",
+    doi = "10.22024/UniKent/01.02.109563",
+    coverage = "2015/16 to 2023/24 (2023/24 provisional)"
+  )
+)
+
+str(data_audit)
+#> List of 3
+#>  $ analysis_date   : Date[1:1], format: "2026-03-11"
+#>  $ dmd_source      :List of 3
+#>   ..$ source         : chr "dmdprices bundled dataset"
+#>   ..$ release        : chr "Week 34 2025 (14 August 2025)"
+#>   ..$ medicines_total: int 118196
+#>  $ inflation_source:List of 3
+#>   ..$ source  : chr "PSSRU Unit Costs of Health and Social Care"
+#>   ..$ doi     : chr "10.22024/UniKent/01.02.109563"
+#>   ..$ coverage: chr "2015/16 to 2023/24 (2023/24 provisional)"
+```
+
+### Save metadata with your results
+
+``` r
+# Include in your output file
+metadata <- data.frame(
+  item = c(
+    "Analysis date",
+    "dm+d release",
+    "NHS CII index",
+    "Package version"
+  ),
+  value = c(
+    as.character(Sys.Date()),
+    attr(dmd_master, "dmd_release_label"),
+    "pay_and_prices",
+    as.character(packageVersion("dmdprices"))
+  )
+)
+
+metadata
+#>              item                         value
+#> 1   Analysis date                    2026-03-11
+#> 2    dm+d release Week 34 2025 (14 August 2025)
+#> 3   NHS CII index                pay_and_prices
+#> 4 Package version                         0.2.0
+```
+
+## Update workflow example
+
+If you’re doing regular analyses, here’s a recommended workflow:
+
+``` r
+# 1. Once per quarter: refresh dm+d
+my_dm_d <- dmd_load("~/dmdDataLoader")  # Download fresh release
+saveRDS(my_dm_d, "data/dm_d_current.rds")
+
+# 2. Check if NHS CII needs updating
+# Visit https://www.pssru.ac.uk and check if new manual is available
+# (Current package covers through 2023/24; update when 2024/25 rates published)
+
+# 3. In your analysis scripts:
+dm_d <- readRDS("data/dm_d_current.rds")
+medicine_cost <- dmd_price_lookup("Metformin 500mg", db = dm_d)
+
+# 4. Record versions
+analysis_metadata <- list(
+  dm_d_release = attr(dm_d, "dmd_release_label"),
+  cii_latest_year = "2023/24",  # Update when new rates available
+  analysis_date = Sys.Date()
+)
+```
+
+## Official data feeds (for developers)
+
+If you’re building on `dmdprices`, here are direct feeds:
+
+### dm+d download
+
+    https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6
+
+(Free registration required)
+
+### Drug Tariff CSV
+
+    https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff
+
+(Monthly archive available)
+
+### NHS Indicative Prices
+
+    https://www.england.nhs.uk/publication/national-cost-collection-ncc/
+
+### PSSRU Unit Costs
+
+    https://www.pssru.ac.uk/project-pages/unit-costs/
+
+## Licensing and attribution
+
+### dm+d
+
+© Crown copyright. Licensed under the Open Government Licence v3.0  
+📍
+<https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/>
+
+**Citation:**
+
+    NHS Business Services Authority (2025). Dictionary of Medicines and 
+    Devices (dm+d). Available: https://isd.digital.nhs.uk/trud
+
+### Drug Tariff and NHS Indicative Prices
+
+Published by NHSBSA and NHS England respectively. No special licence
+required for analysis (educational/research use).
+
+**Citation:**
+
+    NHS Business Services Authority (2025). Drug Tariff. Available: 
+    https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff
+
+### NHS CII
+
+Published by PSSRU under Open Government Licence.
+
+**Citation:**
+
+    PSSRU (2024). Unit Costs of Health and Social Care 2024. 
+    University of Kent. https://doi.org/10.22024/UniKent/01.02.109563
+
+## Troubleshooting data issues
+
+### “Why is this medicine missing?”
+
+1.  Check if it’s in dm+d (might be new, delisted, or historical)
+2.  Try fuzzy matching with `method = "fuzzy"`
+3.  Search TRUD directly for the SNOMED code
+
+### “Why is there no price?”
+
+See vignette “Working with Drug Tariff and NHS Indicative Prices” for
+common reasons: - Centrally procured (vaccines, infusions) -
+Specialty/rare disease medicine - Recently added to formulary - Price
+confidentiality (some agreements)
+
+### “Why does my price differ from the Drug Tariff?”
+
+1.  Different month/edition (Tariff updated monthly)
+2.  Bundled data may be 1-3 months old
+3.  Load fresh dm+d with
+    [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)
+
+## Further reading
+
+- NHS CII and inflation:
+  [`vignette("nhscii")`](https://w-hardy.github.io/dmdprices/articles/nhscii.md)
+- Working with prices:
+  [`vignette("drug_tariff_matching")`](https://w-hardy.github.io/dmdprices/articles/drug_tariff_matching.md)
+- Cost analysis workflows:
+  [`vignette("cost_analysis_workflows")`](https://w-hardy.github.io/dmdprices/articles/cost_analysis_workflows.md)

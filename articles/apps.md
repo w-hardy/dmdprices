@@ -1,0 +1,87 @@
+# Interactive Apps
+
+Two Shiny apps are available for interactive use without writing any R
+code. You can access them online (hosted on Posit Connect Cloud) or run
+them locally if you have `dmdprices` installed.
+
+------------------------------------------------------------------------
+
+## dm+d Price Lookup
+
+Search for medicine prices from the bundled dm+d dataset by name, with
+partial, exact, or fuzzy matching.
+
+**Run locally:**
+
+``` r
+dmdprices::run_dmd_price_lookup()
+```
+
+**Online (hosted):**
+
+Your browser does not support iframes. [Open the app
+directly.](https://PLACEHOLDER.connect.posit.cloud/dmd-price-lookup/)
+
+------------------------------------------------------------------------
+
+## NHS CII Cost Adjuster
+
+Inflate or deflate a cost between NHS financial years using the PSSRU
+NHS Cost Inflation Index.
+
+**Run locally:**
+
+``` r
+dmdprices::run_inflate_nhscii()
+```
+
+**Online (hosted):**
+
+Your browser does not support iframes. [Open the app
+directly.](https://PLACEHOLDER.connect.posit.cloud/inflate-nhscii/)
+
+------------------------------------------------------------------------
+
+## Deploying your own instance
+
+Both apps are included in the package under `inst/shiny/` and can be
+deployed to any Shiny-compatible host:
+
+``` r
+# Deploy to Posit Connect Cloud (free tier)
+rsconnect::deployApp(
+  appDir    = system.file("shiny", "dmd_price_lookup", package = "dmdprices"),
+  appName   = "dmd-price-lookup",
+  appTitle  = "dm+d Price Lookup"
+)
+
+rsconnect::deployApp(
+  appDir    = system.file("shiny", "inflate_nhscii", package = "dmdprices"),
+  appName   = "inflate-nhscii",
+  appTitle  = "NHS CII Cost Adjuster"
+)
+```
+
+------------------------------------------------------------------------
+
+## Data attribution
+
+**dm+d Price Lookup** uses the NHS Dictionary of Medicines and Devices
+(dm+d), Week 34 2025 release, published by the NHS Business Services
+Authority (NHSBSA). © Crown copyright. Licensed under the [Open
+Government Licence
+v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+
+**NHS CII Cost Adjuster** uses inflation rates from the [PSSRU Unit
+Costs of Health and Social
+Care](https://www.pssru.ac.uk/project-pages/unit-costs/), published by
+the Personal Social Services Research Unit (PSSRU), University of Kent,
+under the Open Government Licence.
+
+------------------------------------------------------------------------
+
+## Reporting issues
+
+If you encounter a problem with either app or the underlying package
+functions, please open an issue on the [GitHub issues
+tracker](https://github.com/w-hardy/dmdprices/issues).
