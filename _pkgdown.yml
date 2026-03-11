@@ -6,6 +6,15 @@ template:
 home:
   title: dmdprices
   description: Look up medicine prices from the NHS dm+d
+  links:
+  - text: Interactive apps
+    href: articles/apps.html
+  - text: Get started
+    href: articles/dmdprices.html
+  - text: Reference
+    href: reference/index.html
+  - text: Report an issue
+    href: https://github.com/w-hardy/dmdprices/issues
 
 navbar:
   structure:
