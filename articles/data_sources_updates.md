@@ -232,7 +232,7 @@ metadata
 #> 1   Analysis date                    2026-03-11
 #> 2    dm+d release Week 34 2025 (14 August 2025)
 #> 3   NHS CII index                pay_and_prices
-#> 4 Package version                         0.2.0
+#> 4 Package version                         0.3.0
 ```
 
 ## Update workflow example

@@ -1,34 +1,46 @@
 # dmdprices: Look Up Medicine Prices from the NHS dm+d
 
-`dmdprices` provides two main functions:
+`dmdprices` provides tools for querying NHS medicine prices and
+adjusting costs for inflation:
 
 ## Details
 
-- [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)
-  — reads the CSV output of the NHSBSA dm+d extract tool and builds a
-  joined pricing database.
-
 - [`dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/dmd_price_lookup.md)
-  — queries that database by medicine name, returning a tibble in Drug
-  Tariff Part VIIIA format.
+  — search the bundled dm+d dataset by medicine name.
+
+- [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)
+  — load a more recent dm+d release from a local `dmdDataLoader` CSV
+  directory.
+
+- [`nhscii()`](https://w-hardy.github.io/dmdprices/reference/nhscii.md)
+  — compute NHS Cost Inflation Index factors between financial years.
+
+- [`inflate_nhscii()`](https://w-hardy.github.io/dmdprices/reference/inflate_nhscii.md)
+  — adjust costs using NHS CII rates.
+
+- [`run_dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/run_dmd_price_lookup.md)
+  — launch the price lookup Shiny app locally.
+
+- [`run_inflate_nhscii()`](https://w-hardy.github.io/dmdprices/reference/run_inflate_nhscii.md)
+  — launch the cost adjuster Shiny app locally.
 
 ### Typical workflow
 
     library(dmdprices)
 
-    # Load once per session (or set options(dmdprices.path = "...") in .Rprofile)
-    db <- dmd_load("path/to/dmdDataLoader")
+    # Search bundled data — no setup needed
+    dmd_price_lookup("metformin")
 
-    # Query
-    dmd_price_lookup(db, "metformin")
+    # Adjust a cost for inflation
+    inflate_nhscii(100, "2019/20", "2023/24")
+
+    # Load a more recent dm+d release
+    db <- dmd_load("path/to/dmdDataLoader")
+    dmd_price_lookup("metformin", db = db)
 
 ## See also
 
-Useful links:
-
-- <https://github.com/w-hardy/dmdprices>
-
-- Report bugs at <https://github.com/w-hardy/dmdprices/issues>
+<https://w-hardy.github.io/dmdprices/>
 
 ## Author
 

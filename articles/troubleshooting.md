@@ -489,7 +489,7 @@ str(analysis_metadata)
 #>   ..$ coverage: chr "2015/16 to 2023/24"
 #>  $ package      :List of 2
 #>   ..$ name   : chr "dmdprices"
-#>   ..$ version: chr "0.2.0"
+#>   ..$ version: chr "0.3.0"
 ```
 
 **Sample text for your methodology:**

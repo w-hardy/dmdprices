@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,6 +31,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.2.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -50,13 +51,21 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="dmdprices-development-version">dmdprices (development version)<a class="anchor" aria-label="anchor" href="#dmdprices-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="dmdprices-030">dmdprices 0.3.0<a class="anchor" aria-label="anchor" href="#dmdprices-030"></a></h2>
 <div class="section level3">
-<h3 id="added-development-version">Added<a class="anchor" aria-label="anchor" href="#added-development-version"></a></h3>
+<h3 id="added-0-3-0">Added<a class="anchor" aria-label="anchor" href="#added-0-3-0"></a></h3>
 <ul><li>
 <code><a href="../reference/nhscii.html">nhscii()</a></code> — compute NHS Cost Inflation Index factors between financial years.</li>
 <li>
 <code><a href="../reference/inflate_nhscii.html">inflate_nhscii()</a></code> — adjust costs using NHS CII rates.</li>
 <li>Both functions support “pay_and_prices”, “pay”, and “prices” indices covering 2015/16–2023/24 (provisional).</li>
+<li>
+<code><a href="../reference/run_dmd_price_lookup.html">run_dmd_price_lookup()</a></code> — launch the dm+d price lookup Shiny app locally.</li>
+<li>
+<code><a href="../reference/run_inflate_nhscii.html">run_inflate_nhscii()</a></code> — launch the NHS CII cost adjuster Shiny app locally.</li>
+<li>Hosted interactive apps on Posit Connect Cloud.</li>
 </ul></div>
 </div>
     <div class="section level2">
