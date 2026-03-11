@@ -7,3 +7,30 @@ bibentry(
   note     = "R package version 0.3.0",
   url      = "https://w-hardy.github.io/dmdprices/"
 )
+
+bibentry(
+  bibtype   = "TechReport",
+  title     = "Unit Costs of Health and Social Care 2024 Manual",
+  author    = c(
+    person("Karen C.", "Jones"),
+    person("Helen",    "Weatherly"),
+    person("Sarah",   "Birch"),
+    person("Adriana", "Castelli"),
+    person("Martin",  "Chalkley"),
+    person("Alan",    "Dargan"),
+    person("Douglas", "Findlay"),
+    person("Minyue",  "Gao"),
+    person("Seb",     "Hinde"),
+    person("Sarah",   "Markham"),
+    person("Deb",     "Smith"),
+    person("Hansel",  "Teo")
+  ),
+  year        = "2025",
+  institution = paste(
+    "Personal Social Services Research Unit (University of Kent)",
+    "& Centre for Health Economics (University of York)"
+  ),
+  address     = "Kent, UK",
+  doi         = "10.22024/UniKent/01.02.109563",
+  note        = "KAR id:109563"
+)

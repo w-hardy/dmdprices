@@ -15,8 +15,10 @@ Internal annual percentage rates used by \code{\link[=nhscii]{nhscii()}} and \co
 Values currently cover financial years 2015/16 to 2023/24.
 }
 \details{
-Source: PSSRU Unit Costs of Health and Social Care
-(\doi{10.22024/UniKent/01.02.109563}).
+Source: Jones KC et al. (2025). Unit Costs of Health and Social Care 2024
+Manual. PSSRU (University of Kent) & Centre for Health Economics (University
+of York). (\doi{10.22024/UniKent/01.02.109563}).
+Licensed under CC BY-NC-SA 4.0.
 
 Per the PSSRU manual, the 2023/24 values are provisional. This is standard
 for each annual publication, and later manuals may revise values when

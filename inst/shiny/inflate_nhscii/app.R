@@ -55,12 +55,18 @@ ui <- fluidPage(
       hr(),
       helpText(
         tags$b("Source:"),
+        "Jones et al. (2025).",
         tags$a(
-          "PSSRU Unit Costs of Health and Social Care.",
-          href = "https://www.pssru.ac.uk/project-pages/unit-costs/",
+          "Unit Costs of Health and Social Care 2024 Manual.",
+          href = "https://doi.org/10.22024/UniKent/01.02.109563",
           target = "_blank"
         ),
-        "Published under the Open Government Licence.",
+        "PSSRU (University of Kent) & Centre for Health Economics (University of York).",
+        tags$a(
+          "CC BY-NC-SA 4.0.",
+          href = "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+          target = "_blank"
+        ),
         tags$br(),
         "2023/24 figures are provisional.",
         tags$br(),

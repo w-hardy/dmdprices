@@ -81,6 +81,6 @@ Devices (dm+d)**, Week 34 2025 release (14 August 2025), published by the
 © Crown copyright. Licensed under the
 [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
 
-NHS CII rates are from the
-[PSSRU Unit Costs of Health and Social Care](https://www.pssru.ac.uk/project-pages/unit-costs/),
-published under the Open Government Licence.
+NHS CII rates are from Jones et al. (2025), [*Unit Costs of Health and Social Care 2024 Manual*](https://doi.org/10.22024/UniKent/01.02.109563),
+published by PSSRU (University of Kent) & Centre for Health Economics (University of York).
+Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).

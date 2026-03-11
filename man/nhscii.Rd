@@ -36,9 +36,10 @@ Returns the inflation adjustment as a multiplicative factor by default.
 For example, a value of \code{1.125} means a 12.5\% increase.
 }
 \details{
-Data source:
-PSSRU Unit Costs of Health and Social Care
-(\doi{10.22024/UniKent/01.02.109563}).
+Data source: Jones KC et al. (2025). Unit Costs of Health and Social Care
+2024 Manual. PSSRU (University of Kent) & Centre for Health Economics
+(University of York). (\doi{10.22024/UniKent/01.02.109563}).
+Licensed under CC BY-NC-SA 4.0.
 
 The 2023/24 figures are provisional and may be revised in later PSSRU
 releases as additional data become available.
