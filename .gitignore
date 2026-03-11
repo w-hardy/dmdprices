@@ -15,7 +15,7 @@ inst/doc/
 
 # devtools / roxygen / pkgdown
 /doc/
-/Meta/
+/Meta/s
 
 # Shiny app deployment metadata
 inst/shiny/*/rsconnect/

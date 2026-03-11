@@ -16,15 +16,32 @@ ui <- fluidPage(
       radioButtons(
         "method",
         "Match method",
-        choices = c("Partial" = "partial", "Exact" = "exact", "Fuzzy" = "fuzzy"),
+        choices = c(
+          "Partial" = "partial",
+          "Exact" = "exact",
+          "Fuzzy" = "fuzzy"
+        ),
         selected = "partial"
       ),
       checkboxInput("active_only", "Active medicines only", value = TRUE),
       actionButton("search", "Search", class = "btn-primary w-100"),
       hr(),
       helpText(
-        "Data: NHS dm+d Week 34 2025 (14 August 2025).",
-        "Prices are NHS Indicative Prices or Drug Tariff Basic Prices."
+        tags$b("Data:"), "NHS dm+d Week 34 2025 (14 August 2025).",
+        "Prices are NHS Indicative or Drug Tariff Basic Prices (pence).",
+        tags$br(),
+        "© Crown copyright. NHS Business Services Authority (NHSBSA).",
+        tags$a(
+          "Open Government Licence v3.0.",
+          href = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+          target = "_blank"
+        ),
+        tags$br(),
+        tags$a(
+          "Report issues on GitHub.",
+          href = "https://github.com/w-hardy/dmdprices/issues",
+          target = "_blank"
+        )
       )
     ),
     mainPanel(
@@ -41,8 +58,8 @@ server <- function(input, output, session) {
 
     tryCatch(
       dmd_price_lookup(
-        name        = trimws(input$query),
-        method      = input$method,
+        name = trimws(input$query),
+        method = input$method,
         active_only = input$active_only
       ),
       error = function(e) NULL
@@ -52,9 +69,15 @@ server <- function(input, output, session) {
   output$result_header <- renderUI({
     res <- results()
     if (is.null(res)) {
-      tags$p(class = "text-danger mt-2", "Search returned an error. Check your query.")
+      tags$p(
+        class = "text-danger mt-2",
+        "Search returned an error. Check your query."
+      )
     } else if (nrow(res) == 0) {
-      tags$p(class = "text-muted mt-2", "No medicines found. Try a different search term or match method.")
+      tags$p(
+        class = "text-muted mt-2",
+        "No medicines found. Try a different search term or match method."
+      )
     } else {
       tags$p(
         class = "text-muted mt-2",
@@ -69,34 +92,34 @@ server <- function(input, output, session) {
 
     res |>
       dplyr::mutate(
-        basic_price          = basic_price / 100,
+        basic_price = basic_price / 100,
         nhs_indicative_price = nhs_indicative_price / 100
       ) |>
       dplyr::select(
-        Medicine            = medicine,
-        "Pack size"         = pack_size,
-        Unit                = unit,
-        Category            = drug_tariff_category,
-        "Basic price (£)"   = basic_price,
-        "NHS ind. price (£)"= nhs_indicative_price,
-        "Price basis"       = price_basis,
-        "Price date"        = price_date
+        Medicine = medicine,
+        "Pack size" = pack_size,
+        Unit = unit,
+        Category = drug_tariff_category,
+        "Basic price (£)" = basic_price,
+        "NHS ind. price (£)" = nhs_indicative_price,
+        "Price basis" = price_basis,
+        "Price date" = price_date
       ) |>
       datatable(
-        rownames  = FALSE,
-        filter    = "top",
+        rownames = FALSE,
+        filter = "top",
         extensions = "Buttons",
-        options   = list(
-          dom        = "Bfrtip",
-          buttons    = list("csv", "excel"),
+        options = list(
+          dom = "Bfrtip",
+          buttons = list("csv", "excel"),
           pageLength = 15,
-          scrollX    = TRUE
+          scrollX = TRUE
         )
       ) |>
       formatCurrency(
-        columns  = c("Basic price (£)", "NHS ind. price (£)"),
+        columns = c("Basic price (£)", "NHS ind. price (£)"),
         currency = "£",
-        digits   = 4
+        digits = 4
       )
   })
 }

@@ -12,20 +12,20 @@ ui <- fluidPage(
       numericInput(
         "cost",
         "Cost (£)",
-        value  = 100,
-        min    = 0,
-        step   = 1
+        value = 100,
+        min = 0,
+        step = 1
       ),
       selectInput(
         "from_year",
         "From financial year",
-        choices  = fin_years,
+        choices = fin_years,
         selected = fin_years[length(fin_years) - 1]
       ),
       selectInput(
         "to_year",
         "To financial year",
-        choices  = fin_years,
+        choices = fin_years,
         selected = fin_years[length(fin_years)]
       ),
       selectInput(
@@ -33,15 +33,28 @@ ui <- fluidPage(
         "NHS CII index",
         choices = c(
           "Pay and prices (default)" = "pay_and_prices",
-          "Pay only"                 = "pay",
-          "Prices only"              = "prices"
+          "Pay only" = "pay",
+          "Prices only" = "prices"
         ),
         selected = "pay_and_prices"
       ),
       hr(),
       helpText(
-        "Source: PSSRU Unit Costs of Health and Social Care.",
-        "2023/24 figures are provisional."
+        tags$b("Source:"),
+        tags$a(
+          "PSSRU Unit Costs of Health and Social Care.",
+          href = "https://www.pssru.ac.uk/project-pages/unit-costs/",
+          target = "_blank"
+        ),
+        "Published under the Open Government Licence.",
+        tags$br(),
+        "2023/24 figures are provisional.",
+        tags$br(),
+        tags$a(
+          "Report issues on GitHub.",
+          href = "https://github.com/w-hardy/dmdprices/issues",
+          target = "_blank"
+        )
       )
     ),
     mainPanel(
@@ -58,9 +71,19 @@ server <- function(input, output, session) {
 
     tryCatch(
       list(
-        factor  = nhscii(input$from_year, input$to_year, input$index, "factor"),
-        percent = nhscii(input$from_year, input$to_year, input$index, "percent"),
-        result  = inflate_nhscii(input$cost, input$from_year, input$to_year, input$index)
+        factor = nhscii(input$from_year, input$to_year, input$index, "factor"),
+        percent = nhscii(
+          input$from_year,
+          input$to_year,
+          input$index,
+          "percent"
+        ),
+        result = inflate_nhscii(
+          input$cost,
+          input$from_year,
+          input$to_year,
+          input$index
+        )
       ),
       error = function(e) list(error = conditionMessage(e))
     )
@@ -78,7 +101,7 @@ server <- function(input, output, session) {
     req(is.null(r$error))
 
     direction <- if (r$percent >= 0) "increase" else "decrease"
-    pct_text  <- sprintf("%.2f%%", abs(r$percent))
+    pct_text <- sprintf("%.2f%%", abs(r$percent))
 
     div(
       class = "card mt-3",
