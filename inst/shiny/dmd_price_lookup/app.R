@@ -91,17 +91,13 @@ server <- function(input, output, session) {
     req(!is.null(res), nrow(res) > 0)
 
     res |>
-      dplyr::mutate(
-        basic_price = basic_price / 100,
-        nhs_indicative_price = nhs_indicative_price / 100
-      ) |>
       dplyr::select(
         Medicine = medicine,
         "Pack size" = pack_size,
         Unit = unit,
         Category = drug_tariff_category,
-        "Basic price (£)" = basic_price,
-        "NHS ind. price (£)" = nhs_indicative_price,
+        "Basic price" = basic_price,
+        "NHS ind. price" = nhs_indicative_price,
         "Price basis" = price_basis,
         "Price date" = price_date
       ) |>
@@ -115,11 +111,6 @@ server <- function(input, output, session) {
           pageLength = 15,
           scrollX = TRUE
         )
-      ) |>
-      formatCurrency(
-        columns = c("Basic price (£)", "NHS ind. price (£)"),
-        currency = "£",
-        digits = 4
       )
   })
 }
