@@ -422,8 +422,8 @@ nhscii("2015/16", "2015/16")  # Returns 1 (valid)
 
 **Wait for updates:**
 
-The 2024/25 rates will be published in the PSSRU 2025 manual (likely
-late 2024).
+The 2024/25 rates are not yet included. Check the latest PSSRU manual at
+<https://www.pssru.ac.uk/project-pages/unit-costs/> for updated figures.
 
 **For future years, use estimates:**
 
@@ -498,7 +498,8 @@ str(analysis_metadata)
 > dmdprices R package. Drug Tariff prices (pence) were used where
 > available; NHS Indicative prices were used as fallback. Historical
 > costs were adjusted to 2023/24 prices using the NHS Cost Inflation
-> Index (PSSRU Unit Costs of Health and Social Care, 2023).
+> Index (Jones et al., 2025, Unit Costs of Health and Social Care 2024
+> Manual, <https://doi.org/10.22024/UniKent/01.02.109563>).
 
 ------------------------------------------------------------------------
 

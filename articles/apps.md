@@ -72,11 +72,14 @@ Authority (NHSBSA). © Crown copyright. Licensed under the [Open
 Government Licence
 v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
 
-**NHS CII Cost Adjuster** uses inflation rates from the [PSSRU Unit
-Costs of Health and Social
-Care](https://www.pssru.ac.uk/project-pages/unit-costs/), published by
-the Personal Social Services Research Unit (PSSRU), University of Kent,
-under the Open Government Licence.
+**NHS CII Cost Adjuster** uses inflation rates from Jones et al. (2025),
+*Unit Costs of Health and Social Care 2024 Manual*, published by the
+Personal Social Services Research Unit (University of Kent) & Centre for
+Health Economics (University of York).
+<https://doi.org/10.22024/UniKent/01.02.109563>
+
+Licensed under [CC BY-NC-SA
+4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 ------------------------------------------------------------------------
 

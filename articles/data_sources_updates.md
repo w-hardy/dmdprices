@@ -134,8 +134,8 @@ nhscii("2015/16", "2023/24", index = "prices")
 #> [1] 1.209727
 ```
 
-**Note:** 2023/24 figures are provisional. The 2025 PSSRU manual will
-update with additional data.
+**Note:** 2023/24 figures are provisional per the 2025 PSSRU manual.
+Later releases may revise these values.
 
 ## How often should you update?
 
@@ -329,12 +329,13 @@ required for analysis (educational/research use).
 
 ### NHS CII
 
-Published by PSSRU under Open Government Licence.
+Licensed under [Creative Commons Attribution-NonCommercial-ShareAlike
+4.0 International (CC BY-NC-SA
+4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 **Citation:**
 
-    PSSRU (2024). Unit Costs of Health and Social Care 2024. 
-    University of Kent. https://doi.org/10.22024/UniKent/01.02.109563
+    Jones KC, Weatherly H, Birch S, Castelli A, Chalkley M, Dargan A, Findlay D, Gao M, Hinde S, Markham S, Smith D, Teo H (2025). Unit Costs of Health and Social Care 2024 Manual. Technical report. Personal Social Services Research Unit (University of Kent) & Centre for Health Economics (University of York), Kent, UK. https://doi.org/10.22024/UniKent/01.02.109563
 
 ## Troubleshooting data issues
 
