@@ -20,7 +20,7 @@ dmdprices::run_dmd_price_lookup()
 **Online (hosted):**
 
 Your browser does not support iframes. [Open the app
-directly.](https://019cddeb-838e-b63a-f190-73d9b30d54f1.share.connect.posit.cloud/)
+directly.](https://connect.posit.cloud/w-hardy/content/019cde12-177b-f1f8-6153-366d3effa33c)
 
 ------------------------------------------------------------------------
 
