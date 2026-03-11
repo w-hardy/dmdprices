@@ -8,3 +8,5 @@
 ^CRAN-SUBMISSION$
 ^revdep$
 ^LICENSE\.md$
+^doc$
+^Meta$

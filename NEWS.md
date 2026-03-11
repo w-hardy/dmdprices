@@ -1,17 +1,19 @@
-# Changelog
+# dmdprices (development version)
 
-All notable changes to `dmdprices` will be documented here.
+## Added
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+- `nhscii()` — compute NHS Cost Inflation Index factors between financial years.
+- `inflate_nhscii()` — adjust costs using NHS CII rates.
+- Both functions support "pay_and_prices", "pay", and "prices" indices covering 2015/16–2023/24 (provisional).
 
-## dmdprices 0.2.0
+# dmdprices 0.2.0
 
-### Added
+## Added
 
 - `dmd_load()` — loads a more recent dm+d release from a local `dmdDataLoader`
   CSV directory.
 - `dmd_price_lookup()` — queries the pricing table by medicine name with
-  `"partial"`, `"exact"`, and `"fuzzy"` match methods.
+  "partial", "exact", and "fuzzy" match methods.
 - Bundled `dmd_master` dataset (Week 34 2025, 14 August 2025) for zero-setup
   use.
 - Output columns mirror the NHS Drug Tariff Part VIIIA CSV format.

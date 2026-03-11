@@ -1,0 +1,167 @@
+---
+title: "NHS Cost Inflation Index (NHS CII)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{NHS Cost Inflation Index (NHS CII)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+The NHS Cost Inflation Index (NHS CII) is published annually by the PSSRU (Personal Social Services Research Unit) as part of their *Unit Costs of Health and Social Care* publication. It provides standardized rates to adjust health and social care costs for inflation across financial years.
+
+This vignette shows how to use `nhscii()` and `inflate_nhscii()` to work with NHS CII rates in your analyses.
+
+```{r setup}
+library(dmdprices)
+```
+
+## Getting inflation factors
+
+Use `nhscii()` to compute the inflation adjustment between two financial years:
+
+```{r}
+# Inflate from 2019/20 to 2023/24
+nhscii("2019/20", "2023/24")
+```
+
+A factor of `1.127` means a 12.7% increase over that period.
+
+### Using numeric years
+
+For convenience, you can also pass numeric years (interpreted as end-years):
+
+```{r}
+# 2020 is interpreted as "2019/20", 2024 as "2023/24"
+nhscii(2020, 2024)
+```
+
+### Percentage change
+
+To get the percentage change directly:
+
+```{r}
+nhscii("2019/20", "2023/24", output_type = "percent")
+```
+
+### Different indices
+
+Three indices are available: `"pay_and_prices"` (default), `"pay"`, and `"prices"`.
+
+```{r}
+# Pay component only
+nhscii("2021/22", "2023/24", index = "pay")
+
+# Prices component only
+nhscii("2021/22", "2023/24", index = "prices")
+```
+
+Notice that pay inflation (`7.41%`) was higher than general price inflation (`7.15%`) in 2022/23.
+
+## Adjusting costs
+
+Use `inflate_nhscii()` to adjust cost values to a different financial year:
+
+```{r}
+# A single cost
+inflate_nhscii(1000, "2019/20", "2023/24")
+```
+
+### Multiple costs at once
+
+```{r}
+costs <- c(150, 500, 2000)
+inflated <- inflate_nhscii(
+  costs,
+  from_year = "2019/20",
+  to_year = "2023/24",
+  index = "pay_and_prices"
+)
+
+data.frame(
+  original = costs,
+  inflated_2023_24 = inflated
+)
+```
+
+## Real-world example
+
+Suppose you have unit costs for a health intervention from 2020/21 and need to report them in 2023/24 prices:
+
+```{r}
+# Unit costs in 2020/21
+unit_cost_2020_21 <- 450
+
+# Inflate to 2023/24
+unit_cost_2023_24 <- inflate_nhscii(
+  unit_cost_2020_21,
+  from_year = 2021,
+  to_year = 2024,
+  index = "pay_and_prices"
+)
+
+unit_cost_2023_24
+```
+
+If you were comparing across multiple sectors (e.g., staff costs vs. service delivery), you might use different indices:
+
+```{r}
+staff_cost <- 200
+non_staff_cost <- 250
+
+# Staff costs inflate with pay index
+staff_inflated <- inflate_nhscii(staff_cost, 2021, 2024, index = "pay")
+
+# Non-staff costs inflate with prices index
+non_staff_inflated <- inflate_nhscii(non_staff_cost, 2021, 2024, index = "prices")
+
+data.frame(
+  component = c("Staff", "Non-staff"),
+  original = c(staff_cost, non_staff_cost),
+  inflated = c(staff_inflated, non_staff_inflated)
+)
+```
+
+## Data source and provenance
+
+The NHS CII rates are derived from:
+
+**PSSRU Unit Costs of Health and Social Care**  
+https://doi.org/10.22024/UniKent/01.02.109563
+
+Current coverage: 2015/16 to 2023/24
+
+### A note on 2023/24 figures
+
+The 2023/24 values in this package are **provisional**. As is standard for each annual PSSRU publication, later releases (e.g., the 2025 manual) may revise these figures when additional data become available. Check the latest PSSRU manual for the most current rates.
+
+## Available years
+
+To see which financial years are currently supported:
+
+```{r}
+# Pay and prices index
+nhscii("2015/16", "2015/16")  # Check earliest available year
+
+# All indices cover the same period:
+# 2015/16, 2016/17, 2017/18, 2018/19, 2019/20, 2020/21, 2021/22, 2022/23, 2023/24
+```
+
+If you try to use an unavailable year, you'll get a helpful error:
+
+```{r, error = TRUE}
+nhscii("2014/15", "2023/24")
+```
+
+## Further reading
+
+- [PSSRU Unit Costs of Health and Social Care](https://www.pssru.ac.uk/project-pages/unit-costs/)
+- [NHS costing guidance](https://www.england.nhs.uk/publication/nhs-costing-standards/)

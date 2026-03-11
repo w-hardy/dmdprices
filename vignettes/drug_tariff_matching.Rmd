@@ -1,0 +1,245 @@
+---
+title: "Working with Drug Tariff and NHS Indicative Prices"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Working with Drug Tariff and NHS Indicative Prices}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+The NHS maintains two key price lists for medicines:
+
+- **Drug Tariff**: Official reimbursement prices for community pharmacies (updated monthly)
+- **NHS Indicative Prices**: List prices for hospitals and other NHS settings (quarterly updates)
+
+The `dmdprices` package unifies these sources with the **dm+d** (Dictionary of Medicines and Devices), allowing you to reconcile data from both lists seamlessly.
+
+```{r setup}
+library(dmdprices)
+```
+
+## Understanding the price columns
+
+The bundled `dmd_master` dataset includes columns from both sources:
+
+```{r}
+# Load the bundled data
+data(dmd_master)
+
+# Examine a small subset
+dmd_master |>
+  dplyr::select(
+    medicine, pack_size, unit,
+    basic_price, nhs_indicative_price, price_basis
+  ) |>
+  dplyr::slice(1:3)
+```
+
+**Column meanings:**
+
+| Column | Source | Meaning |
+|--------|--------|---------|
+| `basic_price` | Drug Tariff | Community pharmacy reimbursement (pence) |
+| `nhs_indicative_price` | NHS Indicative | Hospital/NHS typical price (pence) |
+| `price_basis` | NHS Indicative | Basis of the indicative price (e.g. "DT", "MIMS") |
+| `price_date` | NHS Indicative | Date price was current |
+
+## Key differences between the two lists
+
+### Drug Tariff prices
+
+- Updated **monthly** (typically mid-month)
+- Legally binding for pharmacy reimbursement
+- Usually lower (patient cost-containment)
+- Available for most community medicines
+- Column: `basic_price`
+
+### NHS Indicative Prices
+
+- Updated **quarterly**
+- Reference only (hospitals negotiate)
+- May be higher than Drug Tariff
+- Reflects broader supply chain
+- Column: `nhs_indicative_price`
+
+### When prices differ
+
+```{r}
+# Find medicines where Drug Tariff < NHS Indicative
+price_discrepancies <- dmd_master |>
+  dplyr::filter(!is.na(basic_price), !is.na(nhs_indicative_price)) |>
+  dplyr::mutate(
+    tariff_cheaper = basic_price < nhs_indicative_price,
+    pct_difference = ((nhs_indicative_price - basic_price) / basic_price) * 100
+  ) |>
+  dplyr::filter(tariff_cheaper) |>
+  dplyr::arrange(dplyr::desc(pct_difference))
+
+price_discrepancies |>
+  dplyr::select(medicine, basic_price, nhs_indicative_price, pct_difference) |>
+  dplyr::slice(1:5)
+```
+
+This is **normal**: the Drug Tariff is typically more aggressive on cost control for high-volume, low-cost items.
+
+## Handling missing prices
+
+Not all medicines have prices in both lists:
+
+```{r}
+# Medicines with Drug Tariff but no NHS Indicative
+tariff_only <- dmd_master |>
+  dplyr::filter(!is.na(basic_price), is.na(nhs_indicative_price))
+
+nrow(tariff_only)
+
+# Medicines with NHS Indicative but no Drug Tariff (often specialty drugs)
+indicative_only <- dmd_master |>
+  dplyr::filter(is.na(basic_price), !is.na(nhs_indicative_price))
+
+nrow(indicative_only)
+```
+
+### Centrally-funded products
+
+Some NHS medicines are centrally procured and have no retail price:
+
+```{r}
+# These typically appear as missing in both lists
+no_price <- dmd_master |>
+  dplyr::filter(is.na(basic_price), is.na(nhs_indicative_price))
+
+nrow(no_price)
+```
+
+These include:
+- Vaccines (centrally procured)
+- Infusions and injectables (often bespoke agreements)
+- Orphan/rare disease medicines
+- Some biosimilars
+
+**For analysis:** decide upfront whether to exclude, estimate, or flag these records.
+
+## Matching medicines between sources
+
+If you have a **Drug Tariff CSV** from NHS, use `dmd_price_lookup()` to reconcile:
+
+```{r}
+# Example: you have a list of medicine names from your pharmacy system
+your_medicines <- c("Metformin 500mg tablets", "Lisinopril 10mg tablets")
+
+# Look them up in dm+d
+results <- lapply(your_medicines, dmd_price_lookup, method = "exact")
+results
+```
+
+### Fuzzy matching for typos/variations
+
+If exact matches fail, use fuzzy matching:
+
+```{r}
+# Your source data might have minor spelling variations
+dmd_price_lookup("metformin 500 mg tablets", method = "fuzzy", max_dist = 3)
+```
+
+## Reconciling external price lists
+
+If you're importing a Drug Tariff extract:
+
+```{r}
+# Simulated Drug Tariff data
+external_tariff <- data.frame(
+  medicine_name = c("Paracetamol 500mg tablets", "Ibuprofen 200mg tablets"),
+  external_price_pence = c(150, 280)
+)
+
+# Match each medicine to dm+d
+external_tariff$vmp_name <- sapply(
+  external_tariff$medicine_name,
+  function(x) {
+    result <- dmd_price_lookup(x, method = "fuzzy", max_dist = 2)
+    if (nrow(result) > 0) result$medicine[[1]] else NA_character_
+  }
+)
+
+# Now you can compare prices
+external_tariff
+```
+
+## Best practices
+
+### 1. Always check for missing prices first
+
+```{r}
+# Flag records with incomplete pricing
+dmd_master |>
+  dplyr::mutate(
+    has_tariff = !is.na(basic_price),
+    has_indicative = !is.na(nhs_indicative_price),
+    pricing_status = dplyr::case_when(
+      has_tariff & has_indicative ~ "Both sources",
+      has_tariff ~ "Tariff only",
+      has_indicative ~ "Indicative only",
+      TRUE ~ "No price"
+    )
+  ) |>
+  dplyr::count(pricing_status)
+```
+
+### 2. Document your price source choice
+
+```{r}
+# Create a unified price column with priority logic
+analysis_data <- dmd_master |>
+  dplyr::mutate(
+    analysis_price_pence = dplyr::coalesce(basic_price, nhs_indicative_price),
+    price_source = dplyr::case_when(
+      !is.na(basic_price) ~ "Drug Tariff",
+      !is.na(nhs_indicative_price) ~ "NHS Indicative",
+      TRUE ~ "Missing"
+    )
+  )
+
+# Report this in your methodology
+analysis_data |>
+  dplyr::count(price_source)
+```
+
+### 3. Note the currency and units
+
+Prices in `dmdprices` are in **pence**. Always convert for reporting:
+
+```{r}
+# Convert to pounds for reports
+analysis_data |>
+  dplyr::mutate(price_pounds = analysis_price_pence / 100) |>
+  dplyr::select(medicine, price_pence = analysis_price_pence, price_pounds) |>
+  dplyr::slice(1:3)
+```
+
+### 4. Keep audit trails
+
+```{r}
+# Record which version of dm+d was used
+analysis_timestamp <- list(
+  dmd_release = attr(dmd_master, "dmd_release_label"),
+  analysis_date = Sys.Date()
+)
+
+analysis_timestamp
+```
+
+## Further reading
+
+- [NHSBSA Drug Tariff](https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff)
+- [NHS Indicative Prices](https://www.england.nhs.uk/publication/national-cost-collection-ncc/)
+- [dm+d on TRUD](https://isd.digital.nhs.uk/trud)

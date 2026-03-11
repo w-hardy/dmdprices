@@ -23,6 +23,11 @@ reference:
     contents:
       - dmd_price_lookup
       - dmd_load
+  - title: "Inflation adjustment"
+    desc: "Adjust costs using NHS Cost Inflation Index (NHS CII)"
+    contents:
+      - nhscii
+      - inflate_nhscii
   - title: "Data"
     desc: "Bundled dataset"
     contents:
@@ -36,6 +41,16 @@ articles:
     navbar: ~
     contents:
       - dmdprices
+  - title: "Inflation"
+    contents:
+      - nhscii
+      - cost_analysis_workflows
+  - title: "Price matching and data"
+    contents:
+      - drug_tariff_matching
+      - advanced_matching
+      - data_sources_updates
+      - troubleshooting
 
 news:
   releases:

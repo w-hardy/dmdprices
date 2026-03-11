@@ -52,6 +52,47 @@ attr(dmd_master, "dmd_release_label")
 
 ---
 
+## Inflation adjustment with NHS CII
+
+Use `nhscii()` and `inflate_nhscii()` to adjust costs for inflation based on NHS Cost Inflation Index rates from the PSSRU Unit Costs of Health and Social Care.
+
+### Get inflation factors
+
+```r
+# Factor to inflate from 2019/20 to 2023/24
+nhscii("2019/20", "2023/24")
+#> [1] 1.127...
+
+# Same result using numeric end-years
+nhscii(2020, 2024)
+#> [1] 1.127...
+
+# Percentage change
+nhscii("2019/20", "2023/24", output_type = "percent")
+#> [1] 12.7...
+```
+
+### Inflate costs
+
+```r
+# Adjust a single cost
+inflate_nhscii(100, "2019/20", "2023/24")
+#> [1] 112.7...
+
+# Adjust multiple costs
+inflate_nhscii(c(100, 250), from_year = 2020, to_year = 2024, index = "prices")
+```
+
+### Index options
+
+- `"pay_and_prices"` (default)
+- `"pay"`
+- `"prices"`
+
+**Note:** 2023/24 figures are provisional and may be revised in later PSSRU releases.
+
+---
+
 ## Using a more recent release
 
 If you have the NHSBSA dm+d extract tool (`dmdDataLoader`), you can load a
