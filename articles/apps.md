@@ -20,7 +20,7 @@ dmdprices::run_dmd_price_lookup()
 **Online (hosted):**
 
 Your browser does not support iframes. [Open the app
-directly.](https://PLACEHOLDER.connect.posit.cloud/dmd-price-lookup/)
+directly.](https://019cddeb-838e-b63a-f190-73d9b30d54f1.share.connect.posit.cloud/)
 
 ------------------------------------------------------------------------
 
@@ -38,7 +38,7 @@ dmdprices::run_inflate_nhscii()
 **Online (hosted):**
 
 Your browser does not support iframes. [Open the app
-directly.](https://PLACEHOLDER.connect.posit.cloud/inflate-nhscii/)
+directly.](https://019cddeb-d072-7c4c-d780-7b435adba4c5.share.connect.posit.cloud/)
 
 ------------------------------------------------------------------------
 
