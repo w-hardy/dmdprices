@@ -51,8 +51,11 @@ dmd_price_lookup("metformin", method = "partial")
 #> #   ampp_name <chr>, ampp_snomed_code <chr>
 ```
 
-**Use when:** - You don’t know the exact name - You want all related
-products - Searching broad categories
+**Use when:**
+
+- You don’t know the exact name
+- You want all related products
+- Searching broad categories
 
 ### 2. Exact matching
 
@@ -80,8 +83,11 @@ dmd_price_lookup("Metformin 500mg tablets", method = "exact")
 #> #   ampp_name <chr>, ampp_snomed_code <chr>
 ```
 
-**Use when:** - You have clean, standardized data - You want to avoid
-false matches - Building reproducible workflows
+**Use when:**
+
+- You have clean, standardized data
+- You want to avoid false matches
+- Building reproducible workflows
 
 ### 3. Fuzzy matching
 
@@ -109,9 +115,11 @@ dmd_price_lookup("metformin 500 mg tabets", method = "fuzzy", max_dist = 3)
 #> #   ampp_name <chr>, ampp_snomed_code <chr>
 ```
 
-**Parameters:** - `max_dist`: Maximum character distance (default 2) -
-Lower = stricter (fewer false matches) - Higher = more permissive
-(catches typos)
+**Parameters:**
+
+- `max_dist`: Maximum character distance (default 2)
+  - Lower = stricter (fewer false matches)
+  - Higher = more permissive (catches typos)
 
 ## Advanced scenario 1: Matching branded to generic names
 

@@ -99,16 +99,19 @@ updates, and how to stay current.</p>
 <p><strong>What it is:</strong> The authoritative UK medicine and device
 dictionary, maintained by the NHSBSA.</p>
 <p><strong>Update frequency:</strong> Weekly (every Thursday)</p>
-<p><strong>Content:</strong> - Virtual Medicinal Products (VMPs) —
-generic medicines - Virtual Medicinal Product Packs (VMPPs) —
-packs/strengths - Actual Medicinal Products (AMPs) — branded products -
-SNOMED CT codes for each - Links to Drug Tariff and NHS Indicative
-Prices</p>
+<p><strong>Content:</strong></p>
+<ul>
+<li>Virtual Medicinal Products (VMPs) — generic medicines</li>
+<li>Virtual Medicinal Product Packs (VMPPs) — packs/strengths</li>
+<li>Actual Medicinal Products (AMPs) — branded products</li>
+<li>SNOMED CT codes for each</li>
+<li>Links to Drug Tariff and NHS Indicative Prices</li>
+</ul>
 <p><strong>Coverage:</strong> All medicines approved for use in UK
 NHS</p>
 <p><strong>Access:</strong> NHSBSA TRUD (Technology Reference Data
-Update) service<br>
-📍 <a href="https://isd.digital.nhs.uk/trud" class="external-link uri">https://isd.digital.nhs.uk/trud</a></p>
+Update) service</p>
+<p>📍 <a href="https://isd.digital.nhs.uk/trud" class="external-link uri">https://isd.digital.nhs.uk/trud</a></p>
 <p><strong>In dmdprices:</strong></p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># The bundled dataset</span></span>
@@ -126,15 +129,22 @@ Update) service<br>
 <p><strong>What it is:</strong> Official reimbursement prices for
 community pharmacies in England.</p>
 <p><strong>Update frequency:</strong> Monthly (published mid-month)</p>
-<p><strong>Content:</strong> - Basic prices (pence) - Drug Tariff part
-and category - Uplift and discount schedules</p>
+<p><strong>Content:</strong></p>
+<ul>
+<li>Basic prices (pence)</li>
+<li>Drug Tariff part and category</li>
+<li>Uplift and discount schedules</li>
+</ul>
 <p><strong>Published by:</strong> NHSBSA</p>
-<p><strong>Access:</strong> NHSBSA website<br>
-📍 <a href="https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff" class="external-link uri">https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff</a></p>
-<p><strong>Important notes:</strong> - England only (Scotland/Wales have
-separate arrangements) - Prices typically lower due to cost-containment
-policies - Updated monthly; old prices may not reflect current
-reimbursement</p>
+<p><strong>Access:</strong> NHSBSA website</p>
+<p>📍 <a href="https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff" class="external-link uri">https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff</a></p>
+<p><strong>Important notes:</strong></p>
+<ul>
+<li>England only (Scotland/Wales have separate arrangements)</li>
+<li>Prices typically lower due to cost-containment policies</li>
+<li>Updated monthly; old prices may not reflect current
+reimbursement</li>
+</ul>
 <p><strong>In dmdprices:</strong> Column <code>basic_price</code></p>
 </div>
 <div class="section level3">
@@ -143,14 +153,21 @@ reimbursement</p>
 <p><strong>What it is:</strong> Reference prices for hospital and NHS
 secondary care purchasing.</p>
 <p><strong>Update frequency:</strong> Quarterly</p>
-<p><strong>Content:</strong> - Indicative prices (pence) - Basis of
-price (DT = Drug Tariff, MIMS, other) - Date price became effective</p>
+<p><strong>Content:</strong></p>
+<ul>
+<li>Indicative prices (pence)</li>
+<li>Basis of price (DT = Drug Tariff, MIMS, other)</li>
+<li>Date price became effective</li>
+</ul>
 <p><strong>Published by:</strong> NHS England</p>
-<p><strong>Access:</strong> NHS England Cost Collection<br>
-📍 <a href="https://www.england.nhs.uk/publication/national-cost-collection-ncc/" class="external-link uri">https://www.england.nhs.uk/publication/national-cost-collection-ncc/</a></p>
-<p><strong>Important notes:</strong> - Indicative only (hospitals
-negotiate contracts) - Broader supply chain reflected - Usually higher
-than Drug Tariff (due to distribution markup)</p>
+<p><strong>Access:</strong> NHS England Cost Collection</p>
+<p>📍 <a href="https://www.england.nhs.uk/publication/national-cost-collection-ncc/" class="external-link uri">https://www.england.nhs.uk/publication/national-cost-collection-ncc/</a></p>
+<p><strong>Important notes:</strong></p>
+<ul>
+<li>Indicative only (hospitals negotiate contracts)</li>
+<li>Broader supply chain reflected</li>
+<li>Usually higher than Drug Tariff (due to distribution markup)</li>
+</ul>
 <p><strong>In dmdprices:</strong> Columns
 <code>nhs_indicative_price</code>, <code>price_basis</code>,
 <code>price_date</code></p>
@@ -163,13 +180,17 @@ than Drug Tariff (due to distribution markup)</p>
 social care costs, published by the PSSRU.</p>
 <p><strong>Update frequency:</strong> Annually (usually in autumn/winter
 for the next year)</p>
-<p><strong>Content:</strong> - Pay inflation rates - Price inflation
-rates - Combined pay+prices indices - Coverage: Currently
-2015/16–2023/24</p>
+<p><strong>Content:</strong></p>
+<ul>
+<li>Pay inflation rates</li>
+<li>Price inflation rates</li>
+<li>Combined pay+prices indices</li>
+<li>Coverage: Currently 2015/16–2023/24</li>
+</ul>
 <p><strong>Published by:</strong> Personal Social Services Research Unit
 (PSSRU), University of Kent</p>
-<p><strong>Access:</strong> PSSRU website<br>
-📍 <a href="https://www.pssru.ac.uk/project-pages/unit-costs/" class="external-link uri">https://www.pssru.ac.uk/project-pages/unit-costs/</a></p>
+<p><strong>Access:</strong> PSSRU website</p>
+<p>📍 <a href="https://www.pssru.ac.uk/project-pages/unit-costs/" class="external-link uri">https://www.pssru.ac.uk/project-pages/unit-costs/</a></p>
 <p><strong>In dmdprices:</strong> Function <code><a href="../reference/nhscii.html">nhscii()</a></code></p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example: current rates available</span></span>
@@ -411,9 +432,13 @@ University of Kent. https://doi.org/10.22024/UniKent/01.02.109563</code></pre>
 <h3 id="why-is-there-no-price">“Why is there no price?”<a class="anchor" aria-label="anchor" href="#why-is-there-no-price"></a>
 </h3>
 <p>See vignette “Working with Drug Tariff and NHS Indicative Prices” for
-common reasons: - Centrally procured (vaccines, infusions) -
-Specialty/rare disease medicine - Recently added to formulary - Price
-confidentiality (some agreements)</p>
+common reasons:</p>
+<ul>
+<li>Centrally procured (vaccines, infusions)</li>
+<li>Specialty/rare disease medicine</li>
+<li>Recently added to formulary</li>
+<li>Price confidentiality (some agreements)</li>
+</ul>
 </div>
 <div class="section level3">
 <h3 id="why-does-my-price-differ-from-the-drug-tariff">“Why does my price differ from the Drug Tariff?”<a class="anchor" aria-label="anchor" href="#why-does-my-price-differ-from-the-drug-tariff"></a>

@@ -129,9 +129,12 @@ nrow(no_price)
 #> [1] 13900
 ```
 
-These include: - Vaccines (centrally procured) - Infusions and
-injectables (often bespoke agreements) - Orphan/rare disease medicines -
-Some biosimilars
+These include:
+
+- Vaccines (centrally procured)
+- Infusions and injectables (often bespoke agreements)
+- Orphan/rare disease medicines
+- Some biosimilars
 
 **For analysis:** decide upfront whether to exclude, estimate, or flag
 these records.

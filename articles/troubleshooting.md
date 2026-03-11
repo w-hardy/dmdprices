@@ -513,7 +513,8 @@ str(analysis_metadata)
 
 ### How to report
 
-Report issues on the GitHub repository:  
+Report issues on the GitHub repository:
+
 📍 <https://github.com/w-hardy/dmdprices/issues>
 
 Include: - What you were trying to do - What you expected - What

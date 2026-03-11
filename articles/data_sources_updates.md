@@ -19,14 +19,18 @@ maintained by the NHSBSA.
 
 **Update frequency:** Weekly (every Thursday)
 
-**Content:** - Virtual Medicinal Products (VMPs) — generic medicines -
-Virtual Medicinal Product Packs (VMPPs) — packs/strengths - Actual
-Medicinal Products (AMPs) — branded products - SNOMED CT codes for
-each - Links to Drug Tariff and NHS Indicative Prices
+**Content:**
+
+- Virtual Medicinal Products (VMPs) — generic medicines
+- Virtual Medicinal Product Packs (VMPPs) — packs/strengths
+- Actual Medicinal Products (AMPs) — branded products
+- SNOMED CT codes for each
+- Links to Drug Tariff and NHS Indicative Prices
 
 **Coverage:** All medicines approved for use in UK NHS
 
-**Access:** NHSBSA TRUD (Technology Reference Data Update) service  
+**Access:** NHSBSA TRUD (Technology Reference Data Update) service
+
 📍 <https://isd.digital.nhs.uk/trud>
 
 **In dmdprices:**
@@ -49,19 +53,24 @@ in England.
 
 **Update frequency:** Monthly (published mid-month)
 
-**Content:** - Basic prices (pence) - Drug Tariff part and category -
-Uplift and discount schedules
+**Content:**
+
+- Basic prices (pence)
+- Drug Tariff part and category
+- Uplift and discount schedules
 
 **Published by:** NHSBSA
 
-**Access:** NHSBSA website  
+**Access:** NHSBSA website
+
 📍
 <https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/drug-tariff>
 
-**Important notes:** - England only (Scotland/Wales have separate
-arrangements) - Prices typically lower due to cost-containment
-policies - Updated monthly; old prices may not reflect current
-reimbursement
+**Important notes:**
+
+- England only (Scotland/Wales have separate arrangements)
+- Prices typically lower due to cost-containment policies
+- Updated monthly; old prices may not reflect current reimbursement
 
 **In dmdprices:** Column `basic_price`
 
@@ -72,18 +81,24 @@ purchasing.
 
 **Update frequency:** Quarterly
 
-**Content:** - Indicative prices (pence) - Basis of price (DT = Drug
-Tariff, MIMS, other) - Date price became effective
+**Content:**
+
+- Indicative prices (pence)
+- Basis of price (DT = Drug Tariff, MIMS, other)
+- Date price became effective
 
 **Published by:** NHS England
 
-**Access:** NHS England Cost Collection  
+**Access:** NHS England Cost Collection
+
 📍
 <https://www.england.nhs.uk/publication/national-cost-collection-ncc/>
 
-**Important notes:** - Indicative only (hospitals negotiate contracts) -
-Broader supply chain reflected - Usually higher than Drug Tariff (due to
-distribution markup)
+**Important notes:**
+
+- Indicative only (hospitals negotiate contracts)
+- Broader supply chain reflected
+- Usually higher than Drug Tariff (due to distribution markup)
 
 **In dmdprices:** Columns `nhs_indicative_price`, `price_basis`,
 `price_date`
@@ -96,13 +111,18 @@ published by the PSSRU.
 **Update frequency:** Annually (usually in autumn/winter for the next
 year)
 
-**Content:** - Pay inflation rates - Price inflation rates - Combined
-pay+prices indices - Coverage: Currently 2015/16–2023/24
+**Content:**
+
+- Pay inflation rates
+- Price inflation rates
+- Combined pay+prices indices
+- Coverage: Currently 2015/16–2023/24
 
 **Published by:** Personal Social Services Research Unit (PSSRU),
 University of Kent
 
-**Access:** PSSRU website  
+**Access:** PSSRU website
+
 📍 <https://www.pssru.ac.uk/project-pages/unit-costs/>
 
 **In dmdprices:** Function
@@ -327,9 +347,12 @@ Published by PSSRU under Open Government Licence.
 ### “Why is there no price?”
 
 See vignette “Working with Drug Tariff and NHS Indicative Prices” for
-common reasons: - Centrally procured (vaccines, infusions) -
-Specialty/rare disease medicine - Recently added to formulary - Price
-confidentiality (some agreements)
+common reasons:
+
+- Centrally procured (vaccines, infusions)
+- Specialty/rare disease medicine
+- Recently added to formulary
+- Price confidentiality (some agreements)
 
 ### “Why does my price differ from the Drug Tariff?”
 

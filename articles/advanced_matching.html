@@ -129,8 +129,12 @@ case-insensitive.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   nhs_indicative_price &lt;int&gt;, price_basis &lt;chr&gt;, price_date &lt;chr&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;</span></span></span></code></pre></div>
-<p><strong>Use when:</strong> - You don’t know the exact name - You want
-all related products - Searching broad categories</p>
+<p><strong>Use when:</strong></p>
+<ul>
+<li>You don’t know the exact name</li>
+<li>You want all related products</li>
+<li>Searching broad categories</li>
+</ul>
 </div>
 <div class="section level3">
 <h3 id="exact-matching">2. Exact matching<a class="anchor" aria-label="anchor" href="#exact-matching"></a>
@@ -156,8 +160,12 @@ all related products - Searching broad categories</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   nhs_indicative_price &lt;int&gt;, price_basis &lt;chr&gt;, price_date &lt;chr&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;</span></span></span></code></pre></div>
-<p><strong>Use when:</strong> - You have clean, standardized data - You
-want to avoid false matches - Building reproducible workflows</p>
+<p><strong>Use when:</strong></p>
+<ul>
+<li>You have clean, standardized data</li>
+<li>You want to avoid false matches</li>
+<li>Building reproducible workflows</li>
+</ul>
 </div>
 <div class="section level3">
 <h3 id="fuzzy-matching">3. Fuzzy matching<a class="anchor" aria-label="anchor" href="#fuzzy-matching"></a>
@@ -183,9 +191,16 @@ want to avoid false matches - Building reproducible workflows</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   nhs_indicative_price &lt;int&gt;, price_basis &lt;chr&gt;, price_date &lt;chr&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;</span></span></span></code></pre></div>
-<p><strong>Parameters:</strong> - <code>max_dist</code>: Maximum
-character distance (default 2) - Lower = stricter (fewer false matches)
-- Higher = more permissive (catches typos)</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li>
+<code>max_dist</code>: Maximum character distance (default 2)
+<ul>
+<li>Lower = stricter (fewer false matches)</li>
+<li>Higher = more permissive (catches typos)</li>
+</ul>
+</li>
+</ul>
 </div>
 </div>
 <div class="section level2">
