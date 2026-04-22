@@ -38,6 +38,9 @@
 #'   `(preparation_group, objective)` combination. See the package vignette for
 #'   the column layout. The `combination` column is a list of tibbles — one
 #'   row per AMPP picked, identifying the specific branded product(s) used.
+#'   `dose_cost_pence` is the cost (in pence) of supplying the requested dose:
+#'   pro-rata item cost when `can_split = TRUE` (hospital), or whole-pack cost
+#'   when `can_split = FALSE` (community).
 #'
 #' @seealso [dmd_price_lookup()], [dmd_parse_strength()]
 #'
@@ -274,6 +277,11 @@ dmd_dose_optimise <- function(
   result$dose_delivered <- result$dose_delivered * back_factor
   result$dose_delivered_unit <- dose_unit
   result$over_delivery <- result$over_delivery * back_factor
+  result$dose_cost_pence <- if (can_split) {
+    result$cost_prorata_pence
+  } else {
+    result$cost_whole_pack_pence
+  }
   result
 }
 
@@ -292,6 +300,7 @@ dmd_dose_optimise <- function(
     total_items = integer(),
     cost_prorata_pence = numeric(),
     cost_whole_pack_pence = numeric(),
+    dose_cost_pence = numeric(),
     price_field_used = character(),
     combination = list(),
     notes = character()
