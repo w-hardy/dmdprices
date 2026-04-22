@@ -1,0 +1,115 @@
+---
+title: "Dose optimisation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Dose optimisation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(dmdprices)
+```
+
+## Overview
+
+`dmd_dose_optimise()` takes a clinical dose (e.g. 900 mg) and returns the
+best combination of AMPPs (branded packs) from the dm+d that deliver it.
+"Best" is defined by two objectives, returned side-by-side:
+
+- **cheapest** — lowest pro-rata cost across priced combinations.
+- **min_items** — fewest tablets, capsules, ampoules, or other discrete items.
+
+Preparations are segregated automatically: immediate-release tablets,
+modified-release tablets, oral solutions, and solutions for injection each
+get their own row so they are never mixed in a single combination.
+
+## A basic example
+
+A 1,500 mg dose of metformin, restricted to standard (immediate-release)
+tablets:
+
+```{r, eval = FALSE}
+res <- dmd_dose_optimise(
+  "metformin",
+  dose = 1500,
+  dose_unit = "mg",
+  preparation = "tablet|none|oral"
+)
+res
+```
+
+Each row contains a `combination` list-column identifying the specific
+branded products picked:
+
+```{r, eval = FALSE}
+res$combination[[1]]
+```
+
+The combination tibble has one row per AMPP used, with the VMP name, branded
+pack name, SNOMED codes, and the count / packs-to-buy / pro-rata /
+whole-pack cost breakdown.
+
+## When objectives differ
+
+A 900 mg metformin dose is a good illustration. The cheapest combination
+may use more items (several smaller tablets) while the minimum-items answer
+may over-deliver (e.g. two 500 mg tablets → 1,000 mg). The output flags
+`over_delivery` in both the column and the notes:
+
+```{r, eval = FALSE}
+res <- dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg",
+                         preparation = "tablet|none|oral")
+res[, c("objective", "total_items", "dose_delivered",
+        "over_delivery", "cost_prorata_pence", "cost_whole_pack_pence")]
+```
+
+## Segregating preparations
+
+A morphine dose should never mix oral solutions with tablets or injections,
+so `dmd_dose_optimise()` returns one result per preparation group:
+
+```{r, eval = FALSE}
+dmd_dose_optimise("morphine", dose = 20, dose_unit = "mg")[,
+  c("preparation_label", "objective", "total_items",
+    "dose_delivered", "over_delivery")]
+```
+
+## Micrograms
+
+Small doses in micrograms are handled transparently. The requested dose
+unit is retained in the output while the canonical form is used internally:
+
+```{r, eval = FALSE}
+dmd_dose_optimise("levothyroxine", dose = 125, dose_unit = "microgram")
+```
+
+## Pricing
+
+By default, pro-rata costs (`pack_price × items ÷ pack_size`) are computed
+from `basic_price`, with fallback to `nhs_indicative_price` per-AMPP when
+the chosen column is NA (flagged in `notes`). Whole-pack costs
+(`pack_price × packs_to_buy`) reflect what you would actually pay when you
+cannot split a pack.
+
+Switch the primary price field with `price = "nhs_indicative_price"`.
+
+## Cross-referencing with other dm+d data
+
+The `combination` list-column includes `vmpp_snomed_code` and
+`ampp_snomed_code` for each picked product, so you can join back to other
+dm+d views or NHS Drug Tariff Part VIIIA CSVs.
+
+## Limitations
+
+- Discrete items only — tablet splitting is not considered.
+- For liquids, each "item" is one container (bottle, ampoule, vial). A
+  small dose requested against a large container is delivered as one whole
+  container with an `over_delivery` flag.
+- Compound products (multiple active ingredients in one VMP) are not
+  optimised and are flagged in `notes`.
+- Clinical safety (max single / max daily dose) is **not** enforced.

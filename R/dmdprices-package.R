@@ -4,6 +4,9 @@
 #' costs for inflation:
 #'
 #' * [dmd_price_lookup()] — search the bundled dm+d dataset by medicine name.
+#' * [dmd_dose_optimise()] — find the cheapest or minimum-item combination of
+#'   AMPPs that delivers a given clinical dose.
+#' * [dmd_parse_strength()] — parse strengths out of VMP names.
 #' * [dmd_load()] — load a more recent dm+d release from a local
 #'   `dmdDataLoader` CSV directory.
 #' * [nhscii()] — compute NHS Cost Inflation Index factors between financial
@@ -38,12 +41,14 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @importFrom dplyr arrange filter group_by inner_join join_by left_join
-#'   mutate n_distinct rename select slice_max ungroup coalesce
+#' @importFrom dplyr arrange bind_cols bind_rows coalesce filter group_by
+#'   inner_join join_by left_join mutate n_distinct rename select slice_max
+#'   ungroup
 #' @importFrom readr col_character cols read_delim
 #' @importFrom rlang .data is_string `:=`
 #' @importFrom stringr regex str_detect str_squish str_to_lower str_to_upper
 #' @importFrom cli cli_abort cli_inform cli_progress_step cli_warn
 #' @importFrom stringdist stringdist
+#' @importFrom tibble tibble tribble
 ## usethis namespace: end
 NULL

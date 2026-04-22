@@ -12,6 +12,9 @@ costs for inflation:
 \details{
 \itemize{
 \item \code{\link[=dmd_price_lookup]{dmd_price_lookup()}} — search the bundled dm+d dataset by medicine name.
+\item \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}} — find the cheapest or minimum-item combination of
+AMPPs that delivers a given clinical dose.
+\item \code{\link[=dmd_parse_strength]{dmd_parse_strength()}} — parse strengths out of VMP names.
 \item \code{\link[=dmd_load]{dmd_load()}} — load a more recent dm+d release from a local
 \code{dmdDataLoader} CSV directory.
 \item \code{\link[=nhscii]{nhscii()}} — compute NHS Cost Inflation Index factors between financial

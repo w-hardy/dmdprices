@@ -1,5 +1,19 @@
 # dmdprices (development version)
 
+# dmdprices 0.4.0
+
+## Added
+
+- `dmd_dose_optimise()` — given a clinical dose, returns the cheapest and/or
+  minimum-item combination of AMPPs that delivers it. Preparations (e.g.
+  immediate-release vs modified-release tablets, oral solutions,
+  solution-for-injection) are segregated automatically. Each result row
+  includes a `combination` list-column identifying the specific branded
+  products picked.
+- `dmd_parse_strength()` — helper exposing the VMP-name strength parser (amount,
+  unit, optional denominator for concentrations such as `mg/ml`,
+  `microgram/dose`).
+
 # dmdprices 0.3.0
 
 ## Added
