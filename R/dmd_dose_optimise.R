@@ -246,7 +246,7 @@ print.dmd_dose_combination <- function(x, ...) {
     return(invisible(x))
   }
   lines <- vapply(seq_len(nrow(x)), function(i) {
-    sprintf("  %d × %s", x$count[i], x$ampp_name[i])
+    sprintf("  %d \u00d7 %s", x$count[i], x$ampp_name[i])
   }, character(1))
   cat("<dmd_dose_combination>\n")
   cat(paste(lines, collapse = "\n"), "\n", sep = "")

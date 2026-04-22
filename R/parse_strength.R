@@ -97,12 +97,12 @@
     ))
   }
 
-  drug    <- m[2]
+  drug    <- unname(m[2])
   amt     <- suppressWarnings(as.numeric(m[3]))
-  unit    <- m[4]
+  unit    <- unname(m[4])
   den_amt <- suppressWarnings(as.numeric(m[5]))
-  den_unit <- m[6]
-  tail    <- m[7]
+  den_unit <- unname(m[6])
+  tail    <- unname(m[7])
 
   if (is.na(den_unit) || !nzchar(den_unit)) {
     den_unit <- NA_character_
@@ -258,9 +258,9 @@ dmd_parse_strength <- function(name) {
       preparation_label = character()
     ))
   }
-  form     <- vapply(tail, .match_first, character(1), patterns = .form_patterns)
-  modifier <- vapply(tail, .match_first, character(1), patterns = .modifier_patterns, default = "none")
-  route    <- vapply(tail, .match_first, character(1), patterns = .route_patterns)
+  form     <- unname(vapply(tail, .match_first, character(1), patterns = .form_patterns))
+  modifier <- unname(vapply(tail, .match_first, character(1), patterns = .modifier_patterns, default = "none"))
+  route    <- unname(vapply(tail, .match_first, character(1), patterns = .route_patterns))
 
   group <- paste(form, modifier, route, sep = "|")
   label <- ifelse(
