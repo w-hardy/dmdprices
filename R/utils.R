@@ -160,8 +160,14 @@
         .data$QTY_UOMCD
       ),
       Pack_size = suppressWarnings(as.numeric(.data$QTYVAL)),
-      "Basic Price" := suppressWarnings(as.integer(.data$DT_PRICE)),
-      "NHS Indicative Price" := suppressWarnings(as.integer(.data$NHSIP_PRICE))
+      "Basic Price" := dplyr::na_if(
+        suppressWarnings(as.integer(.data$DT_PRICE)),
+        0L
+      ),
+      "NHS Indicative Price" := dplyr::na_if(
+        suppressWarnings(as.integer(.data$NHSIP_PRICE)),
+        0L
+      )
     ) |>
     dplyr::select(
       medicine = "VMP_NM",
