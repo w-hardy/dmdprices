@@ -52,6 +52,43 @@ attr(dmd_master, "dmd_release_label")
 
 ---
 
+## Dose optimisation
+
+Given a clinical dose (e.g. 900 mg) `dmd_dose_optimise()` returns the cheapest
+and/or minimum-item combination of AMPPs from the dm+d that deliver it.
+Preparations are segregated automatically so that immediate-release tablets,
+modified-release tablets, oral solutions, and injections are never mixed in a
+single combination.
+
+```r
+# Cheapest and min-items combinations for a 900 mg metformin dose
+dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg")
+
+# Equivalent: pass dose as a self-contained string
+dmd_dose_optimise("metformin", dose = "900 mg")
+dmd_dose_optimise("metformin", dose = "0.9 g")   # same dose, different unit
+
+# Restrict to modified-release tablets
+dmd_dose_optimise(
+  "metformin", dose = 1500, dose_unit = "mg",
+  preparation = "tablet|modified-release|oral"
+)
+
+# Community pharmacy — whole packs must be dispensed
+dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
+```
+
+Each row includes a `combination` list-column of specific branded products:
+
+```r
+res <- dmd_dose_optimise("metformin", dose = "900 mg")
+res$combination[[1]]
+```
+
+See `vignette("dose_optimisation")` for a full walkthrough.
+
+---
+
 ## Inflation adjustment with NHS CII
 
 Use `nhscii()` and `inflate_nhscii()` to adjust costs for inflation based on NHS Cost Inflation Index rates from the PSSRU Unit Costs of Health and Social Care.
