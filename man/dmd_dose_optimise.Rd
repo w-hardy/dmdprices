@@ -41,7 +41,7 @@ one is NA for an individual AMPP (a note is added).}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per
-\code{(preparation_group, objective)} combination. See the package vignette for
+\verb{(preparation_group, objective)} combination. See the package vignette for
 the column layout. The \code{combination} column is a list of tibbles — one
 row per AMPP picked, identifying the specific branded product(s) used.
 }

@@ -11,3 +11,5 @@
 ^doc$
 ^Meta$
 ^inst/shiny/.*/rsconnect$
+^.*\.Rproj$
+^\.Rproj\.user$
