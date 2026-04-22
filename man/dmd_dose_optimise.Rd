@@ -7,23 +7,27 @@
 dmd_dose_optimise(
   query,
   dose,
-  dose_unit = c("mg", "microgram", "mcg", "g", "ml", "unit"),
+  dose_unit = NULL,
   db = dmdprices::dmd_master,
   method = c("partial", "exact", "fuzzy"),
   max_dist = 3,
   price = c("basic_price", "nhs_indicative_price"),
   objective = c("both", "cheapest", "min_items"),
   preparation = NULL,
-  active_only = TRUE
+  active_only = TRUE,
+  can_split = TRUE
 )
 }
 \arguments{
 \item{query}{Character string passed through to \code{\link[=dmd_price_lookup]{dmd_price_lookup()}}.}
 
-\item{dose}{Numeric dose value (in \code{dose_unit}).}
+\item{dose}{Numeric dose value (in \code{dose_unit}), \strong{or} a
+self-contained dose string such as \code{"250 mg"}, \code{"250mg"}, or
+\code{"0.25 g"}. When a string is supplied \code{dose_unit} may be omitted.}
 
 \item{dose_unit}{One of \code{"mg"}, \code{"microgram"} / \code{"mcg"}, \code{"g"}, \code{"ml"},
-\code{"unit"}. Default \code{"mg"}.}
+\code{"unit"}. Default \code{"mg"}. Ignored (with a warning) if \code{dose} is a
+string that already contains a unit.}
 
 \item{db}{A \verb{<dmd_db>} object from \code{\link[=dmd_load]{dmd_load()}} or a tibble in the
 same shape as \link{dmd_master}. Default: bundled \link{dmd_master}.}
@@ -38,6 +42,15 @@ one is NA for an individual AMPP (a note is added).}
 
 \item{preparation}{Optional character — a preparation-group key (e.g.
 \code{"tablet|none|oral"}) or label to filter groups before returning.}
+
+\item{can_split}{Logical. \code{TRUE} (default) assumes that individual items
+(tablets, capsules) can be taken from a part-pack, as is normal in
+hospital dispensing. \code{FALSE} requires whole packs to be dispensed, as
+is normal in community pharmacy. Concentration-based preparations
+(liquids, inhalers, vials) are \strong{always} treated as unsplittable
+regardless of this setting. When \code{can_split = FALSE}, reported costs
+are whole-pack costs rather than pro-rata costs, and a
+\code{"no-pack-splitting"} note is added.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per
@@ -61,11 +74,18 @@ returned — one per objective.
 # Cheapest and minimum-item combinations for a 900 mg dose of metformin
 dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg")
 
+# Equivalent: pass dose as a single string
+dmd_dose_optimise("metformin", dose = "900 mg")
+dmd_dose_optimise("metformin", dose = "0.9 g")   # same dose, different unit
+
 # Only modified-release tablets
 dmd_dose_optimise(
   "metformin", dose = 1500, dose_unit = "mg",
   preparation = "tablet|modified-release|oral"
 )
+
+# Community pharmacy — whole packs must be dispensed
+dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
 }
 }
 \seealso{

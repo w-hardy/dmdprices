@@ -6,29 +6,29 @@
 # Canonical bases for each input unit. Mass units canonicalise to "mg",
 # volume to "ml", biological activity to "unit".
 .unit_table <- tibble::tribble(
-  ~input,        ~canonical, ~factor,
-  "g",           "mg",       1000,
-  "mg",          "mg",       1,
-  "microgram",   "mg",       1 / 1000,
-  "micrograms",  "mg",       1 / 1000,
-  "mcg",         "mg",       1 / 1000,
-  "ng",          "mg",       1 / 1e6,
-  "nanogram",    "mg",       1 / 1e6,
-  "nanograms",   "mg",       1 / 1e6,
-  "ml",          "ml",       1,
-  "litre",       "ml",       1000,
-  "litres",      "ml",       1000,
-  "l",           "ml",       1000,
-  "unit",        "unit",     1,
-  "units",       "unit",     1,
-  "u",           "unit",     1,
+  ~input       , ~canonical  , ~factor  ,
+  "g"          , "mg"        ,     1000 ,
+  "mg"         , "mg"        ,        1 ,
+  "microgram"  , "mg"        , 1 / 1000 ,
+  "micrograms" , "mg"        , 1 / 1000 ,
+  "mcg"        , "mg"        , 1 / 1000 ,
+  "ng"         , "mg"        , 1 / 1e6  ,
+  "nanogram"   , "mg"        , 1 / 1e6  ,
+  "nanograms"  , "mg"        , 1 / 1e6  ,
+  "ml"         , "ml"        ,        1 ,
+  "litre"      , "ml"        ,     1000 ,
+  "litres"     , "ml"        ,     1000 ,
+  "l"          , "ml"        ,     1000 ,
+  "unit"       , "unit"      ,        1 ,
+  "units"      , "unit"      ,        1 ,
+  "u"          , "unit"      ,        1 ,
   # Count-like denominators for concentrations expressed per-dose or
   # per-actuation. Canonicalised to themselves so strength_unit_canon
   # keeps a readable label like "mg/dose" or "mg/actuation".
-  "dose",        "dose",     1,
-  "doses",       "dose",     1,
-  "actuation",   "actuation",1,
-  "actuations",  "actuation",1
+  "dose"       , "dose"      ,        1 ,
+  "doses"      , "dose"      ,        1 ,
+  "actuation"  , "actuation" ,        1 ,
+  "actuations" , "actuation" ,        1
 )
 
 .canonicalise_unit <- function(value, unit) {
@@ -42,7 +42,7 @@
   }
   list(
     value = value * row$factor[1],
-    unit  = row$canonical[1]
+    unit = row$canonical[1]
   )
 }
 
@@ -72,41 +72,41 @@
 .parse_strength_one <- function(name) {
   if (is.na(name) || !nzchar(name)) {
     return(tibble::tibble(
-      drug_stem            = NA_character_,
-      strength_value       = NA_real_,
-      strength_unit        = NA_character_,
-      denominator_value    = NA_real_,
-      denominator_unit     = NA_character_,
-      tail                 = NA_character_,
-      strength_canonical   = NA_real_,
-      strength_unit_canon  = NA_character_
+      drug_stem = NA_character_,
+      strength_value = NA_real_,
+      strength_unit = NA_character_,
+      denominator_value = NA_real_,
+      denominator_unit = NA_character_,
+      tail = NA_character_,
+      strength_canonical = NA_real_,
+      strength_unit_canon = NA_character_
     ))
   }
 
   m <- regmatches(name, regexec(.strength_regex, name, perl = TRUE))[[1]]
   if (length(m) == 0) {
     return(tibble::tibble(
-      drug_stem            = name,
-      strength_value       = NA_real_,
-      strength_unit        = NA_character_,
-      denominator_value    = NA_real_,
-      denominator_unit     = NA_character_,
-      tail                 = NA_character_,
-      strength_canonical   = NA_real_,
-      strength_unit_canon  = NA_character_
+      drug_stem = name,
+      strength_value = NA_real_,
+      strength_unit = NA_character_,
+      denominator_value = NA_real_,
+      denominator_unit = NA_character_,
+      tail = NA_character_,
+      strength_canonical = NA_real_,
+      strength_unit_canon = NA_character_
     ))
   }
 
-  drug    <- unname(m[2])
-  amt     <- suppressWarnings(as.numeric(m[3]))
-  unit    <- unname(m[4])
+  drug <- unname(m[2])
+  amt <- suppressWarnings(as.numeric(m[3]))
+  unit <- unname(m[4])
   den_amt <- suppressWarnings(as.numeric(m[5]))
   den_unit <- unname(m[6])
-  tail    <- unname(m[7])
+  tail <- unname(m[7])
 
   if (is.na(den_unit) || !nzchar(den_unit)) {
     den_unit <- NA_character_
-    den_amt  <- NA_real_
+    den_amt <- NA_real_
   } else if (is.na(den_amt)) {
     # e.g. "100units/ml" with implicit denominator of 1
     den_amt <- 1
@@ -123,15 +123,55 @@
   }
 
   tibble::tibble(
-    drug_stem            = trimws(drug),
-    strength_value       = amt,
-    strength_unit        = tolower(unit),
-    denominator_value    = den_amt,
-    denominator_unit     = if (is.na(den_unit)) NA_character_ else tolower(den_unit),
-    tail                 = trimws(tail),
-    strength_canonical   = strength_canonical,
-    strength_unit_canon  = strength_unit_canon
+    drug_stem = trimws(drug),
+    strength_value = amt,
+    strength_unit = tolower(unit),
+    denominator_value = den_amt,
+    denominator_unit = if (is.na(den_unit)) {
+      NA_character_
+    } else {
+      tolower(den_unit)
+    },
+    tail = trimws(tail),
+    strength_canonical = strength_canonical,
+    strength_unit_canon = strength_unit_canon
   )
+}
+
+# ── Dose-string parser ────────────────────────────────────────────────────────
+
+# Parses a user-supplied dose string such as "250 mg", "250mg", or "0.25 g"
+# into a list(value = <numeric>, unit = <character>).
+# Accepts all units recognised by .canonicalise_unit().
+.parse_dose_string <- function(x) {
+  x <- trimws(x)
+  unit_pat <- paste0(
+    "micrograms?|mcg|mg|ng|nanograms?|g|ml|",
+    "litres?|l\\b|units?|u\\b|",
+    "doses?|actuations?"
+  )
+  m <- regmatches(
+    x,
+    regexec(
+      paste0("^(\\d+(?:\\.\\d+)?)\\s*(", unit_pat, ")$"),
+      x,
+      perl = TRUE,
+      ignore.case = TRUE
+    )
+  )[[1]]
+  if (length(m) == 0) {
+    cli::cli_abort(
+      c(
+        "{.arg dose} could not be parsed as a dose string: {.val {x}}.",
+        "i" = paste0(
+          "Expected a number followed by a unit, ",
+          "e.g. {.val {\"250 mg\"}}, {.val {\"0.25 g\"}}, ",
+          "{.val {\"500mcg\"}}."
+        )
+      )
+    )
+  }
+  list(value = as.numeric(m[2]), unit = tolower(m[3]))
 }
 
 #' Parse a dm+d VMP name into drug stem, strength, and remainder
@@ -166,78 +206,98 @@ dmd_parse_strength <- function(name) {
 # Each entry: pattern (case-insensitive regex) → classification token.
 # Order matters — more specific forms first.
 .form_patterns <- list(
-  list("modified-release capsule", "modified-release capsule|m/?r capsule|prolonged-release capsule|sustained-release capsule"),
-  list("modified-release tablet",  "modified-release tablet|m/?r tablet|prolonged-release tablet|sustained-release tablet"),
-  list("gastro-resistant tablet",  "gastro-?resistant tablet|enteric-?coated tablet"),
-  list("gastro-resistant capsule", "gastro-?resistant capsule|enteric-?coated capsule"),
-  list("orodispersible tablet",    "orodispersible tablet"),
-  list("chewable tablet",          "chewable tablet"),
-  list("effervescent tablet",      "effervescent tablet"),
-  list("sublingual tablet",        "sublingual tablet"),
-  list("dispersible tablet",       "dispersible tablet"),
-  list("soluble tablet",           "soluble tablet"),
-  list("tablet",                   "\\btablets?\\b"),
-  list("capsule",                  "\\bcapsules?\\b"),
-  list("oral solution",            "oral solution|oral liquid"),
-  list("oral suspension",          "oral suspension"),
-  list("oral drops",               "oral drops"),
-  list("syrup",                    "\\bsyrup\\b"),
-  list("elixir",                   "\\belixir\\b"),
-  list("granules",                 "\\bgranules\\b"),
-  list("sachet",                   "\\bsachets?\\b|powder for .* sachet"),
-  list("suppository",              "\\bsupposit"),
-  list("pessary",                  "\\bpessar"),
-  list("enema",                    "\\benema"),
-  list("solution for infusion",    "solution for infusion|infusion"),
-  list("solution for injection",   "solution for injection|injection"),
-  list("powder for solution",      "powder for (?:solution|reconstitution)"),
-  list("patch",                    "\\bpatch"),
-  list("inhaler",                  "inhaler|inhalation"),
-  list("nebuliser liquid",         "nebuliser liquid|nebuliser solution"),
-  list("cream",                    "\\bcream\\b"),
-  list("ointment",                 "\\bointment\\b"),
-  list("gel",                      "\\bgel\\b"),
-  list("eye drops",                "eye drops"),
-  list("ear drops",                "ear drops"),
-  list("nasal drops",              "nasal drops"),
-  list("nasal spray",              "nasal spray"),
-  list("spray",                    "\\bspray\\b"),
-  list("pre-filled pen",           "pre-?filled pen"),
-  list("pre-filled syringe",       "pre-?filled syringe"),
-  list("pen",                      "\\bpen\\b"),
-  list("lozenge",                  "\\blozenges?\\b"),
-  list("ampoule",                  "\\bampoules?\\b"),
-  list("vial",                     "\\bvials?\\b")
+  list(
+    "modified-release capsule",
+    "modified-release capsule|m/?r capsule|prolonged-release capsule|sustained-release capsule"
+  ),
+  list(
+    "modified-release tablet",
+    "modified-release tablet|m/?r tablet|prolonged-release tablet|sustained-release tablet"
+  ),
+  list(
+    "gastro-resistant tablet",
+    "gastro-?resistant tablet|enteric-?coated tablet"
+  ),
+  list(
+    "gastro-resistant capsule",
+    "gastro-?resistant capsule|enteric-?coated capsule"
+  ),
+  list("orodispersible tablet", "orodispersible tablet"),
+  list("chewable tablet", "chewable tablet"),
+  list("effervescent tablet", "effervescent tablet"),
+  list("sublingual tablet", "sublingual tablet"),
+  list("dispersible tablet", "dispersible tablet"),
+  list("soluble tablet", "soluble tablet"),
+  list("tablet", "\\btablets?\\b"),
+  list("capsule", "\\bcapsules?\\b"),
+  list("oral solution", "oral solution|oral liquid"),
+  list("oral suspension", "oral suspension"),
+  list("oral drops", "oral drops"),
+  list("syrup", "\\bsyrup\\b"),
+  list("elixir", "\\belixir\\b"),
+  list("granules", "\\bgranules\\b"),
+  list("sachet", "\\bsachets?\\b|powder for .* sachet"),
+  list("suppository", "\\bsupposit"),
+  list("pessary", "\\bpessar"),
+  list("enema", "\\benema"),
+  list("solution for infusion", "solution for infusion|infusion"),
+  list("solution for injection", "solution for injection|injection"),
+  list("powder for solution", "powder for (?:solution|reconstitution)"),
+  list("patch", "\\bpatch"),
+  list("inhaler", "inhaler|inhalation"),
+  list("nebuliser liquid", "nebuliser liquid|nebuliser solution"),
+  list("cream", "\\bcream\\b"),
+  list("ointment", "\\bointment\\b"),
+  list("gel", "\\bgel\\b"),
+  list("eye drops", "eye drops"),
+  list("ear drops", "ear drops"),
+  list("nasal drops", "nasal drops"),
+  list("nasal spray", "nasal spray"),
+  list("spray", "\\bspray\\b"),
+  list("pre-filled pen", "pre-?filled pen"),
+  list("pre-filled syringe", "pre-?filled syringe"),
+  list("pen", "\\bpen\\b"),
+  list("lozenge", "\\blozenges?\\b"),
+  list("ampoule", "\\bampoules?\\b"),
+  list("vial", "\\bvials?\\b")
 )
 
 .modifier_patterns <- list(
-  list("modified-release",         "modified-release|m/?r\\b|prolonged-release|sustained-release"),
-  list("gastro-resistant",         "gastro-?resistant|enteric-?coated"),
-  list("orodispersible",           "orodispersible"),
-  list("chewable",                 "chewable"),
-  list("effervescent",             "effervescent"),
-  list("sublingual",               "sublingual"),
-  list("dispersible",              "dispersible"),
-  list("soluble",                  "soluble")
+  list(
+    "modified-release",
+    "modified-release|m/?r\\b|prolonged-release|sustained-release"
+  ),
+  list("gastro-resistant", "gastro-?resistant|enteric-?coated"),
+  list("orodispersible", "orodispersible"),
+  list("chewable", "chewable"),
+  list("effervescent", "effervescent"),
+  list("sublingual", "sublingual"),
+  list("dispersible", "dispersible"),
+  list("soluble", "soluble")
 )
 
 .route_patterns <- list(
-  list("intravenous",     "intravenous|iv infusion|for infusion"),
-  list("subcutaneous",    "subcutaneous|sub-cutaneous"),
-  list("intramuscular",   "intramuscular"),
-  list("rectal",          "suppositor|enema|rectal"),
-  list("vaginal",         "pessar|vaginal"),
-  list("topical",         "\\bcream\\b|\\bointment\\b|\\bgel\\b|\\bpatch"),
-  list("inhaled",         "inhaler|inhalation|nebuliser"),
-  list("intranasal",      "nasal"),
-  list("ophthalmic",      "eye drops"),
-  list("otic",            "ear drops"),
-  list("oral",            "oral solution|oral suspension|oral liquid|oral drops|\\bsyrup\\b|\\belixir\\b|\\btablet|\\bcapsule|\\bgranules|\\bsachet|\\blozenge|chewable|orodispersible|sublingual|soluble|dispersible"),
-  list("injection",       "injection|ampoule|vial|pre-?filled")
+  list("intravenous", "intravenous|iv infusion|for infusion"),
+  list("subcutaneous", "subcutaneous|sub-cutaneous"),
+  list("intramuscular", "intramuscular"),
+  list("rectal", "suppositor|enema|rectal"),
+  list("vaginal", "pessar|vaginal"),
+  list("topical", "\\bcream\\b|\\bointment\\b|\\bgel\\b|\\bpatch"),
+  list("inhaled", "inhaler|inhalation|nebuliser"),
+  list("intranasal", "nasal"),
+  list("ophthalmic", "eye drops"),
+  list("otic", "ear drops"),
+  list(
+    "oral",
+    "oral solution|oral suspension|oral liquid|oral drops|\\bsyrup\\b|\\belixir\\b|\\btablet|\\bcapsule|\\bgranules|\\bsachet|\\blozenge|chewable|orodispersible|sublingual|soluble|dispersible"
+  ),
+  list("injection", "injection|ampoule|vial|pre-?filled")
 )
 
 .match_first <- function(text, patterns, default = "unclassified") {
-  if (is.na(text) || !nzchar(text)) return(default)
+  if (is.na(text) || !nzchar(text)) {
+    return(default)
+  }
   for (p in patterns) {
     if (stringr::str_detect(text, stringr::regex(p[[2]], ignore_case = TRUE))) {
       return(p[[1]])
@@ -258,9 +318,25 @@ dmd_parse_strength <- function(name) {
       preparation_label = character()
     ))
   }
-  form     <- unname(vapply(tail, .match_first, character(1), patterns = .form_patterns))
-  modifier <- unname(vapply(tail, .match_first, character(1), patterns = .modifier_patterns, default = "none"))
-  route    <- unname(vapply(tail, .match_first, character(1), patterns = .route_patterns))
+  form <- unname(vapply(
+    tail,
+    .match_first,
+    character(1),
+    patterns = .form_patterns
+  ))
+  modifier <- unname(vapply(
+    tail,
+    .match_first,
+    character(1),
+    patterns = .modifier_patterns,
+    default = "none"
+  ))
+  route <- unname(vapply(
+    tail,
+    .match_first,
+    character(1),
+    patterns = .route_patterns
+  ))
 
   group <- paste(form, modifier, route, sep = "|")
   label <- ifelse(

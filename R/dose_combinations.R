@@ -239,6 +239,8 @@
 # dose_unit_canon: canonical mass/volume unit ("mg", "ml", or "unit").
 # objective: "cheapest" or "min_items".
 # medicine_root, preparation_group, preparation_label: group identifiers.
+# can_split: logical. FALSE = whole packs must be dispensed for solid forms;
+#   concentration-based preparations are always whole-container regardless.
 .optimise_group <- function(
   group_df,
   dose_canonical,
@@ -246,7 +248,8 @@
   objective,
   medicine_root,
   preparation_group,
-  preparation_label
+  preparation_label,
+  can_split = TRUE
 ) {
   # The DP operates on per-item canonical doses: for tablets/capsules this
   # is the strength itself; for liquids it is concentration × pack_size so
@@ -256,6 +259,18 @@
   if (length(strengths) == 0) {
     return(NULL)
   }
+
+  # Detect whether every row in this group is concentration-based.
+  # Concentration items (liquids, inhalers, vials) are inherently unsplittable
+  # because one "item" already equals one whole container.
+  all_concentration <- all(!is.na(group_df$denominator_unit))
+
+  # When can_split = FALSE we still run the DP with per-item (pro-rata) prices,
+  # because the DP cannot easily accommodate pack-size constraints. The
+  # reported *cost* is then taken from the whole-pack totals, which is the
+  # binding cost for community dispensing. For concentration-based preparations
+  # the two costs are identical (items_per_pack == 1), so this distinction
+  # only matters for solid-form preparations.
 
   # Cheapest per-item price per per_item_dose level.
   cheapest_per_strength <- vapply(
@@ -377,6 +392,9 @@
   }
   if (price_fallback) {
     notes <- c(notes, "price-field-fallback")
+  }
+  if (!can_split && !all_concentration) {
+    notes <- c(notes, "no-pack-splitting")
   }
   if (nrow(combination) > 0) {
     notes <- c(notes, "cheapest-AMPP-per-strength")

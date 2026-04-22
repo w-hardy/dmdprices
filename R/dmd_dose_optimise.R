@@ -10,9 +10,12 @@
 #' returned — one per objective.
 #'
 #' @param query        Character string passed through to [dmd_price_lookup()].
-#' @param dose         Numeric dose value (in `dose_unit`).
+#' @param dose         Numeric dose value (in `dose_unit`), **or** a
+#'   self-contained dose string such as `"250 mg"`, `"250mg"`, or
+#'   `"0.25 g"`. When a string is supplied `dose_unit` may be omitted.
 #' @param dose_unit    One of `"mg"`, `"microgram"` / `"mcg"`, `"g"`, `"ml"`,
-#'   `"unit"`. Default `"mg"`.
+#'   `"unit"`. Default `"mg"`. Ignored (with a warning) if `dose` is a
+#'   string that already contains a unit.
 #' @param db           A `<dmd_db>` object from [dmd_load()] or a tibble in the
 #'   same shape as [dmd_master]. Default: bundled [dmd_master].
 #' @param method,max_dist,active_only Passed through to [dmd_price_lookup()].
@@ -22,6 +25,14 @@
 #' @param objective    `"both"` (default), `"cheapest"`, or `"min_items"`.
 #' @param preparation  Optional character — a preparation-group key (e.g.
 #'   `"tablet|none|oral"`) or label to filter groups before returning.
+#' @param can_split    Logical. `TRUE` (default) assumes that individual items
+#'   (tablets, capsules) can be taken from a part-pack, as is normal in
+#'   hospital dispensing. `FALSE` requires whole packs to be dispensed, as
+#'   is normal in community pharmacy. Concentration-based preparations
+#'   (liquids, inhalers, vials) are **always** treated as unsplittable
+#'   regardless of this setting. When `can_split = FALSE`, reported costs
+#'   are whole-pack costs rather than pro-rata costs, and a
+#'   `"no-pack-splitting"` note is added.
 #'
 #' @return A [tibble][tibble::tibble] with one row per
 #'   `(preparation_group, objective)` combination. See the package vignette for
@@ -37,28 +48,69 @@
 #' # Cheapest and minimum-item combinations for a 900 mg dose of metformin
 #' dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg")
 #'
+#' # Equivalent: pass dose as a single string
+#' dmd_dose_optimise("metformin", dose = "900 mg")
+#' dmd_dose_optimise("metformin", dose = "0.9 g")   # same dose, different unit
+#'
 #' # Only modified-release tablets
 #' dmd_dose_optimise(
 #'   "metformin", dose = 1500, dose_unit = "mg",
 #'   preparation = "tablet|modified-release|oral"
 #' )
+#'
+#' # Community pharmacy — whole packs must be dispensed
+#' dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
 #' }
 dmd_dose_optimise <- function(
   query,
   dose,
-  dose_unit = c("mg", "microgram", "mcg", "g", "ml", "unit"),
+  dose_unit = NULL,
   db = dmdprices::dmd_master,
   method = c("partial", "exact", "fuzzy"),
   max_dist = 3,
   price = c("basic_price", "nhs_indicative_price"),
   objective = c("both", "cheapest", "min_items"),
   preparation = NULL,
-  active_only = TRUE
+  active_only = TRUE,
+  can_split = TRUE
 ) {
-  if (!is.numeric(dose) || length(dose) != 1 || is.na(dose) || dose <= 0) {
+  # ── Resolve dose / dose_unit ─────────────────────────────────────────────
+  if (is.character(dose)) {
+    if (length(dose) != 1L) {
+      cli::cli_abort(
+        "{.arg dose} must be a length-1 string or a single numeric value."
+      )
+    }
+    parsed_dose <- .parse_dose_string(dose)
+    if (
+      !is.null(dose_unit) && !identical(tolower(dose_unit), parsed_dose$unit)
+    ) {
+      cli::cli_warn(
+        paste0(
+          "Parsed unit {.val {parsed_dose$unit}} from the {.arg dose} string ",
+          "differs from supplied {.arg dose_unit} {.val {dose_unit}}; ",
+          "using the value from {.arg dose}."
+        )
+      )
+    }
+    dose <- parsed_dose$value
+    dose_unit <- parsed_dose$unit
+  } else {
+    if (is.null(dose_unit)) {
+      dose_unit <- "mg"
+    }
+    # Normalise aliases so match.arg-style validation still works
+    dose_unit <- tolower(dose_unit)
+  }
+
+  if (!is.numeric(dose) || length(dose) != 1L || is.na(dose) || dose <= 0) {
     cli::cli_abort("{.arg dose} must be a single positive numeric value.")
   }
-  dose_unit <- match.arg(dose_unit)
+  if (!is.logical(can_split) || length(can_split) != 1L || is.na(can_split)) {
+    cli::cli_abort(
+      "{.arg can_split} must be a single logical value (TRUE or FALSE)."
+    )
+  }
   method <- match.arg(method)
   price <- match.arg(price)
   objective <- match.arg(objective)
@@ -201,7 +253,8 @@ dmd_dose_optimise <- function(
         objective = obj,
         medicine_root = medicine_root,
         preparation_group = groups$preparation_group[g],
-        preparation_label = groups$preparation_label[g]
+        preparation_label = groups$preparation_label[g],
+        can_split = can_split
       )
       if (!is.null(row)) out[[length(out) + 1L]] <- row
     }

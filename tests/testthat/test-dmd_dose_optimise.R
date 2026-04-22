@@ -1,5 +1,141 @@
 db <- .fake_dose_db()
 
+# ── String dose input ─────────────────────────────────────────────────────────
+
+test_that("dose can be supplied as a string with unit (e.g. '900 mg')", {
+  res_num <- dmd_dose_optimise(
+    "metformin",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral"
+  )
+  res_str <- dmd_dose_optimise(
+    "metformin",
+    dose = "900 mg",
+    db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_equal(res_num$dose_delivered, res_str$dose_delivered)
+  expect_equal(res_num$total_items, res_str$total_items)
+})
+
+test_that("dose string with no space between value and unit is accepted", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = "500mg",
+    db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_true(all(res$dose_delivered >= 500))
+})
+
+test_that("dose string with different unit (g) is converted correctly", {
+  res_mg <- dmd_dose_optimise(
+    "metformin",
+    dose = 500,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral"
+  )
+  res_g <- dmd_dose_optimise(
+    "metformin",
+    dose = "0.5 g",
+    db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_equal(res_mg$total_items, res_g$total_items)
+})
+
+test_that("string dose with extra dose_unit warns and uses string unit", {
+  expect_warning(
+    dmd_dose_optimise(
+      "metformin",
+      dose = "900 mg",
+      dose_unit = "g",
+      db = db,
+      preparation = "tablet|none|oral"
+    ),
+    regexp = "differs"
+  )
+})
+
+test_that("unparseable dose string gives informative error", {
+  expect_error(
+    dmd_dose_optimise("metformin", dose = "lots", db = db),
+    regexp = "could not be parsed"
+  )
+})
+
+# ── can_split parameter ───────────────────────────────────────────────────────
+
+test_that("can_split = FALSE adds 'no-pack-splitting' note for solid forms", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    can_split = FALSE
+  )
+  expect_true(all(grepl("no-pack-splitting", res$notes)))
+})
+
+test_that("can_split = TRUE does not add 'no-pack-splitting' note", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    can_split = TRUE
+  )
+  expect_false(any(grepl("no-pack-splitting", res$notes)))
+})
+
+test_that("can_split = FALSE: concentration preparations do not get no-pack-splitting note", {
+  # Vials / solutions are already whole-container; note should not appear.
+  res <- dmd_dose_optimise(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    can_split = FALSE
+  )
+  expect_false(any(grepl("no-pack-splitting", res$notes)))
+})
+
+test_that("can_split = FALSE returns valid cost_whole_pack_pence", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    can_split = FALSE
+  )
+  # Whole-pack cost must be >= pro-rata cost (you buy at least as many items).
+  expect_true(all(
+    is.na(res$cost_whole_pack_pence) |
+      res$cost_whole_pack_pence >= res$cost_prorata_pence
+  ))
+})
+
+test_that("can_split must be a single logical", {
+  expect_error(
+    dmd_dose_optimise(
+      "metformin",
+      dose = 500,
+      dose_unit = "mg",
+      db = db,
+      can_split = "yes"
+    ),
+    regexp = "single logical"
+  )
+})
+
+
 test_that("basic dose optimisation returns cheapest and min_items rows", {
   res <- dmd_dose_optimise(
     "metformin",
