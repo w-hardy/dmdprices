@@ -24,6 +24,7 @@ Imports:
     rlang,
     cli,
     tibble,
+    memoise,
     shiny,
     DT
 Suggests:

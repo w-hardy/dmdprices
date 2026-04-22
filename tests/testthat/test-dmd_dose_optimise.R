@@ -441,3 +441,101 @@ test_that("infusion group finds exact 900mg for rituximab", {
   expect_equal(ch$dose_delivered, 900)
   expect_equal(ch$over_delivery, 0)
 })
+
+# ── preparation substring / partial matching ──────────────────────────────────
+
+test_that("preparation = 'infusion' matches infusion groups (partial match)", {
+  res_full <- dmd_dose_optimise(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous"
+  )
+  res_partial <- dmd_dose_optimise(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "infusion"
+  )
+  # Partial should return only infusion groups, same as the exact key.
+  expect_equal(
+    unique(res_partial$preparation_group),
+    unique(res_full$preparation_group)
+  )
+  expect_false(any(grepl("injection", res_partial$preparation_group)))
+})
+
+test_that("preparation partial match is case-insensitive", {
+  res <- dmd_dose_optimise(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "INFUSION"
+  )
+  expect_true(nrow(res) > 0)
+  expect_true(all(grepl("infusion", res$preparation_group, ignore.case = TRUE)))
+})
+
+test_that("exact preparation key still works after substring-match change", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_true(nrow(res) > 0)
+  expect_equal(unique(res$preparation_group), "tablet|none|oral")
+})
+
+# ── Memoization ───────────────────────────────────────────────────────────────
+
+test_that("second call for the same drug is served from the memo cache", {
+  # Verify the cache is populated after calling once.
+  memoise::forget(.dmd_prepare_candidates_memo)
+  expect_false(
+    memoise::has_cache(.dmd_prepare_candidates_memo)(
+      query = "metformin",
+      db = db,
+      method = "partial",
+      max_dist = 3,
+      active_only = TRUE,
+      price = "basic_price"
+    )
+  )
+  dmd_dose_optimise(
+    "metformin",
+    dose = 500,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_true(
+    memoise::has_cache(.dmd_prepare_candidates_memo)(
+      query = "metformin",
+      db = db,
+      method = "partial",
+      max_dist = 3,
+      active_only = TRUE,
+      price = "basic_price"
+    )
+  )
+})
+
+test_that("memo cache is populated after the first call", {
+  memoise::forget(.dmd_prepare_candidates_memo)
+  dmd_dose_optimise("metformin", dose = 500, dose_unit = "mg", db = db)
+  expect_true(
+    memoise::has_cache(.dmd_prepare_candidates_memo)(
+      query = "metformin",
+      db = db,
+      method = "partial",
+      max_dist = 3,
+      active_only = TRUE,
+      price = "basic_price"
+    )
+  )
+})

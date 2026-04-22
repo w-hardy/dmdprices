@@ -1,3 +1,76 @@
+# ── Memoized candidate preparation ──────────────────────────────────────────
+
+# Performs all dose-independent work: price lookup, strength parsing,
+# preparation classification, and price-field resolution. The result is
+# memoized at session level so repeated calls for the same
+# (query, db, method, max_dist, active_only, price) combination are free.
+#
+# Returns the enriched tibble ready for DP, or NULL if no candidates found.
+.dmd_prepare_candidates <- function(
+  query,
+  db,
+  method,
+  max_dist,
+  active_only,
+  price
+) {
+  candidates <- dmd_price_lookup(
+    query = query,
+    db = db,
+    method = method,
+    max_dist = max_dist,
+    active_only = active_only
+  )
+  if (nrow(candidates) == 0) {
+    return(NULL)
+  }
+
+  parsed <- dmd_parse_strength(candidates$medicine)
+  prep <- .classify_preparation(parsed$tail)
+
+  enriched <- dplyr::bind_cols(candidates, parsed, prep)
+
+  # Per-item canonical dose: for concentration entries multiply by denominator
+  # volume and pack_size to recover total mass per container.
+  enriched$per_item_dose <- ifelse(
+    !is.na(enriched$denominator_unit),
+    enriched$strength_canonical *
+      enriched$denominator_value *
+      enriched$pack_size,
+    enriched$strength_canonical
+  )
+
+  # Resolve price field with per-row fallback.
+  alt_col <- setdiff(c("basic_price", "nhs_indicative_price"), price)
+  primary <- enriched[[price]]
+  alt <- enriched[[alt_col]]
+  price_used <- ifelse(!is.na(primary), primary, alt)
+  price_field <- ifelse(
+    !is.na(primary),
+    price,
+    ifelse(!is.na(alt), alt_col, NA_character_)
+  )
+  price_fallback <- is.na(primary) & !is.na(alt)
+
+  enriched$pack_price_pence <- price_used
+  enriched$price_field_used <- price_field
+  enriched$price_fallback <- price_fallback
+
+  is_concentration <- !is.na(enriched$denominator_unit)
+  enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
+  enriched$per_item_price_pence <- ifelse(
+    is_concentration,
+    enriched$pack_price_pence,
+    mapply(.per_item_price, enriched$pack_price_pence, enriched$pack_size)
+  )
+
+  enriched
+}
+
+# Session-level memoized version — free after the first call for any given
+# (query, db, method, max_dist, active_only, price) combination.
+.dmd_prepare_candidates_memo <- memoise::memoise(.dmd_prepare_candidates)
+
 #' Find the cheapest or minimum-item combination for a clinical dose
 #'
 #' Given a dose (e.g. 900 mg), searches the dm+d for products matching `query`
@@ -23,8 +96,13 @@
 #'   `"nhs_indicative_price"`. Falls back to the other column when the chosen
 #'   one is NA for an individual AMPP (a note is added).
 #' @param objective    `"both"` (default), `"cheapest"`, or `"min_items"`.
-#' @param preparation  Optional character — a preparation-group key (e.g.
-#'   `"tablet|none|oral"`) or label to filter groups before returning.
+#' @param preparation  Optional character — a case-insensitive plain substring
+#'   matched against `preparation_group` or `preparation_label` before
+#'   returning results. An exact key (e.g. `\"tablet|none|oral\"`) continues to
+#'   work, but partial strings such as `\"infusion\"` or `\"oral\"` are also
+#'   accepted and will match any group whose key or label contains that text.
+#'   Pipe characters in preparation keys are treated literally, not as regex
+#'   alternation.
 #' @param can_split    Logical. `TRUE` (default) assumes that individual items
 #'   (tablets, capsules) can be taken from a part-pack, as is normal in
 #'   hospital dispensing. `FALSE` requires whole packs to be dispensed, as
@@ -131,63 +209,18 @@ dmd_dose_optimise <- function(
     cli::cli_abort("Unsupported {.arg dose_unit}: {.val {dose_unit}}.")
   }
 
-  # Step 1: candidate AMPPs
-  candidates <- dmd_price_lookup(
+  # Retrieve (and cache) all dose-independent candidate data.
+  enriched <- .dmd_prepare_candidates_memo(
     query = query,
     db = db,
     method = method,
     max_dist = max_dist,
-    active_only = active_only
+    active_only = active_only,
+    price = price
   )
-  if (nrow(candidates) == 0) {
+  if (is.null(enriched)) {
     return(.empty_dose_result())
   }
-
-  # Step 2: parse strength + preparation
-  parsed <- dmd_parse_strength(candidates$medicine)
-  prep <- .classify_preparation(parsed$tail)
-
-  enriched <- dplyr::bind_cols(candidates, parsed, prep)
-
-  # Determine per-item canonical dose — for concentration entries, multiply by
-  # denominator_value (the container volume, e.g. 11.7 ml) and pack_size to
-  # recover total mg per item. Without denominator_value, strength_canonical
-  # is a repeating decimal (e.g. 1400/11.7 = 119.658...) that inflates the
-  # integer scale factor and causes integer overflow downstream.
-  enriched$per_item_dose <- ifelse(
-    !is.na(enriched$denominator_unit),
-    enriched$strength_canonical *
-      enriched$denominator_value *
-      enriched$pack_size,
-    enriched$strength_canonical
-  )
-
-  # Select the price field + fallback per-row.
-  alt_col <- setdiff(c("basic_price", "nhs_indicative_price"), price)
-  primary <- enriched[[price]]
-  alt <- enriched[[alt_col]]
-  price_used <- ifelse(!is.na(primary), primary, alt)
-  price_field <- ifelse(
-    !is.na(primary),
-    price,
-    ifelse(!is.na(alt), alt_col, NA_character_)
-  )
-  price_fallback <- is.na(primary) & !is.na(alt)
-
-  enriched$pack_price_pence <- price_used
-  enriched$price_field_used <- price_field
-  enriched$price_fallback <- price_fallback
-  # For tablets/capsules the "item" is one tablet, priced pro-rata, and one
-  # pack contains `pack_size` items. For concentration-based preparations
-  # (liquids, inhalers) the "item" is the whole container: its price is the
-  # whole pack price and one pack contains 1 item.
-  is_concentration <- !is.na(enriched$denominator_unit)
-  enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
-  enriched$per_item_price_pence <- ifelse(
-    is_concentration,
-    enriched$pack_price_pence,
-    mapply(.per_item_price, enriched$pack_price_pence, enriched$pack_size)
-  )
 
   # Drop rows we cannot optimise (no strength, no preparation, or mismatched
   # canonical unit vs requested dose).
@@ -215,12 +248,25 @@ dmd_dose_optimise <- function(
     return(.empty_dose_result())
   }
 
-  # Filter to requested preparation if supplied.
+  # Filter to requested preparation if supplied. Accepts either an exact key
+  # (e.g. "solution for infusion|none|intravenous") or any case-insensitive
+  # plain substring (e.g. "infusion") matched against preparation_group or
+  # preparation_label. tolower() on both sides gives case-insensitivity while
+  # fixed = TRUE ensures pipe characters in preparation keys are treated
+  # literally, not as regex alternation.
   if (!is.null(preparation)) {
     enriched <- dplyr::filter(
       enriched,
-      .data$preparation_group == preparation |
-        .data$preparation_label == preparation
+      grepl(
+        tolower(preparation),
+        tolower(.data$preparation_group),
+        fixed = TRUE
+      ) |
+        grepl(
+          tolower(preparation),
+          tolower(.data$preparation_label),
+          fixed = TRUE
+        )
     )
     if (nrow(enriched) == 0) {
       cli::cli_warn(

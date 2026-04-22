@@ -40,8 +40,13 @@ one is NA for an individual AMPP (a note is added).}
 
 \item{objective}{\code{"both"} (default), \code{"cheapest"}, or \code{"min_items"}.}
 
-\item{preparation}{Optional character — a preparation-group key (e.g.
-\code{"tablet|none|oral"}) or label to filter groups before returning.}
+\item{preparation}{Optional character — a case-insensitive plain substring
+matched against \code{preparation_group} or \code{preparation_label} before
+returning results. An exact key (e.g. \verb{\\"tablet|none|oral\\"}) continues to
+work, but partial strings such as \verb{\\"infusion\\"} or \verb{\\"oral\\"} are also
+accepted and will match any group whose key or label contains that text.
+Pipe characters in preparation keys are treated literally, not as regex
+alternation.}
 
 \item{can_split}{Logical. \code{TRUE} (default) assumes that individual items
 (tablets, capsules) can be taken from a part-pack, as is normal in
