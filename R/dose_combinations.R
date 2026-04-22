@@ -82,6 +82,25 @@
   )
 }
 
+# ── Pack-level coin builder ──────────────────────────────────────────────────
+
+# Adds a `pack_dose` column to group_df: the total canonical dose delivered
+# by purchasing one whole pack of each AMPP row.
+#
+# For solid-form rows (no denominator_unit): pack_dose = per_item_dose × pack_size
+# (e.g. 500 mg tablet × 28 = 14,000 mg per pack).
+# For concentration rows (denominator_unit present): per_item_dose already
+# encodes the full container dose, so pack_dose = per_item_dose unchanged.
+.build_pack_df <- function(group_df) {
+  is_concentration <- !is.na(group_df$denominator_unit)
+  group_df$pack_dose <- ifelse(
+    is_concentration,
+    group_df$per_item_dose,
+    group_df$per_item_dose * group_df$pack_size
+  )
+  group_df
+}
+
 # ── Dose DP ───────────────────────────────────────────────────────────────────
 
 # Runs an unbounded-knapsack DP over integer per-item doses.
@@ -251,6 +270,53 @@
   preparation_label,
   can_split = TRUE
 ) {
+  # Detect whether every row in this group is concentration-based.
+  # Concentration items (liquids, inhalers, vials) are inherently unsplittable
+  # because one "item" already equals one whole container.
+  all_concentration <- all(!is.na(group_df$denominator_unit))
+
+  # Use pack-level DP when whole packs must be dispensed AND the preparation
+  # is a solid form. Concentration preparations are always whole-container
+  # regardless of can_split, so they take the standard path.
+  use_pack_dp <- !can_split && !all_concentration
+
+  if (use_pack_dp) {
+    .optimise_group_packs(
+      group_df = group_df,
+      dose_canonical = dose_canonical,
+      dose_unit_canon = dose_unit_canon,
+      objective = objective,
+      medicine_root = medicine_root,
+      preparation_group = preparation_group,
+      preparation_label = preparation_label
+    )
+  } else {
+    .optimise_group_items(
+      group_df = group_df,
+      dose_canonical = dose_canonical,
+      dose_unit_canon = dose_unit_canon,
+      objective = objective,
+      medicine_root = medicine_root,
+      preparation_group = preparation_group,
+      preparation_label = preparation_label
+    )
+  }
+}
+
+# ── Item-level optimisation (can_split = TRUE or concentration) ───────────────
+
+# Runs the DP with per-item (tablet/container) coins. One DP unit = one tablet
+# or one concentration container. Costs are pro-rata (pack_price / pack_size)
+# for solid forms; whole-container price for concentration forms.
+.optimise_group_items <- function(
+  group_df,
+  dose_canonical,
+  dose_unit_canon,
+  objective,
+  medicine_root,
+  preparation_group,
+  preparation_label
+) {
   # The DP operates on per-item canonical doses: for tablets/capsules this
   # is the strength itself; for liquids it is concentration × pack_size so
   # one "item" corresponds to one container.
@@ -259,18 +325,6 @@
   if (length(strengths) == 0) {
     return(NULL)
   }
-
-  # Detect whether every row in this group is concentration-based.
-  # Concentration items (liquids, inhalers, vials) are inherently unsplittable
-  # because one "item" already equals one whole container.
-  all_concentration <- all(!is.na(group_df$denominator_unit))
-
-  # When can_split = FALSE we still run the DP with per-item (pro-rata) prices,
-  # because the DP cannot easily accommodate pack-size constraints. The
-  # reported *cost* is then taken from the whole-pack totals, which is the
-  # binding cost for community dispensing. For concentration-based preparations
-  # the two costs are identical (items_per_pack == 1), so this distinction
-  # only matters for solid-form preparations.
 
   # Cheapest per-item price per per_item_dose level.
   cheapest_per_strength <- vapply(
@@ -292,12 +346,9 @@
   if (dose_int <= 0) {
     return(NULL)
   }
-  # Searching up to `max_strength` beyond the target guarantees we find a
-  # reachable t whenever one exists (the DP is unbounded knapsack).
   max_strength <- max(strengths_int)
   max_over <- max_strength
 
-  # Hard cap for safety.
   if ((dose_int + max_over + 1L) > 5e6) {
     cli::cli_warn(
       "Dose DP table for group {.val {preparation_label}} would exceed 5,000,000 cells; skipping."
@@ -316,8 +367,6 @@
     return(NULL)
   }
 
-  # Build the per-strength combination, using the cheapest AMPP row per
-  # strength for pro-rata and the cheapest whole-pack AMPP for whole-pack.
   combo_rows <- list()
   cost_prorata <- 0
   cost_whole <- 0
@@ -331,10 +380,8 @@
     s <- strengths[i]
     rows <- group_df[group_df$per_item_dose == s, , drop = FALSE]
 
-    # Pro-rata chosen AMPP: cheapest per-item.
     priced <- rows[!is.na(rows$per_item_price_pence), , drop = FALSE]
     if (nrow(priced) == 0) {
-      # Unpriced — record with NA costs.
       chosen <- rows[1, , drop = FALSE]
       subtotal_prorata <- NA_real_
     } else {
@@ -342,7 +389,6 @@
       subtotal_prorata <- chosen$per_item_price_pence * counts[i]
     }
 
-    # Whole-pack: pick cheapest AMPP for this strength (from priced rows).
     wp_rows <- if (nrow(priced) > 0) priced else rows
     wp <- .whole_pack_cheapest(wp_rows, counts[i])
     if (is.na(wp$cost)) {
@@ -393,14 +439,210 @@
   if (price_fallback) {
     notes <- c(notes, "price-field-fallback")
   }
-  if (!can_split && !all_concentration) {
-    notes <- c(notes, "no-pack-splitting")
-  }
   if (nrow(combination) > 0) {
     notes <- c(notes, "cheapest-AMPP-per-strength")
   }
 
-  total_items <- sum(combination$count)
+  .assemble_result(
+    combination = combination,
+    dose_delivered = dose_delivered,
+    dose_canonical = dose_canonical,
+    dose_unit_canon = dose_unit_canon,
+    scale = scale,
+    cost_prorata = cost_prorata,
+    cost_whole = cost_whole,
+    total_items = as.integer(sum(combination$count)),
+    notes = notes,
+    medicine_root = medicine_root,
+    preparation_group = preparation_group,
+    preparation_label = preparation_label,
+    objective = objective,
+    group_df = group_df
+  )
+}
+
+# ── Pack-level optimisation (can_split = FALSE, solid forms) ──────────────────
+
+# Runs the DP with whole-pack coins. One DP unit = one pack of a given AMPP.
+# Coin dose  = per_item_dose × pack_size  (e.g. 500 mg × 28 = 14,000 mg)
+# Coin cost  = pack_price_pence
+# total_items in the result = number of packs dispensed.
+.optimise_group_packs <- function(
+  group_df,
+  dose_canonical,
+  dose_unit_canon,
+  objective,
+  medicine_root,
+  preparation_group,
+  preparation_label
+) {
+  pack_df <- .build_pack_df(group_df)
+
+  # One coin per unique pack_dose × AMPP combination; we keep all rows and
+  # select cheapest per pack_dose for the DP price vector.
+  pack_doses <- sort(unique(pack_df$pack_dose[
+    !is.na(pack_df$pack_dose) & pack_df$pack_dose > 0
+  ]))
+  if (length(pack_doses) == 0) {
+    return(NULL)
+  }
+
+  cheapest_per_pack_dose <- vapply(
+    pack_doses,
+    function(d) {
+      rows <- pack_df[
+        !is.na(pack_df$pack_dose) &
+          pack_df$pack_dose == d &
+          !is.na(pack_df$pack_price_pence),
+        ,
+        drop = FALSE
+      ]
+      if (nrow(rows) == 0) {
+        return(NA_real_)
+      }
+      min(rows$pack_price_pence, na.rm = TRUE)
+    },
+    numeric(1)
+  )
+
+  scale <- .pick_scale_safe(pack_doses, dose_canonical)
+  strengths_int <- as.integer(round(pack_doses * scale))
+  dose_int <- as.integer(round(dose_canonical * scale))
+
+  if (dose_int <= 0) {
+    return(NULL)
+  }
+  max_strength <- max(strengths_int)
+  max_over <- max_strength
+
+  if ((dose_int + max_over + 1L) > 5e6) {
+    cli::cli_warn(
+      "Dose DP table for group {.val {preparation_label}} would exceed 5,000,000 cells; skipping."
+    )
+    return(NULL)
+  }
+
+  dp <- .dose_dp(strengths_int, cheapest_per_pack_dose, dose_int, max_over)
+  best <- .best_target(dp, dose_int, max_over, objective)
+  if (is.null(best)) {
+    return(NULL)
+  }
+
+  counts <- .reconstruct(best$back, strengths_int, best$t)
+  if (is.null(counts)) {
+    return(NULL)
+  }
+
+  combo_rows <- list()
+  cost_whole <- 0
+  price_fallback <- FALSE
+  notes <- character()
+
+  for (i in seq_along(pack_doses)) {
+    if (counts[i] == 0L) {
+      next
+    }
+    d <- pack_doses[i]
+    rows <- pack_df[
+      !is.na(pack_df$pack_dose) & pack_df$pack_dose == d,
+      ,
+      drop = FALSE
+    ]
+
+    # Cheapest pack for this pack_dose.
+    priced <- rows[!is.na(rows$pack_price_pence), , drop = FALSE]
+    if (nrow(priced) == 0) {
+      chosen <- rows[1, , drop = FALSE]
+      subtotal_whole <- NA_real_
+    } else {
+      chosen <- priced[which.min(priced$pack_price_pence), , drop = FALSE]
+      subtotal_whole <- chosen$pack_price_pence * counts[i]
+    }
+
+    if (isTRUE(chosen$price_fallback)) {
+      price_fallback <- TRUE
+    }
+
+    packs_to_buy <- as.integer(counts[i])
+
+    combo_rows[[length(combo_rows) + 1L]] <- tibble::tibble(
+      medicine = chosen$medicine,
+      ampp_name = chosen$ampp_name,
+      vmpp_snomed_code = chosen$vmpp_snomed_code,
+      ampp_snomed_code = chosen$ampp_snomed_code,
+      strength_canonical = chosen$strength_canonical,
+      strength_unit = chosen$strength_unit_canon,
+      per_item_dose = chosen$per_item_dose,
+      per_item_dose_unit = dose_unit_canon,
+      count = packs_to_buy, # packs bought
+      pack_size = chosen$pack_size,
+      packs_to_buy = packs_to_buy,
+      pack_price_pence = chosen$pack_price_pence,
+      per_item_price_pence = chosen$per_item_price_pence,
+      # In pack mode pro-rata cost is meaningless; set equal to whole-pack.
+      subtotal_prorata_pence = subtotal_whole,
+      subtotal_whole_pack_pence = subtotal_whole
+    )
+
+    cost_whole <- cost_whole +
+      (if (is.na(subtotal_whole)) 0 else subtotal_whole)
+  }
+
+  combination <- dplyr::bind_rows(combo_rows)
+  dose_delivered <- best$t / scale
+  over_delivery <- dose_delivered - dose_canonical
+
+  if (over_delivery > 0) {
+    notes <- c(notes, "over-delivery")
+  }
+  if (price_fallback) {
+    notes <- c(notes, "price-field-fallback")
+  }
+  notes <- c(notes, "no-pack-splitting")
+  if (nrow(combination) > 0) {
+    notes <- c(notes, "cheapest-pack-per-dose")
+  }
+
+  # total_items = packs dispensed (the discrete units in a community setting).
+  total_packs <- as.integer(sum(combination$packs_to_buy, na.rm = TRUE))
+
+  .assemble_result(
+    combination = combination,
+    dose_delivered = dose_delivered,
+    dose_canonical = dose_canonical,
+    dose_unit_canon = dose_unit_canon,
+    scale = scale,
+    cost_prorata = cost_whole, # pack mode: prorata == whole
+    cost_whole = cost_whole,
+    total_items = total_packs,
+    notes = notes,
+    medicine_root = medicine_root,
+    preparation_group = preparation_group,
+    preparation_label = preparation_label,
+    objective = objective,
+    group_df = group_df
+  )
+}
+
+# ── Shared result assembler ───────────────────────────────────────────────────
+
+.assemble_result <- function(
+  combination,
+  dose_delivered,
+  dose_canonical,
+  dose_unit_canon,
+  scale, # kept for documentation; dose_delivered already converted
+  cost_prorata,
+  cost_whole,
+  total_items,
+  notes,
+  medicine_root,
+  preparation_group,
+  preparation_label,
+  objective,
+  group_df
+) {
+  over_delivery <- dose_delivered - dose_canonical
   price_field_used <- unique(group_df$price_field_used)
   price_field_used <- price_field_used[!is.na(price_field_used)][1]
 

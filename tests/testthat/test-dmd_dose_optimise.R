@@ -122,6 +122,84 @@ test_that("can_split = FALSE returns valid cost_whole_pack_pence", {
   ))
 })
 
+# ── Pack-level DP regression (the old limitation) ────────────────────────────
+
+test_that("can_split = FALSE uses pack-level DP and picks cheapest whole pack", {
+  # 100mg: 100-per-pack at 150p  (1.5p pro-rata, but 1 pack = 150p)
+  # 500mg:   1-per-pack at  50p  (50p pro-rata,  and 1 pack =  50p)
+  # For 400mg, item-level cheapest (can_split=TRUE) picks 4×100mg (6p pro-rata).
+  # Pack-level cheapest (can_split=FALSE) should pick 1×500mg pack (50p), NOT
+  # 1×100mg pack (150p) as the old post-hoc whole-pack calculation would give.
+  m_lim <- tibble::tibble(
+    medicine = c("Metformin 100mg tablets", "Metformin 500mg tablets"),
+    pack_size = c(100L, 1L),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VP1", "VP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(150L, 50L),
+    nhs_indicative_price = c(150L, 50L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Metformin 100mg 100 tablet", "Metformin 500mg 1 tablet"),
+    ampp_snomed_code = c("A1", "A2")
+  )
+  db_lim <- structure(
+    list(master = m_lim, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = "400 mg",
+    db = db_lim,
+    preparation = "tablet|none|oral",
+    objective = "cheapest",
+    can_split = FALSE
+  )
+  # Pack-level DP picks 1×500mg pack (500mg, 50p), not 1×100mg pack (150p).
+  expect_equal(res$total_items, 1L)
+  expect_equal(res$cost_whole_pack_pence, 50)
+  expect_equal(res$dose_delivered, 500)
+  expect_true(grepl("no-pack-splitting", res$notes))
+  # Combination AMPP should be the 500mg tablet.
+  expect_true(grepl("500mg", res$combination[[1]]$ampp_name))
+})
+
+test_that("can_split = FALSE min_items counts packs, not tablets", {
+  # Using the same limiting db: min_items objective should return 1 pack (500mg)
+  # rather than 4 tablets (4×100mg) for a 400mg dose.
+  m_lim <- tibble::tibble(
+    medicine = c("Metformin 100mg tablets", "Metformin 500mg tablets"),
+    pack_size = c(100L, 1L),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VP1", "VP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(150L, 50L),
+    nhs_indicative_price = c(150L, 50L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Metformin 100mg 100 tablet", "Metformin 500mg 1 tablet"),
+    ampp_snomed_code = c("A1", "A2")
+  )
+  db_lim <- structure(
+    list(master = m_lim, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = "400 mg",
+    db = db_lim,
+    preparation = "tablet|none|oral",
+    objective = "min_items",
+    can_split = FALSE
+  )
+  # Both available packs overdeliver; 1 pack of 500mg is minimum.
+  expect_equal(res$total_items, 1L)
+})
+
 test_that("can_split must be a single logical", {
   expect_error(
     dmd_dose_optimise(
