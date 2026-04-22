@@ -2,7 +2,10 @@ db <- .fake_dose_db()
 
 test_that("basic dose optimisation returns cheapest and min_items rows", {
   res <- dmd_dose_optimise(
-    "metformin", dose = 1500, dose_unit = "mg", db = db,
+    "metformin",
+    dose = 1500,
+    dose_unit = "mg",
+    db = db,
     preparation = "tablet|none|oral"
   )
   expect_s3_class(res, "tbl_df")
@@ -13,23 +16,40 @@ test_that("basic dose optimisation returns cheapest and min_items rows", {
 
 test_that("combination list-column identifies the AMPPs chosen", {
   res <- dmd_dose_optimise(
-    "metformin", dose = 1500, dose_unit = "mg", db = db,
-    preparation = "tablet|none|oral", objective = "min_items"
+    "metformin",
+    dose = 1500,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "min_items"
   )
   combo <- res$combination[[1]]
   expect_s3_class(combo, "tbl_df")
-  expect_true(all(c("medicine", "ampp_name", "vmpp_snomed_code",
-                    "ampp_snomed_code", "count",
-                    "pack_size", "packs_to_buy",
-                    "pack_price_pence", "per_item_price_pence",
-                    "subtotal_prorata_pence",
-                    "subtotal_whole_pack_pence") %in% names(combo)))
+  expect_true(all(
+    c(
+      "medicine",
+      "ampp_name",
+      "vmpp_snomed_code",
+      "ampp_snomed_code",
+      "count",
+      "pack_size",
+      "packs_to_buy",
+      "pack_price_pence",
+      "per_item_price_pence",
+      "subtotal_prorata_pence",
+      "subtotal_whole_pack_pence"
+    ) %in%
+      names(combo)
+  ))
   expect_true(all(combo$count > 0))
 })
 
 test_that("cheapest and min_items can differ for a 900mg metformin dose", {
   res <- dmd_dose_optimise(
-    "metformin", dose = 900, dose_unit = "mg", db = db,
+    "metformin",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
     preparation = "tablet|none|oral"
   )
   # min_items can over-deliver (2 × 500mg = 1000mg); cheapest will use 100mg
@@ -52,7 +72,10 @@ test_that("preparations are segregated (IR vs MR)", {
 
 test_that("morphine in mg units optimises across oral and injection groups", {
   res <- dmd_dose_optimise(
-    "morphine", dose = 20, dose_unit = "mg", db = db
+    "morphine",
+    dose = 20,
+    dose_unit = "mg",
+    db = db
   )
   expect_s3_class(res, "tbl_df")
   groups <- unique(res$preparation_group)
@@ -64,8 +87,10 @@ test_that("morphine in mg units optimises across oral and injection groups", {
 test_that("microgram dose exercises scaling", {
   # Fake db: a single microgram-scale entry. Build on the fly.
   m <- tibble::tibble(
-    medicine = c("Levothyroxine 25microgram tablets",
-                 "Levothyroxine 100microgram tablets"),
+    medicine = c(
+      "Levothyroxine 25microgram tablets",
+      "Levothyroxine 100microgram tablets"
+    ),
     pack_size = c(28, 28),
     unit = c("tablet", "tablet"),
     vmp_snomed_code = c("L1", "L2"),
@@ -75,13 +100,19 @@ test_that("microgram dose exercises scaling", {
     nhs_indicative_price = c(160L, 210L),
     price_basis = rep("NHS Indicative Price", 2),
     price_date = rep("2025-08-08", 2),
-    ampp_name = c("Levothyroxine 25mcg (Brand A) 28 tablet",
-                  "Levothyroxine 100mcg (Brand A) 28 tablet"),
+    ampp_name = c(
+      "Levothyroxine 25mcg (Brand A) 28 tablet",
+      "Levothyroxine 100mcg (Brand A) 28 tablet"
+    ),
     ampp_snomed_code = c("LA1", "LA2")
   )
   ldb <- structure(list(master = m, loaded_at = Sys.time()), class = "dmd_db")
-  res <- dmd_dose_optimise("levothyroxine", dose = 125,
-                           dose_unit = "microgram", db = ldb)
+  res <- dmd_dose_optimise(
+    "levothyroxine",
+    dose = 125,
+    dose_unit = "microgram",
+    db = ldb
+  )
   expect_s3_class(res, "tbl_df")
   expect_true(nrow(res) >= 1)
   # 125 micrograms = 25 + 100 mcg, so dose_delivered should equal 125 in
@@ -92,20 +123,28 @@ test_that("microgram dose exercises scaling", {
 test_that("price fallback is flagged when basic_price is NA", {
   # Metformin 100mg row has NA basic_price but non-NA nhs_indicative_price.
   res <- dmd_dose_optimise(
-    "metformin", dose = 100, dose_unit = "mg", db = db,
+    "metformin",
+    dose = 100,
+    dose_unit = "mg",
+    db = db,
     preparation = "tablet|none|oral"
   )
   # Should pick the 100mg tablet for min_items; price_fallback in notes.
   mi <- res[res$objective == "min_items", , drop = FALSE]
-  expect_true(any(grepl("price-field-fallback|over-delivery|cheapest",
-                        mi$notes)))
+  expect_true(any(grepl(
+    "price-field-fallback|over-delivery|cheapest",
+    mi$notes
+  )))
 })
 
 test_that("over-delivery is recorded in notes when dose is unreachable exactly", {
   # With only 500mg and 1000mg IR metformin, 750mg cannot be reached exactly.
   # Keep only IR strengths by filtering via preparation.
   res <- dmd_dose_optimise(
-    "metformin", dose = 750, dose_unit = "mg", db = db,
+    "metformin",
+    dose = 750,
+    dose_unit = "mg",
+    db = db,
     preparation = "tablet|none|oral"
   )
   # 750 with 100mg available is reachable exactly (1×500 + 2×100 + 1×50? no,
@@ -118,8 +157,73 @@ test_that("over-delivery is recorded in notes when dose is unreachable exactly",
 
 test_that("print method for combination runs without error", {
   res <- dmd_dose_optimise(
-    "metformin", dose = 1500, dose_unit = "mg", db = db,
-    preparation = "tablet|none|oral", objective = "min_items"
+    "metformin",
+    dose = 1500,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "min_items"
   )
   expect_output(print(res$combination[[1]]), "Metformin")
+})
+
+# ── Regression: concentration vials with repeating-decimal strength ───────────
+# Rituximab 1400mg/11.7ml: strength_canonical = 119.658... mg/ml (repeating).
+# Before the per_item_dose fix, this caused .pick_scale() to inflate the scale
+# to 1e7, overflowing as.integer() for the 900mg dose and crashing with
+# "missing value where TRUE/FALSE needed".
+
+test_that("concentration vial per_item_dose is total mg per vial, not mg/ml", {
+  res <- dmd_dose_optimise(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for injection|none|injection"
+  )
+  combo <- res$combination[[1]]
+  # The 1400mg/11.7ml vial delivers 1400mg per vial, not 119.658... mg
+  expect_equal(unique(res$dose_delivered), 1400)
+  expect_equal(combo$count, 1L)
+})
+
+test_that("concentration vial group does not error or warn about integer overflow", {
+  # Before the fix: Warning "NAs introduced by coercion to integer range" +
+  # Error "missing value where TRUE/FALSE needed"
+  expect_no_error(
+    dmd_dose_optimise("rituximab", dose = 900, dose_unit = "mg", db = db)
+  )
+  # expect_no_warning() takes no regexp argument; we assert no error is the
+  # primary check — the integer-overflow warning is what previously crashed.
+  expect_no_warning(
+    dmd_dose_optimise("rituximab", dose = 900, dose_unit = "mg", db = db)
+  )
+})
+
+test_that("both injection and infusion groups are returned for rituximab 900mg", {
+  res <- dmd_dose_optimise(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db
+  )
+  groups <- unique(res$preparation_group)
+  expect_true(any(grepl("solution for injection", groups)))
+  expect_true(any(grepl("solution for infusion", groups)))
+  # cheapest + min_items for each group = 4 rows
+  expect_equal(nrow(res), 4L)
+})
+
+test_that("infusion group finds exact 900mg for rituximab", {
+  # Fake db has 100mg/10ml and 500mg/50ml infusion vials; 900mg = 4×100 + 1×500
+  res <- dmd_dose_optimise(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous"
+  )
+  ch <- res[res$objective == "cheapest", ]
+  expect_equal(ch$dose_delivered, 900)
+  expect_equal(ch$over_delivery, 0)
 })

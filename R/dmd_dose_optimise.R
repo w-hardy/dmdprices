@@ -46,12 +46,12 @@
 dmd_dose_optimise <- function(
   query,
   dose,
-  dose_unit   = c("mg", "microgram", "mcg", "g", "ml", "unit"),
-  db          = dmdprices::dmd_master,
-  method      = c("partial", "exact", "fuzzy"),
-  max_dist    = 3,
-  price       = c("basic_price", "nhs_indicative_price"),
-  objective   = c("both", "cheapest", "min_items"),
+  dose_unit = c("mg", "microgram", "mcg", "g", "ml", "unit"),
+  db = dmdprices::dmd_master,
+  method = c("partial", "exact", "fuzzy"),
+  max_dist = 3,
+  price = c("basic_price", "nhs_indicative_price"),
+  objective = c("both", "cheapest", "min_items"),
   preparation = NULL,
   active_only = TRUE
 ) {
@@ -59,15 +59,15 @@ dmd_dose_optimise <- function(
     cli::cli_abort("{.arg dose} must be a single positive numeric value.")
   }
   dose_unit <- match.arg(dose_unit)
-  method    <- match.arg(method)
-  price     <- match.arg(price)
+  method <- match.arg(method)
+  price <- match.arg(price)
   objective <- match.arg(objective)
 
   objectives <- switch(
     objective,
-    both       = c("cheapest", "min_items"),
-    cheapest   = "cheapest",
-    min_items  = "min_items"
+    both = c("cheapest", "min_items"),
+    cheapest = "cheapest",
+    min_items = "min_items"
   )
 
   # Canonicalise requested dose
@@ -78,10 +78,10 @@ dmd_dose_optimise <- function(
 
   # Step 1: candidate AMPPs
   candidates <- dmd_price_lookup(
-    query      = query,
-    db         = db,
-    method     = method,
-    max_dist   = max_dist,
+    query = query,
+    db = db,
+    method = method,
+    max_dist = max_dist,
     active_only = active_only
   )
   if (nrow(candidates) == 0) {
@@ -90,29 +90,38 @@ dmd_dose_optimise <- function(
 
   # Step 2: parse strength + preparation
   parsed <- dmd_parse_strength(candidates$medicine)
-  prep   <- .classify_preparation(parsed$tail)
+  prep <- .classify_preparation(parsed$tail)
 
   enriched <- dplyr::bind_cols(candidates, parsed, prep)
 
-  # Determine per-item canonical dose — for concentration entries we multiply
-  # by pack_size (one container = one item).
+  # Determine per-item canonical dose — for concentration entries, multiply by
+  # denominator_value (the container volume, e.g. 11.7 ml) and pack_size to
+  # recover total mg per item. Without denominator_value, strength_canonical
+  # is a repeating decimal (e.g. 1400/11.7 = 119.658...) that inflates the
+  # integer scale factor and causes integer overflow downstream.
   enriched$per_item_dose <- ifelse(
     !is.na(enriched$denominator_unit),
-    enriched$strength_canonical * enriched$pack_size,
+    enriched$strength_canonical *
+      enriched$denominator_value *
+      enriched$pack_size,
     enriched$strength_canonical
   )
 
   # Select the price field + fallback per-row.
   alt_col <- setdiff(c("basic_price", "nhs_indicative_price"), price)
   primary <- enriched[[price]]
-  alt     <- enriched[[alt_col]]
-  price_used     <- ifelse(!is.na(primary), primary, alt)
-  price_field    <- ifelse(!is.na(primary), price, ifelse(!is.na(alt), alt_col, NA_character_))
+  alt <- enriched[[alt_col]]
+  price_used <- ifelse(!is.na(primary), primary, alt)
+  price_field <- ifelse(
+    !is.na(primary),
+    price,
+    ifelse(!is.na(alt), alt_col, NA_character_)
+  )
   price_fallback <- is.na(primary) & !is.na(alt)
 
-  enriched$pack_price_pence     <- price_used
-  enriched$price_field_used     <- price_field
-  enriched$price_fallback       <- price_fallback
+  enriched$pack_price_pence <- price_used
+  enriched$price_field_used <- price_field
+  enriched$price_fallback <- price_fallback
   # For tablets/capsules the "item" is one tablet, priced pro-rata, and one
   # pack contains `pack_size` items. For concentration-based preparations
   # (liquids, inhalers) the "item" is the whole container: its price is the
@@ -159,7 +168,9 @@ dmd_dose_optimise <- function(
         .data$preparation_label == preparation
     )
     if (nrow(enriched) == 0) {
-      cli::cli_warn("No candidates remain after filtering to preparation {.val {preparation}}.")
+      cli::cli_warn(
+        "No candidates remain after filtering to preparation {.val {preparation}}."
+      )
       return(.empty_dose_result())
     }
   }
@@ -170,7 +181,10 @@ dmd_dose_optimise <- function(
   # Group by preparation_group alone. The per-row mass-unit has already been
   # checked to match the requested dose unit, so concentration and mass rows
   # within the same preparation are directly comparable.
-  groups <- unique(enriched[, c("preparation_group", "preparation_label"), drop = FALSE])
+  groups <- unique(enriched[,
+    c("preparation_group", "preparation_label"),
+    drop = FALSE
+  ])
 
   out <- list()
   for (g in seq_len(nrow(groups))) {
@@ -181,11 +195,11 @@ dmd_dose_optimise <- function(
     ]
     for (obj in objectives) {
       row <- .optimise_group(
-        group_df          = sub,
-        dose_canonical    = dose_canon$value,
-        dose_unit_canon   = dose_canon$unit,
-        objective         = obj,
-        medicine_root     = medicine_root,
+        group_df = sub,
+        dose_canonical = dose_canon$value,
+        dose_unit_canon = dose_canon$unit,
+        objective = obj,
+        medicine_root = medicine_root,
         preparation_group = groups$preparation_group[g],
         preparation_label = groups$preparation_label[g]
       )
@@ -202,39 +216,41 @@ dmd_dose_optimise <- function(
   result <- dplyr::bind_rows(out)
   conv <- .canonicalise_unit(1, dose_unit)
   back_factor <- if (is.na(conv$value) || conv$value == 0) 1 else 1 / conv$value
-  result$dose_requested      <- dose
-  result$dose_unit           <- dose_unit
-  result$dose_delivered      <- result$dose_delivered * back_factor
+  result$dose_requested <- dose
+  result$dose_unit <- dose_unit
+  result$dose_delivered <- result$dose_delivered * back_factor
   result$dose_delivered_unit <- dose_unit
-  result$over_delivery       <- result$over_delivery * back_factor
+  result$over_delivery <- result$over_delivery * back_factor
   result
 }
 
 # Empty result scaffold with the declared columns.
 .empty_dose_result <- function() {
   tibble::tibble(
-    medicine_root         = character(),
-    preparation_group     = character(),
-    preparation_label     = character(),
-    objective             = character(),
-    dose_requested        = numeric(),
-    dose_unit             = character(),
-    dose_delivered        = numeric(),
-    dose_delivered_unit   = character(),
-    over_delivery         = numeric(),
-    total_items           = integer(),
-    cost_prorata_pence    = numeric(),
+    medicine_root = character(),
+    preparation_group = character(),
+    preparation_label = character(),
+    objective = character(),
+    dose_requested = numeric(),
+    dose_unit = character(),
+    dose_delivered = numeric(),
+    dose_delivered_unit = character(),
+    over_delivery = numeric(),
+    total_items = integer(),
+    cost_prorata_pence = numeric(),
     cost_whole_pack_pence = numeric(),
-    price_field_used      = character(),
-    combination           = list(),
-    notes                 = character()
+    price_field_used = character(),
+    combination = list(),
+    notes = character()
   )
 }
 
 # Pick a shared prefix across drug_stem values, falling back to the modal value.
 .medicine_root <- function(stems) {
   stems <- stems[!is.na(stems) & nzchar(stems)]
-  if (length(stems) == 0) return(NA_character_)
+  if (length(stems) == 0) {
+    return(NA_character_)
+  }
   tab <- sort(table(stems), decreasing = TRUE)
   names(tab)[1]
 }
@@ -245,9 +261,13 @@ print.dmd_dose_combination <- function(x, ...) {
     cat("<dmd_dose_combination: empty>\n")
     return(invisible(x))
   }
-  lines <- vapply(seq_len(nrow(x)), function(i) {
-    sprintf("  %d \u00d7 %s", x$count[i], x$ampp_name[i])
-  }, character(1))
+  lines <- vapply(
+    seq_len(nrow(x)),
+    function(i) {
+      sprintf("  %d \u00d7 %s", x$count[i], x$ampp_name[i])
+    },
+    character(1)
+  )
   cat("<dmd_dose_combination>\n")
   cat(paste(lines, collapse = "\n"), "\n", sep = "")
   invisible(x)

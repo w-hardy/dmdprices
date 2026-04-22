@@ -3,13 +3,42 @@
 
 # ── Integer scaling ───────────────────────────────────────────────────────────
 
+# Safe wrapper around .pick_scale() that applies two additional caps so that
+# dose_canonical * s never overflows as.integer() and stays within the DP
+# table hard cap (dp_cap cells).  Without this, a repeating-decimal strength
+# (e.g. 1400 mg / 11.7 ml = 119.658...) can push the scale to 1e7, causing
+# 900 * 1e7 = 9e9 > .Machine$integer.max, which coerces to NA_integer_ and
+# triggers "missing value where TRUE/FALSE needed" in .optimise_group().
+
+.pick_scale_safe <- function(
+  strengths,
+  dose_canonical,
+  max_scale = 1e6,
+  dp_cap = 5e6
+) {
+  s <- .pick_scale(strengths, max_scale)
+  all_vals <- c(strengths, dose_canonical)
+  all_vals <- all_vals[!is.na(all_vals) & all_vals > 0]
+  if (length(all_vals) == 0) {
+    return(s)
+  }
+  # Cap (a): no value overflows as.integer()
+  max_safe_int <- floor(.Machine$integer.max / max(all_vals))
+  # Cap (b): dose_canonical * s stays within the DP table limit, keeping
+  # dose_int + max_over arithmetic safely in integer range
+  max_safe_dp <- floor(dp_cap / dose_canonical)
+  min(s, max(max_safe_int, 1L), max(max_safe_dp, 1L))
+}
+
 # Pick an integer scale factor that turns all supplied values into integers
 # (within tolerance). Caps at 1e6 so we don't blow up the DP table.
 .pick_scale <- function(values, max_scale = 1e6) {
   s <- 1
   tol <- 1e-9
   for (v in values) {
-    if (is.na(v)) next
+    if (is.na(v)) {
+      next
+    }
     while (s <= max_scale && abs(v * s - round(v * s)) > tol) {
       s <- s * 10
     }
@@ -20,7 +49,9 @@
 # ── Pro-rata per-item price ───────────────────────────────────────────────────
 
 .per_item_price <- function(pack_price, pack_size) {
-  if (is.na(pack_price) || is.na(pack_size) || pack_size <= 0) return(NA_real_)
+  if (is.na(pack_price) || is.na(pack_size) || pack_size <= 0) {
+    return(NA_real_)
+  }
   pack_price / pack_size
 }
 
@@ -34,7 +65,7 @@
   if (count_needed <= 0) {
     return(list(ampp_row = NA_integer_, packs = 0L, cost = 0))
   }
-  pack_sizes  <- ampps$items_per_pack
+  pack_sizes <- ampps$items_per_pack
   pack_prices <- ampps$pack_price_pence
   ok <- !is.na(pack_sizes) & !is.na(pack_prices) & pack_sizes > 0
   if (!any(ok)) {
@@ -46,8 +77,8 @@
   best <- which.min(costs)
   list(
     ampp_row = idx[best],
-    packs    = as.integer(packs[best]),
-    cost     = as.numeric(costs[best])
+    packs = as.integer(packs[best]),
+    cost = as.numeric(costs[best])
   )
 }
 
@@ -68,12 +99,12 @@
   INF <- Inf
 
   min_items <- rep(INF, T + 1L)
-  min_cost  <- rep(INF, T + 1L)
+  min_cost <- rep(INF, T + 1L)
   items_back <- rep(NA_integer_, T + 1L)
-  cost_back  <- rep(NA_integer_, T + 1L)
+  cost_back <- rep(NA_integer_, T + 1L)
 
   min_items[1] <- 0
-  min_cost[1]  <- 0
+  min_cost[1] <- 0
 
   # Replace NA prices with Inf so they never win min_cost but still allow
   # min_items reconstruction.
@@ -83,7 +114,9 @@
   for (t in 1L:T) {
     for (i in seq_along(strengths_int)) {
       s <- strengths_int[i]
-      if (s > t) next
+      if (s > t) {
+        next
+      }
       prev_idx <- t - s + 1L
 
       cand_items <- min_items[prev_idx] + 1
@@ -101,10 +134,10 @@
   }
 
   list(
-    min_items  = min_items,
-    min_cost   = min_cost,
+    min_items = min_items,
+    min_cost = min_cost,
     items_back = items_back,
-    cost_back  = cost_back
+    cost_back = cost_back
   )
 }
 
@@ -130,10 +163,12 @@
   ts <- dose_int:(dose_int + max_over)
   idx <- ts + 1L
   items_vec <- dp$min_items[idx]
-  cost_vec  <- dp$min_cost[idx]
+  cost_vec <- dp$min_cost[idx]
 
   feasible <- is.finite(items_vec)
-  if (!any(feasible)) return(NULL)
+  if (!any(feasible)) {
+    return(NULL)
+  }
 
   if (objective == "min_items") {
     # Smallest items; tie-break by smallest over-delivery, then cost.
@@ -149,8 +184,8 @@
     return(list(
       t = ts[chosen],
       items = items_vec[chosen],
-      cost  = cost_vec[chosen],
-      back  = dp$items_back
+      cost = cost_vec[chosen],
+      back = dp$items_back
     ))
   }
 
@@ -165,8 +200,8 @@
     return(list(
       t = ts[chosen],
       items = items_vec[chosen],
-      cost  = NA_real_,
-      back  = dp$items_back
+      cost = NA_real_,
+      back = dp$items_back
     ))
   }
   cand <- which(cost_vec == min(cost_vec[finite_cost]))
@@ -186,8 +221,8 @@
   list(
     t = ts[chosen],
     items = items_vec[chosen],
-    cost  = cost_vec[chosen],
-    back  = dp$cost_back
+    cost = cost_vec[chosen],
+    back = dp$cost_back
   )
 }
 
@@ -218,20 +253,30 @@
   # one "item" corresponds to one container.
   strengths <- sort(unique(group_df$per_item_dose))
   strengths <- strengths[!is.na(strengths) & strengths > 0]
-  if (length(strengths) == 0) return(NULL)
+  if (length(strengths) == 0) {
+    return(NULL)
+  }
 
   # Cheapest per-item price per per_item_dose level.
-  cheapest_per_strength <- vapply(strengths, function(s) {
-    rows <- group_df[group_df$per_item_dose == s, , drop = FALSE]
-    if (all(is.na(rows$per_item_price_pence))) return(NA_real_)
-    min(rows$per_item_price_pence, na.rm = TRUE)
-  }, numeric(1))
+  cheapest_per_strength <- vapply(
+    strengths,
+    function(s) {
+      rows <- group_df[group_df$per_item_dose == s, , drop = FALSE]
+      if (all(is.na(rows$per_item_price_pence))) {
+        return(NA_real_)
+      }
+      min(rows$per_item_price_pence, na.rm = TRUE)
+    },
+    numeric(1)
+  )
 
-  scale <- .pick_scale(c(strengths, dose_canonical))
+  scale <- .pick_scale_safe(strengths, dose_canonical)
   strengths_int <- as.integer(round(strengths * scale))
   dose_int <- as.integer(round(dose_canonical * scale))
 
-  if (dose_int <= 0) return(NULL)
+  if (dose_int <= 0) {
+    return(NULL)
+  }
   # Searching up to `max_strength` beyond the target guarantees we find a
   # reachable t whenever one exists (the DP is unbounded knapsack).
   max_strength <- max(strengths_int)
@@ -247,21 +292,27 @@
 
   dp <- .dose_dp(strengths_int, cheapest_per_strength, dose_int, max_over)
   best <- .best_target(dp, dose_int, max_over, objective)
-  if (is.null(best)) return(NULL)
+  if (is.null(best)) {
+    return(NULL)
+  }
 
   counts <- .reconstruct(best$back, strengths_int, best$t)
-  if (is.null(counts)) return(NULL)
+  if (is.null(counts)) {
+    return(NULL)
+  }
 
   # Build the per-strength combination, using the cheapest AMPP row per
   # strength for pro-rata and the cheapest whole-pack AMPP for whole-pack.
   combo_rows <- list()
   cost_prorata <- 0
-  cost_whole   <- 0
+  cost_whole <- 0
   price_fallback <- FALSE
   notes <- character()
 
   for (i in seq_along(strengths)) {
-    if (counts[i] == 0L) next
+    if (counts[i] == 0L) {
+      next
+    }
     s <- strengths[i]
     rows <- group_df[group_df$per_item_dose == s, , drop = FALSE]
 
@@ -294,54 +345,75 @@
     }
 
     combo_rows[[length(combo_rows) + 1L]] <- tibble::tibble(
-      medicine            = chosen$medicine,
-      ampp_name           = chosen$ampp_name,
-      vmpp_snomed_code    = chosen$vmpp_snomed_code,
-      ampp_snomed_code    = chosen$ampp_snomed_code,
-      strength_canonical  = chosen$strength_canonical,
-      strength_unit       = chosen$strength_unit_canon,
-      per_item_dose       = s,
-      per_item_dose_unit  = dose_unit_canon,
-      count               = counts[i],
-      pack_size           = chosen$pack_size,
-      packs_to_buy        = packs_to_buy,
-      pack_price_pence    = wp_ampp$pack_price_pence,
+      medicine = chosen$medicine,
+      ampp_name = chosen$ampp_name,
+      vmpp_snomed_code = chosen$vmpp_snomed_code,
+      ampp_snomed_code = chosen$ampp_snomed_code,
+      strength_canonical = chosen$strength_canonical,
+      strength_unit = chosen$strength_unit_canon,
+      per_item_dose = s,
+      per_item_dose_unit = dose_unit_canon,
+      count = counts[i],
+      pack_size = chosen$pack_size,
+      packs_to_buy = packs_to_buy,
+      pack_price_pence = wp_ampp$pack_price_pence,
       per_item_price_pence = chosen$per_item_price_pence,
       subtotal_prorata_pence = subtotal_prorata,
       subtotal_whole_pack_pence = subtotal_whole
     )
 
-    cost_prorata <- cost_prorata + (if (is.na(subtotal_prorata)) 0 else subtotal_prorata)
-    cost_whole   <- cost_whole   + (if (is.na(subtotal_whole))   0 else subtotal_whole)
+    cost_prorata <- cost_prorata +
+      (if (is.na(subtotal_prorata)) 0 else subtotal_prorata)
+    cost_whole <- cost_whole +
+      (if (is.na(subtotal_whole)) 0 else subtotal_whole)
   }
 
   combination <- dplyr::bind_rows(combo_rows)
   dose_delivered <- best$t / scale
   over_delivery <- dose_delivered - dose_canonical
 
-  if (over_delivery > 0) notes <- c(notes, "over-delivery")
-  if (price_fallback)   notes <- c(notes, "price-field-fallback")
-  if (nrow(combination) > 0) notes <- c(notes, "cheapest-AMPP-per-strength")
+  if (over_delivery > 0) {
+    notes <- c(notes, "over-delivery")
+  }
+  if (price_fallback) {
+    notes <- c(notes, "price-field-fallback")
+  }
+  if (nrow(combination) > 0) {
+    notes <- c(notes, "cheapest-AMPP-per-strength")
+  }
 
   total_items <- sum(combination$count)
   price_field_used <- unique(group_df$price_field_used)
   price_field_used <- price_field_used[!is.na(price_field_used)][1]
 
   tibble::tibble(
-    medicine_root          = medicine_root,
-    preparation_group      = preparation_group,
-    preparation_label      = preparation_label,
-    objective              = objective,
-    dose_requested         = dose_canonical,
-    dose_unit              = dose_unit_canon,
-    dose_delivered         = dose_delivered,
-    dose_delivered_unit    = dose_unit_canon,
-    over_delivery          = over_delivery,
-    total_items            = as.integer(total_items),
-    cost_prorata_pence     = if (any(is.na(combination$subtotal_prorata_pence))) NA_real_ else cost_prorata,
-    cost_whole_pack_pence  = if (any(is.na(combination$subtotal_whole_pack_pence))) NA_real_ else cost_whole,
-    price_field_used       = price_field_used,
-    combination            = list(structure(combination, class = c("dmd_dose_combination", class(combination)))),
-    notes                  = paste(unique(notes), collapse = "; ")
+    medicine_root = medicine_root,
+    preparation_group = preparation_group,
+    preparation_label = preparation_label,
+    objective = objective,
+    dose_requested = dose_canonical,
+    dose_unit = dose_unit_canon,
+    dose_delivered = dose_delivered,
+    dose_delivered_unit = dose_unit_canon,
+    over_delivery = over_delivery,
+    total_items = as.integer(total_items),
+    cost_prorata_pence = if (any(is.na(combination$subtotal_prorata_pence))) {
+      NA_real_
+    } else {
+      cost_prorata
+    },
+    cost_whole_pack_pence = if (
+      any(is.na(combination$subtotal_whole_pack_pence))
+    ) {
+      NA_real_
+    } else {
+      cost_whole
+    },
+    price_field_used = price_field_used,
+    combination = list(structure(
+      combination,
+      class = c("dmd_dose_combination", class(combination))
+    )),
+    notes = paste(unique(notes), collapse = "; ")
   )
 }
