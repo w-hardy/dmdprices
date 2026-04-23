@@ -244,6 +244,60 @@
   )
 }
 
+
+# Like .best_target() but selects the target that MAXIMISES cost (most expensive).
+# Tie-breaks: most items, then largest over-delivery.
+.best_target_max <- function(dp, dose_int, max_over) {
+  ts <- dose_int:(dose_int + max_over)
+  idx <- ts + 1L
+  items_vec <- dp$min_items[idx]
+  cost_vec <- dp$min_cost[idx]
+
+  feasible <- is.finite(items_vec)
+  finite_cost <- is.finite(cost_vec)
+
+  if (!any(feasible)) {
+    return(NULL)
+  }
+
+  if (!any(finite_cost & feasible)) {
+    # No priced option — return the feasible target with most items as proxy.
+    cand <- which(feasible)
+    chosen <- cand[which.max(items_vec[cand])][1]
+    return(list(
+      t = ts[chosen],
+      items = items_vec[chosen],
+      cost = NA_real_,
+      back = dp$items_back
+    ))
+  }
+
+  cand <- which(finite_cost & feasible)
+  max_cost <- max(cost_vec[cand])
+  top <- cand[cost_vec[cand] == max_cost]
+
+  if (length(top) > 1) {
+    # Tie-break: most items
+    it <- items_vec[top]
+    sub <- top[it == max(it)]
+    if (length(sub) > 1) {
+      over <- ts[sub] - dose_int
+      sub <- sub[which.max(over)]
+    }
+    chosen <- sub[1]
+  } else {
+    chosen <- top[1]
+  }
+
+  list(
+    t = ts[chosen],
+    items = items_vec[chosen],
+    cost = cost_vec[chosen],
+    back = dp$cost_back
+  )
+}
+
+
 # ── Group-level optimisation ─────────────────────────────────────────────────
 
 # Runs the optimisation for one preparation group.
@@ -255,10 +309,12 @@
 #   ampp_snomed_code, price_field_used, price_fallback.
 # dose_canonical: numeric target dose in canonical mass/volume units.
 # dose_unit_canon: canonical mass/volume unit ("mg", "ml", or "unit").
-# objective: "cheapest" or "min_items".
+# objective: "cheapest", "min_items", or "most_expensive".
 # medicine_root, preparation_group, preparation_label: group identifiers.
 # can_split: logical. FALSE = whole packs must be dispensed for solid forms;
 #   concentration-based preparations are always whole-container regardless.
+# can_split_vials: logical. TRUE = concentration preparations may be costed
+#   as a fraction of a container (vial sharing). Default FALSE.
 .optimise_group <- function(
   group_df,
   dose_canonical,
@@ -267,12 +323,24 @@
   medicine_root,
   preparation_group,
   preparation_label,
-  can_split = TRUE
+  can_split = TRUE,
+  can_split_vials = FALSE
 ) {
   # Detect whether every row in this group is concentration-based.
-  # Concentration items (liquids, inhalers, vials) are inherently unsplittable
-  # because one "item" already equals one whole container.
   all_concentration <- all(!is.na(group_df$denominator_unit))
+
+  # Vial-sharing path: bypass DP entirely; cost the exact fraction needed.
+  if (all_concentration && can_split_vials) {
+    return(.optimise_group_vial_share(
+      group_df = group_df,
+      dose_canonical = dose_canonical,
+      dose_unit_canon = dose_unit_canon,
+      objective = objective,
+      medicine_root = medicine_root,
+      preparation_group = preparation_group,
+      preparation_label = preparation_label
+    ))
+  }
 
   # Use pack-level DP when whole packs must be dispensed AND the preparation
   # is a solid form. Concentration preparations are always whole-container
@@ -356,9 +424,36 @@
   }
 
   dp <- .dose_dp(strengths_int, cheapest_per_strength, dose_int, max_over)
-  best <- .best_target(dp, dose_int, max_over, objective)
+
+  best <- if (objective == "most_expensive") {
+    .best_target_max(dp, dose_int, max_over)
+  } else {
+    .best_target(dp, dose_int, max_over, objective)
+  }
+
   if (is.null(best)) {
     return(NULL)
+  }
+
+  # For "most_expensive" we want the most expensive AMPP per strength, not cheapest.
+  pick_ampp <- if (objective == "most_expensive") {
+    function(rows) {
+      priced <- rows[!is.na(rows$per_item_price_pence), , drop = FALSE]
+      if (nrow(priced) == 0) {
+        rows[1, , drop = FALSE]
+      } else {
+        priced[which.max(priced$per_item_price_pence), , drop = FALSE]
+      }
+    }
+  } else {
+    function(rows) {
+      priced <- rows[!is.na(rows$per_item_price_pence), , drop = FALSE]
+      if (nrow(priced) == 0) {
+        rows[1, , drop = FALSE]
+      } else {
+        priced[which.min(priced$per_item_price_pence), , drop = FALSE]
+      }
+    }
   }
 
   counts <- .reconstruct(best$back, strengths_int, best$t)
@@ -379,17 +474,22 @@
     s <- strengths[i]
     rows <- group_df[group_df$per_item_dose == s, , drop = FALSE]
 
+    chosen <- pick_ampp(rows)
     priced <- rows[!is.na(rows$per_item_price_pence), , drop = FALSE]
-    if (nrow(priced) == 0) {
-      chosen <- rows[1, , drop = FALSE]
-      subtotal_prorata <- NA_real_
+    subtotal_prorata <- if (is.na(chosen$per_item_price_pence)) {
+      NA_real_
     } else {
-      chosen <- priced[which.min(priced$per_item_price_pence), , drop = FALSE]
-      subtotal_prorata <- chosen$per_item_price_pence * counts[i]
+      chosen$per_item_price_pence * counts[i]
     }
 
     wp_rows <- if (nrow(priced) > 0) priced else rows
-    wp <- .whole_pack_cheapest(wp_rows, counts[i])
+    if (objective == "most_expensive") {
+      # Whole-pack: pick most expensive pack for this strength
+      wp <- .whole_pack_most_expensive(wp_rows, counts[i])
+    } else {
+      wp <- .whole_pack_cheapest(wp_rows, counts[i])
+    }
+
     if (is.na(wp$cost)) {
       wp_ampp <- rows[1, , drop = FALSE]
       packs_to_buy <- NA_integer_
@@ -438,7 +538,9 @@
   if (price_fallback) {
     notes <- c(notes, "price-field-fallback")
   }
-  if (nrow(combination) > 0) {
+  if (objective == "most_expensive") {
+    notes <- c(notes, "most-expensive-AMPP-per-strength")
+  } else if (nrow(combination) > 0) {
     notes <- c(notes, "cheapest-AMPP-per-strength")
   }
 
@@ -450,7 +552,7 @@
     scale = scale,
     cost_prorata = cost_prorata,
     cost_whole = cost_whole,
-    total_items = as.integer(sum(combination$count)),
+    total_items = sum(combination$count),
     notes = notes,
     medicine_root = medicine_root,
     preparation_group = preparation_group,
@@ -459,6 +561,118 @@
     group_df = group_df
   )
 }
+
+# ── Vial-sharing optimisation (can_split_vials = TRUE, concentration only) ────
+#
+# Bypasses the DP. For each product, fraction = dose_canonical / per_item_dose.
+# Cost = fraction * per_item_price_pence. Selects cheapest / most expensive /
+# fewest-items product. count in the combination tibble is the non-integer
+# fraction used. Adds "vial-sharing" to notes.
+.optimise_group_vial_share <- function(
+  group_df,
+  dose_canonical,
+  dose_unit_canon,
+  objective,
+  medicine_root,
+  preparation_group,
+  preparation_label
+) {
+  # Only keep rows with a valid per_item_dose and price.
+  priced <- group_df[
+    !is.na(group_df$per_item_dose) &
+      group_df$per_item_dose > 0 &
+      !is.na(group_df$per_item_price_pence),
+    ,
+    drop = FALSE
+  ]
+
+  if (nrow(priced) == 0) {
+    # Fall back to whole-vial costing with any available row.
+    priced <- group_df[
+      !is.na(group_df$per_item_dose) & group_df$per_item_dose > 0,
+      ,
+      drop = FALSE
+    ]
+    if (nrow(priced) == 0) return(NULL)
+  }
+
+  fractions <- dose_canonical / priced$per_item_dose
+  costs <- fractions * priced$per_item_price_pence
+
+  chosen_idx <- switch(
+    objective,
+    most_expensive = which.max(costs),
+    min_items = which.min(fractions),
+    which.min(costs) # cheapest (default)
+  )
+  chosen <- priced[chosen_idx, , drop = FALSE]
+  frac <- fractions[chosen_idx]
+  cost <- costs[chosen_idx]
+
+  notes <- "vial-sharing"
+  if (isTRUE(chosen$price_fallback)) {
+    notes <- c(notes, "price-field-fallback")
+  }
+
+  combo <- tibble::tibble(
+    medicine = chosen$medicine,
+    ampp_name = chosen$ampp_name,
+    vmpp_snomed_code = chosen$vmpp_snomed_code,
+    ampp_snomed_code = chosen$ampp_snomed_code,
+    strength_canonical = chosen$strength_canonical,
+    strength_unit = chosen$strength_unit_canon,
+    per_item_dose = chosen$per_item_dose,
+    per_item_dose_unit = dose_unit_canon,
+    count = frac, # non-integer fraction of container
+    pack_size = chosen$pack_size,
+    packs_to_buy = NA_integer_,
+    pack_price_pence = chosen$pack_price_pence,
+    per_item_price_pence = chosen$per_item_price_pence,
+    subtotal_prorata_pence = cost,
+    subtotal_whole_pack_pence = cost
+  )
+
+  .assemble_result(
+    combination = combo,
+    dose_delivered = dose_canonical, # exact — no over-delivery
+    dose_canonical = dose_canonical,
+    dose_unit_canon = dose_unit_canon,
+    scale = 1,
+    cost_prorata = cost,
+    cost_whole = cost,
+    total_items = frac,
+    notes = notes,
+    medicine_root = medicine_root,
+    preparation_group = preparation_group,
+    preparation_label = preparation_label,
+    objective = objective,
+    group_df = group_df
+  )
+}
+
+
+# ── Whole-pack cost — most expensive single-AMPP whole-pack solution ──────────
+.whole_pack_most_expensive <- function(ampps, count_needed) {
+  if (count_needed <= 0) {
+    return(list(ampp_row = NA_integer_, packs = 0L, cost = 0))
+  }
+  pack_sizes <- ampps$items_per_pack
+  pack_prices <- ampps$pack_price_pence
+  ok <- !is.na(pack_sizes) & !is.na(pack_prices) & pack_sizes > 0
+  if (!any(ok)) {
+    return(list(ampp_row = NA_integer_, packs = NA_integer_, cost = NA_real_))
+  }
+  idx <- which(ok)
+  packs <- ceiling(count_needed / pack_sizes[idx])
+  costs <- packs * pack_prices[idx]
+  best <- which.max(costs)
+  list(
+    ampp_row = idx[best],
+    packs = as.integer(packs[best]),
+    cost = as.numeric(costs[best])
+  )
+}
+
 
 # ── Pack-level optimisation (can_split = FALSE, solid forms) ──────────────────
 
@@ -655,7 +869,7 @@
     dose_delivered = dose_delivered,
     dose_delivered_unit = dose_unit_canon,
     over_delivery = over_delivery,
-    total_items = as.integer(total_items),
+    total_items = as.numeric(total_items),
     cost_prorata_pence = if (any(is.na(combination$subtotal_prorata_pence))) {
       NA_real_
     } else {

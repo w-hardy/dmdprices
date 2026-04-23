@@ -534,7 +534,7 @@ dmd_dose_cost <- function(
     dose_delivered = numeric(),
     dose_delivered_unit = character(),
     over_delivery = numeric(),
-    total_items = integer(),
+    total_items = numeric(),
     cost_prorata_pence = numeric(),
     cost_whole_pack_pence = numeric(),
     dose_cost_pence = numeric(),
