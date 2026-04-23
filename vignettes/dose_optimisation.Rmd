@@ -19,10 +19,16 @@ library(dmdprices)
 
 `dmd_dose_optimise()` takes a clinical dose (e.g. 900 mg) and returns the
 best combination of AMPPs (branded packs) from the dm+d that deliver it.
-"Best" is defined by two objectives, returned side-by-side:
+"Best" is controlled by the `objective` argument, which accepts one or more of:
 
 - **cheapest** — lowest pro-rata cost across priced combinations.
 - **min_items** — fewest tablets, capsules, ampoules, or other discrete items.
+- **most_expensive** — highest-cost combination (useful for worst-case cost
+  modelling or budget-impact analysis upper bounds).
+
+Pass a character vector to request multiple objectives at once, or use
+`objective = "all"` as a shorthand for all three. The default is
+`c("cheapest", "min_items")`.
 
 Preparations are segregated automatically: immediate-release tablets,
 modified-release tablets, oral solutions, and solutions for injection each
@@ -31,7 +37,7 @@ get their own row so they are never mixed in a single combination.
 ## A basic example
 
 A 1,500 mg dose of metformin, restricted to standard (immediate-release)
-tablets:
+tablets (default objectives: cheapest + min_items):
 
 ```{r, eval = FALSE}
 res <- dmd_dose_optimise(
@@ -120,6 +126,64 @@ When `can_split = FALSE`:
 Concentration-based preparations (liquids, vials, inhalers) are always
 whole-container regardless of `can_split`, since one container is the
 minimum dispensing unit.
+
+## Worst-case cost
+
+`objective = "most_expensive"` selects the highest-cost combination of AMPPs
+that delivers the dose. This is useful for budget-impact analysis or scenario
+modelling where you want an upper bound on expenditure:
+
+```{r, eval = FALSE}
+dmd_dose_optimise(
+  "metformin",
+  dose = 1000,
+  dose_unit = "mg",
+  preparation = "tablet|none|oral",
+  objective = "most_expensive"
+)
+```
+
+Request multiple objectives at once by passing a vector, or use `"all"` as
+a shorthand for all three:
+
+```{r, eval = FALSE}
+# Three rows: cheapest, min_items, and most_expensive
+dmd_dose_optimise(
+  "metformin",
+  dose = 1000,
+  dose_unit = "mg",
+  preparation = "tablet|none|oral",
+  objective = "all"
+)
+```
+
+## Vial sharing
+
+By default, concentration-based preparations (vials, ampoules) are costed as
+whole containers — even when the dose is a fraction of the container volume.
+Set `can_split_vials = TRUE` to enable **vial sharing**, where the cost is
+pro-rated to the exact fraction of the container needed:
+
+```{r, eval = FALSE}
+# 250 mg from a 500 mg/50 ml vial — costs half a vial, not a whole one
+dmd_dose_optimise(
+  "rituximab",
+  dose = 250,
+  dose_unit = "mg",
+  preparation = "infusion",
+  can_split_vials = TRUE
+)
+```
+
+When vial sharing is active:
+
+- The `count` in the `combination` tibble is the non-integer fraction of the
+  container used (e.g. `0.5` for half a vial).
+- `"vial-sharing"` is added to the `notes` column.
+- The reported cost is ≤ the whole-container cost for the same dose.
+
+This mode is appropriate when a single vial is shared between multiple patients
+on the same day, as is common in day-case oncology units.
 
 ## Vectorised costing with `dmd_dose_cost()`
 

@@ -16,12 +16,14 @@ dmd_dose_cost(
   preparation = NULL,
   active_only = TRUE,
   can_split = TRUE,
+  can_split_vials = FALSE,
   na_value = NA_real_
 )
 }
 \arguments{
-\item{query, dose_unit, db, method, max_dist, price, objective, preparation, active_only, can_split}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. \code{objective} accepts only a single value here
-(not \code{"both"}); default is \code{"cheapest"}.}
+\item{query, dose_unit, db, method, max_dist, price, objective, preparation, active_only, can_split, can_split_vials}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. Default \code{objective} is \code{"cheapest"}.
+When multiple objectives are supplied the \strong{minimum cost} across all
+(group, objective) combinations is returned for each dose element.}
 
 \item{dose}{A \strong{numeric vector} of dose values in \code{dose_unit}. \code{NA}, zero,
 or negative elements are returned as \code{na_value} without error.}

@@ -639,3 +639,134 @@ test_that("dmd_dose_cost with no preparation returns min cost across groups", {
   cost_all <- dmd_dose_cost("rituximab", dose = 900, dose_unit = "mg", db = db)
   expect_true(cost_all <= min(cost_infusion, cost_injection, na.rm = TRUE))
 })
+
+# ── most_expensive objective ──────────────────────────────────────────────────
+
+test_that("objective = 'most_expensive' returns cost >= cheapest for same group", {
+  ch <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "cheapest"
+  )
+  me <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "most_expensive"
+  )
+  expect_s3_class(me, "tbl_df")
+  expect_equal(nrow(me), 1L)
+  expect_equal(me$objective, "most_expensive")
+  expect_true(
+    is.na(me$dose_cost_pence) || is.na(ch$dose_cost_pence) ||
+      me$dose_cost_pence >= ch$dose_cost_pence
+  )
+})
+
+test_that("objective = c('cheapest', 'most_expensive') returns two rows", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = c("cheapest", "most_expensive")
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_equal(nrow(res), 2L)
+  expect_setequal(res$objective, c("cheapest", "most_expensive"))
+})
+
+test_that("objective = 'all' returns three rows per preparation group", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "all"
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_equal(nrow(res), 3L)
+  expect_setequal(res$objective, c("cheapest", "min_items", "most_expensive"))
+})
+
+test_that("objective = 'both' triggers a deprecation warning", {
+  expect_warning(
+    dmd_dose_optimise(
+      "metformin",
+      dose = 1000,
+      dose_unit = "mg",
+      db = db,
+      preparation = "tablet|none|oral",
+      objective = "both"
+    ),
+    regexp = "both"
+  )
+})
+
+test_that("objective = 'both' still returns cheapest and min_items rows", {
+  res <- suppressWarnings(
+    dmd_dose_optimise(
+      "metformin",
+      dose = 1000,
+      dose_unit = "mg",
+      db = db,
+      preparation = "tablet|none|oral",
+      objective = "both"
+    )
+  )
+  expect_setequal(res$objective, c("cheapest", "min_items"))
+})
+
+# ── can_split_vials ───────────────────────────────────────────────────────────
+
+test_that("can_split_vials = TRUE gives non-integer count and vial-sharing note", {
+  # 250mg dose against 500mg/50ml vials — should use half a vial (count = 0.5)
+  res <- dmd_dose_optimise(
+    "rituximab",
+    dose = 250,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest",
+    can_split_vials = TRUE
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_true(nrow(res) >= 1L)
+  combo <- res$combination[[1]]
+  expect_false(combo$count[1] == as.integer(combo$count[1]))
+  expect_true(any(grepl("vial-sharing", res$notes)))
+})
+
+test_that("can_split_vials = TRUE cost <= whole-vial cost for same dose", {
+  cost_whole <- dmd_dose_optimise(
+    "rituximab",
+    dose = 250,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest",
+    can_split_vials = FALSE
+  )$dose_cost_pence
+
+  cost_shared <- dmd_dose_optimise(
+    "rituximab",
+    dose = 250,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest",
+    can_split_vials = TRUE
+  )$dose_cost_pence
+
+  expect_true(
+    is.na(cost_shared) || is.na(cost_whole) ||
+      cost_shared <= cost_whole
+  )
+})

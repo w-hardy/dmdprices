@@ -1,5 +1,25 @@
 # dmdprices (development version)
 
+## Added
+
+- `dmd_dose_optimise()` and `dmd_dose_cost()` gain a `"most_expensive"`
+  objective, which selects the highest-cost combination of AMPPs. Useful for
+  worst-case cost modelling and budget-impact analysis upper bounds.
+- `objective` now accepts a **character vector** of any combination of
+  `"cheapest"`, `"min_items"`, and `"most_expensive"`. Pass `"all"` as a
+  shorthand for all three. The default remains `c("cheapest", "min_items")`.
+- `dmd_dose_optimise()` and `dmd_dose_cost()` gain `can_split_vials = FALSE`.
+  Set to `TRUE` to cost concentration preparations (vials, ampoules) as a
+  fraction of a container (vial sharing), which adds `"vial-sharing"` to the
+  `notes` column and returns a non-integer `count` in the combination tibble.
+- `cachem` and `lifecycle` added to `Imports`.
+
+## Deprecated
+
+- `objective = "both"` in `dmd_dose_optimise()` and `dmd_dose_cost()` is
+  deprecated. Replace with `objective = c("cheapest", "min_items")`. A
+  `lifecycle::deprecate_warn()` warning is emitted on first use.
+
 ## Fixed
 
 - `DT` moved back to `Imports` (from `Suggests`) so `run_dmd_price_lookup()`
