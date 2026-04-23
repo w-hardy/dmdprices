@@ -43,6 +43,7 @@ reference:
     desc: "Find combinations of AMPPs that deliver a target dose"
     contents:
       - dmd_dose_optimise
+      - dmd_dose_cost
       - dmd_parse_strength
   - title: "Inflation adjustment"
     desc: "Adjust costs using NHS Cost Inflation Index (NHS CII)"
@@ -54,6 +55,7 @@ reference:
     contents:
       - run_dmd_price_lookup
       - run_inflate_nhscii
+      - run_dmd_dose_optimise
   - title: "Data"
     desc: "Bundled dataset"
     contents:

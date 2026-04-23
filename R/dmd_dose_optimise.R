@@ -69,11 +69,11 @@
 
 # Session-level memoized version — free after the first call for any given
 # (query, db, method, max_dist, active_only, price) combination.
-# Cache is capped at 256 MB to prevent unbounded growth in long-running
+# Cache is capped at 1 GB to prevent unbounded growth in long-running
 # sessions (Shiny apps, batch analyses across many drug names).
 .dmd_prepare_candidates_memo <- memoise::memoise(
   .dmd_prepare_candidates,
-  cache = memoise::cache_memory(max_size = 256e6)
+  cache = cachem::cache_mem(max_size = 1024 * 1024^2)
 )
 
 #' Find the cheapest or minimum-item combination for a clinical dose
