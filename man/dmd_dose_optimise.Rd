@@ -64,7 +64,10 @@ the column layout. The \code{combination} column is a list of tibbles — one
 row per AMPP picked, identifying the specific branded product(s) used.
 \code{dose_cost_pence} is the cost (in pence) of supplying the requested dose:
 pro-rata item cost when \code{can_split = TRUE} (hospital), or whole-pack cost
-when \code{can_split = FALSE} (community).
+when \code{can_split = FALSE} (community). In the \code{combination} tibble,
+\code{count} is the number of discrete dispensing units: individual
+tablets/capsules/containers when \code{can_split = TRUE}, or whole packs when
+\code{can_split = FALSE}.
 }
 \description{
 Given a dose (e.g. 900 mg), searches the dm+d for products matching \code{query}
