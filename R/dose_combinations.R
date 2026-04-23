@@ -5,10 +5,14 @@
 
 # Safe wrapper around .pick_scale() that applies two additional caps so that
 # dose_canonical * s never overflows as.integer() and stays within the DP
-# table hard cap (dp_cap cells).  Without this, a repeating-decimal strength
+# table hard cap (dp_cap cells). Without this, a repeating-decimal strength
 # (e.g. 1400 mg / 11.7 ml = 119.658...) can push the scale to 1e7, causing
 # 900 * 1e7 = 9e9 > .Machine$integer.max, which coerces to NA_integer_ and
 # triggers "missing value where TRUE/FALSE needed" in .optimise_group().
+#
+# Returns the minimum of: the base scale from .pick_scale() (capped at
+# max_scale), an integer-overflow cap, and a DP-table-size cap. The effective
+# result may be well below max_scale when strengths or dose are large.
 
 .pick_scale_safe <- function(
   strengths,
@@ -44,15 +48,6 @@
     }
   }
   s
-}
-
-# ── Pro-rata per-item price ───────────────────────────────────────────────────
-
-.per_item_price <- function(pack_price, pack_size) {
-  if (is.na(pack_price) || is.na(pack_size) || pack_size <= 0) {
-    return(NA_real_)
-  }
-  pack_price / pack_size
 }
 
 # ── Whole-pack cost for one strength ──────────────────────────────────────────

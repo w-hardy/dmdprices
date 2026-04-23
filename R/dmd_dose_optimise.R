@@ -58,10 +58,15 @@
 
   is_concentration <- !is.na(enriched$denominator_unit)
   enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
+
+  # Pro-rata per-item price for solid forms. NA pack_size or non-positive
+  # pack_size yields NA; NA pack_price propagates through division.
+  safe_pack_size <- enriched$pack_size
+  safe_pack_size[!is.na(safe_pack_size) & safe_pack_size <= 0] <- NA_real_
   enriched$per_item_price_pence <- ifelse(
     is_concentration,
     enriched$pack_price_pence,
-    mapply(.per_item_price, enriched$pack_price_pence, enriched$pack_size)
+    enriched$pack_price_pence / safe_pack_size
   )
 
   enriched
@@ -220,10 +225,15 @@ dmd_dose_optimise <- function(
   }
   if ("both" %in% objective) {
     lifecycle::deprecate_warn(
-      "0.5.0", 'dmd_dose_optimise(objective = "both")',
-      details = 'Use objective = c("cheapest", "min_items") instead.'
+      "0.6.0", 'dmd_dose_optimise(objective = "both")',
+      details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
+  }
+  if (length(objective) == 0L) {
+    cli::cli_abort(
+      '{.arg objective} must contain at least one of {.val cheapest}, {.val min_items}, {.val most_expensive} (or {.val all}).'
+    )
   }
   objective <- match.arg(
     objective,
@@ -445,10 +455,15 @@ dmd_dose_cost <- function(
   }
   if ("both" %in% objective) {
     lifecycle::deprecate_warn(
-      "0.5.0", 'dmd_dose_cost(objective = "both")',
-      details = 'Use objective = c("cheapest", "min_items") instead.'
+      "0.6.0", 'dmd_dose_cost(objective = "both")',
+      details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
+  }
+  if (length(objective) == 0L) {
+    cli::cli_abort(
+      '{.arg objective} must contain at least one of {.val cheapest}, {.val min_items}, {.val most_expensive} (or {.val all}).'
+    )
   }
   objective <- match.arg(
     objective,

@@ -903,3 +903,122 @@ test_that("print.dmd_dose_combination renders fractional counts without warning"
   # And the fraction must appear verbatim in the printed output.
   expect_true(any(grepl(format(combo$count[1]), out, fixed = TRUE)))
 })
+
+# ── Validation: empty and invalid objective vectors ───────────────────────────
+
+test_that("objective = character(0) errors with a helpful message", {
+  expect_error(
+    dmd_dose_optimise(
+      "metformin", dose = 500, dose_unit = "mg", db = db,
+      objective = character(0)
+    ),
+    regexp = "at least one"
+  )
+  expect_error(
+    dmd_dose_cost(
+      "metformin", dose = 500, dose_unit = "mg", db = db,
+      objective = character(0)
+    ),
+    regexp = "at least one"
+  )
+})
+
+test_that("objective = 'bogus' errors via match.arg", {
+  expect_error(
+    dmd_dose_optimise(
+      "metformin", dose = 500, dose_unit = "mg", db = db,
+      objective = "bogus"
+    )
+  )
+})
+
+# ── Edge cases: invalid pack_size and pack_price ──────────────────────────────
+
+test_that("rows with pack_size <= 0 yield NA per-item price and do not crash", {
+  m <- tibble::tibble(
+    medicine = c("Metformin 500mg tablets", "Metformin 1000mg tablets"),
+    pack_size = c(0L, 28L), # 0 is invalid and must be ignored
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VP1", "VP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(100L, 180L),
+    nhs_indicative_price = c(110L, 190L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Metformin 500mg bad 0 tablet", "Metformin 1000mg 28 tablet"),
+    ampp_snomed_code = c("A1", "A2")
+  )
+  edge_db <- structure(
+    list(master = m, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+  # Must not error. The zero-pack-size row can't contribute pro-rata; the
+  # 1000mg row must still deliver the dose.
+  expect_no_error(
+    res <- dmd_dose_optimise(
+      "metformin", dose = 1000, dose_unit = "mg", db = edge_db,
+      preparation = "tablet|none|oral"
+    )
+  )
+  expect_true(nrow(res) >= 1L)
+})
+
+test_that("all pack_size = 0 returns an empty result rather than crashing", {
+  m <- tibble::tibble(
+    medicine = "Metformin 500mg tablets",
+    pack_size = 0L,
+    unit = "tablet",
+    vmp_snomed_code = "V1",
+    vmpp_snomed_code = "VP1",
+    drug_tariff_category = "Part VIIIA Category M",
+    basic_price = 100L,
+    nhs_indicative_price = 110L,
+    price_basis = "NHS Indicative Price",
+    price_date = "2025-08-08",
+    ampp_name = "Metformin 500mg bad 0 tablet",
+    ampp_snomed_code = "A1"
+  )
+  edge_db <- structure(
+    list(master = m, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+  memoise::forget(.dmd_prepare_candidates_memo)
+  expect_no_error(
+    dmd_dose_cost(
+      "metformin", dose = 500, dose_unit = "mg", db = edge_db
+    )
+  )
+})
+
+# ── preparation filter that matches nothing ───────────────────────────────────
+
+test_that("preparation filter that matches no group warns and returns empty", {
+  expect_warning(
+    res <- dmd_dose_optimise(
+      "metformin", dose = 500, dose_unit = "mg", db = db,
+      preparation = "nonexistent-preparation-xyz"
+    ),
+    regexp = "No candidates remain"
+  )
+  expect_equal(nrow(res), 0L)
+})
+
+# ── dmd_dose_cost with objective = 'all' ──────────────────────────────────────
+
+test_that("dmd_dose_cost accepts objective = 'all' as a shorthand", {
+  cost_all <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "all"
+  )
+  # Minimum across cheapest/min_items/most_expensive per-objective aggregates
+  # = cost for cheapest (since most_expensive dominates and cheapest/min_items
+  # share the same minimum floor). Must match explicitly listing the three.
+  cost_triple <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral",
+    objective = c("cheapest", "min_items", "most_expensive")
+  )
+  expect_equal(cost_all, cost_triple)
+  expect_true(!is.na(cost_all))
+})
