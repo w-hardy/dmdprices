@@ -545,8 +545,11 @@ test_that("memo cache is populated after the first call", {
 test_that("dmd_dose_cost returns a numeric vector of the same length as dose", {
   doses <- c(500, 1000, 1500)
   res <- dmd_dose_cost(
-    "metformin", dose = doses, dose_unit = "mg",
-    db = db, preparation = "tablet|none|oral"
+    "metformin",
+    dose = doses,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral"
   )
   expect_type(res, "double")
   expect_length(res, 3L)
@@ -554,20 +557,31 @@ test_that("dmd_dose_cost returns a numeric vector of the same length as dose", {
 
 test_that("dmd_dose_cost returns the same cost as dmd_dose_optimise for a single dose", {
   full <- dmd_dose_optimise(
-    "metformin", dose = 1000, dose_unit = "mg",
-    db = db, preparation = "tablet|none|oral", objective = "cheapest"
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "cheapest"
   )
   scalar <- dmd_dose_cost(
-    "metformin", dose = 1000, dose_unit = "mg",
-    db = db, preparation = "tablet|none|oral", objective = "cheapest"
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "cheapest"
   )
   expect_equal(scalar, full$dose_cost_pence[full$objective == "cheapest"])
 })
 
 test_that("dmd_dose_cost returns na_value for NA, zero, and negative doses", {
   res <- dmd_dose_cost(
-    "metformin", dose = c(NA_real_, 0, -100, 500), dose_unit = "mg",
-    db = db, preparation = "tablet|none|oral"
+    "metformin",
+    dose = c(NA_real_, 0, -100, 500),
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral"
   )
   expect_true(is.na(res[1]))
   expect_true(is.na(res[2]))
@@ -577,8 +591,11 @@ test_that("dmd_dose_cost returns na_value for NA, zero, and negative doses", {
 
 test_that("dmd_dose_cost respects custom na_value", {
   res <- dmd_dose_cost(
-    "metformin", dose = c(NA_real_, 500), dose_unit = "mg",
-    db = db, preparation = "tablet|none|oral",
+    "metformin",
+    dose = c(NA_real_, 500),
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
     na_value = 0
   )
   expect_equal(res[1], 0)
@@ -587,24 +604,38 @@ test_that("dmd_dose_cost respects custom na_value", {
 
 test_that("dmd_dose_cost accepts a preparation partial match", {
   res_full <- dmd_dose_cost(
-    "rituximab", dose = 900, dose_unit = "mg",
-    db = db, preparation = "solution for infusion|none|intravenous"
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous"
   )
   res_partial <- dmd_dose_cost(
-    "rituximab", dose = 900, dose_unit = "mg",
-    db = db, preparation = "infusion"
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "infusion"
   )
   expect_equal(res_partial, res_full)
 })
 
 test_that("dmd_dose_cost with no preparation returns min cost across groups", {
   # Without filtering, all groups compete; cost must be <= any single group cost.
-  cost_infusion  <- dmd_dose_cost("rituximab", dose = 900, dose_unit = "mg",
-                                  db = db, preparation = "infusion")
-  cost_injection <- dmd_dose_cost("rituximab", dose = 900, dose_unit = "mg",
-                                  db = db, preparation = "injection")
-  cost_all       <- dmd_dose_cost("rituximab", dose = 900, dose_unit = "mg",
-                                  db = db)
+  cost_infusion <- dmd_dose_cost(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "infusion"
+  )
+  cost_injection <- dmd_dose_cost(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection"
+  )
+  cost_all <- dmd_dose_cost("rituximab", dose = 900, dose_unit = "mg", db = db)
   expect_true(cost_all <= min(cost_infusion, cost_injection, na.rm = TRUE))
 })
-
