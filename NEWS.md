@@ -1,5 +1,29 @@
 # dmdprices (development version)
 
+## Fixed
+
+- `DT` moved back to `Imports` (from `Suggests`) so `run_dmd_price_lookup()`
+  works on a fresh install without a separate `install.packages("DT")` step.
+- `dmd_dose_optimise()` result columns are now in the same order as the empty
+  scaffold returned when no candidates are found (`dose_cost_pence` was
+  previously appended after `notes` rather than between `cost_whole_pack_pence`
+  and `price_field_used`).
+- `dmd_dose_cost()` now emits an informative error when `dose` is a character
+  string, explaining the difference from `dmd_dose_optimise()`.
+- Memoization cache is now capped at 256 MB via `memoise::cache_memory()` to
+  prevent unbounded memory growth in long-running sessions.
+- Dead code removed from `.best_target()` internal function (`min_items` branch
+  had a redundant feasibility filter that was always a no-op).
+
+## Documentation
+
+- `dmd_dose_optimise()` `@return` now documents that `count` in the
+  `combination` tibble means individual dispensing units (tablets/containers)
+  when `can_split = TRUE`, and whole packs when `can_split = FALSE`.
+- Vignette `dose_optimisation` gains two new sections: "Community pharmacy:
+  whole-pack dispensing" (`can_split = FALSE`) and "Vectorised costing with
+  `dmd_dose_cost()`".
+
 # dmdprices 0.5.0
 
 ## Added

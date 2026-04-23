@@ -191,8 +191,7 @@
 
   if (objective == "min_items") {
     # Smallest items; tie-break by smallest over-delivery, then cost.
-    cand <- which(items_vec == min(items_vec[feasible]))
-    cand <- cand[cand %in% which(feasible)]
+    cand <- which(feasible & items_vec == min(items_vec[feasible]))
     over <- ts[cand] - dose_int
     sub <- cand[which(over == min(over))]
     if (length(sub) > 1) {

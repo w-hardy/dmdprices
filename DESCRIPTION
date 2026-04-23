@@ -25,9 +25,9 @@ Imports:
     cli,
     tibble,
     memoise,
-    shiny
+    shiny,
+    DT
 Suggests:
-    DT,
     testthat (>= 3.0.0),
     withr,
     knitr,

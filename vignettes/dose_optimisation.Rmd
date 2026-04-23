@@ -98,6 +98,61 @@ cannot split a pack.
 
 Switch the primary price field with `price = "nhs_indicative_price"`.
 
+## Community pharmacy: whole-pack dispensing
+
+In hospital dispensing, individual tablets can be taken from a part-pack
+(`can_split = TRUE`, the default). In community pharmacy, whole packs must
+be dispensed. Set `can_split = FALSE` to switch to pack-level optimisation:
+
+```{r, eval = FALSE}
+dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
+```
+
+When `can_split = FALSE`:
+
+- The DP operates on whole packs rather than individual tablets.
+- `dose_cost_pence` reflects the whole-pack cost (what the pharmacy
+  actually pays), not a pro-rata fraction.
+- The `notes` column includes `"no-pack-splitting"`.
+- In the `combination` tibble, `count` is the number of **packs** dispensed
+  rather than individual tablets.
+
+Concentration-based preparations (liquids, vials, inhalers) are always
+whole-container regardless of `can_split`, since one container is the
+minimum dispensing unit.
+
+## Vectorised costing with `dmd_dose_cost()`
+
+For costing a column of doses inside a data frame, `dmd_dose_cost()` is
+more efficient than calling `dmd_dose_optimise()` inside `purrr::map_dbl()`.
+It accepts a numeric vector of doses and returns a numeric vector of costs in
+pence of the same length:
+
+```{r, eval = FALSE}
+library(dplyr)
+
+treatment_df |>
+  mutate(
+    ritux_cost_gbp = dmd_dose_cost(
+      query       = "rituximab",
+      dose        = dose_mg,
+      dose_unit   = "mg",
+      objective   = "cheapest",
+      preparation = "infusion"
+    ) / 100
+  )
+```
+
+Key differences from `dmd_dose_optimise()`:
+
+- `dose` must be a **numeric vector** (string doses are not accepted).
+- Returns a plain `numeric` vector, not a tibble — no `combination` detail.
+- The expensive candidate-preparation step runs **once** for all doses in
+  the vector (memoized across calls within the same session).
+- When multiple preparation groups match, the **minimum cost** across groups
+  is returned. Specify `preparation` to restrict to a single route.
+- `NA`, zero, or negative dose elements return `NA` (or a custom `na_value`).
+
 ## Cross-referencing with other dm+d data
 
 The `combination` list-column includes `vmpp_snomed_code` and
