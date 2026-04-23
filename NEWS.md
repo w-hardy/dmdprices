@@ -22,6 +22,17 @@
 
 ## Fixed
 
+- `dmd_dose_cost(objective = "most_expensive")` now returns the worst-case cost
+  (maximum across preparation groups) instead of silently returning the
+  cheapest. Aggregation across multiple objectives uses each objective's
+  natural extremum.
+- `dmd_dose_optimise(objective = "most_expensive", can_split = FALSE)` now
+  selects the dearest whole-pack combination rather than falling through to
+  the cheapest branch. The notes column reads `"most-expensive-pack-per-dose"`
+  on this path.
+- `print.dmd_dose_combination()` and the dose-optimiser Shiny app's
+  combination formatter use `%g` instead of `%d` so fractional
+  vial-sharing counts (e.g. `0.5`) render without a warning.
 - `DT` moved back to `Imports` (from `Suggests`) so `run_dmd_price_lookup()`
   works on a fresh install without a separate `install.packages("DT")` step.
 - `dmd_dose_optimise()` result columns are now in the same order as the empty

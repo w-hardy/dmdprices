@@ -691,8 +691,9 @@
 ) {
   pack_df <- .build_pack_df(group_df)
 
-  # One coin per unique pack_dose × AMPP combination; we keep all rows and
-  # select cheapest per pack_dose for the DP price vector.
+  # One DP coin per unique pack_dose. The coin price is the cheapest (or,
+  # when objective is "most_expensive", the dearest) priced pack at that
+  # pack_dose level.
   pack_doses <- sort(unique(pack_df$pack_dose[
     !is.na(pack_df$pack_dose) & pack_df$pack_dose > 0
   ]))
@@ -700,7 +701,12 @@
     return(NULL)
   }
 
-  cheapest_per_pack_dose <- vapply(
+  is_max <- identical(objective, "most_expensive")
+
+  # For most_expensive we seed the DP with the dearest pack per pack_dose and
+  # later reconstruct with the dearest AMPP; for the other objectives we keep
+  # the cheapest-per-pack_dose behaviour.
+  price_per_pack_dose <- vapply(
     pack_doses,
     function(d) {
       rows <- pack_df[
@@ -713,7 +719,11 @@
       if (nrow(rows) == 0) {
         return(NA_real_)
       }
-      min(rows$pack_price_pence, na.rm = TRUE)
+      if (is_max) {
+        max(rows$pack_price_pence, na.rm = TRUE)
+      } else {
+        min(rows$pack_price_pence, na.rm = TRUE)
+      }
     },
     numeric(1)
   )
@@ -735,8 +745,12 @@
     return(NULL)
   }
 
-  dp <- .dose_dp(strengths_int, cheapest_per_pack_dose, dose_int, max_over)
-  best <- .best_target(dp, dose_int, max_over, objective)
+  dp <- .dose_dp(strengths_int, price_per_pack_dose, dose_int, max_over)
+  best <- if (is_max) {
+    .best_target_max(dp, dose_int, max_over)
+  } else {
+    .best_target(dp, dose_int, max_over, objective)
+  }
   if (is.null(best)) {
     return(NULL)
   }
@@ -762,13 +776,15 @@
       drop = FALSE
     ]
 
-    # Cheapest pack for this pack_dose.
+    # Pick the cheapest / most expensive priced pack for this pack_dose,
+    # mirroring the objective used to seed the DP.
     priced <- rows[!is.na(rows$pack_price_pence), , drop = FALSE]
     if (nrow(priced) == 0) {
       chosen <- rows[1, , drop = FALSE]
       subtotal_whole <- NA_real_
     } else {
-      chosen <- priced[which.min(priced$pack_price_pence), , drop = FALSE]
+      pick <- if (is_max) which.max else which.min
+      chosen <- priced[pick(priced$pack_price_pence), , drop = FALSE]
       subtotal_whole <- chosen$pack_price_pence * counts[i]
     }
 
@@ -813,7 +829,10 @@
   }
   notes <- c(notes, "no-pack-splitting")
   if (nrow(combination) > 0) {
-    notes <- c(notes, "cheapest-pack-per-dose")
+    notes <- c(
+      notes,
+      if (is_max) "most-expensive-pack-per-dose" else "cheapest-pack-per-dose"
+    )
   }
 
   # total_items = packs dispensed (the discrete units in a community setting).

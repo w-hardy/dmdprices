@@ -11,7 +11,7 @@ fmt_combination <- function(comb) {
   }
   lines <- vapply(
     seq_len(nrow(comb)),
-    function(i) sprintf("%d \u00d7 %s", comb$count[i], comb$ampp_name[i]),
+    function(i) sprintf("%g \u00d7 %s", comb$count[i], comb$ampp_name[i]),
     character(1)
   )
   paste(lines, collapse = "<br>")
