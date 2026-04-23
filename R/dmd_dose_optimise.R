@@ -331,6 +331,182 @@ dmd_dose_optimise <- function(
   result
 }
 
+# ── Vectorised cost lookup ────────────────────────────────────────────────────
+
+#' Vectorised dose cost lookup
+#'
+#' A lightweight, vectorised alternative to [dmd_dose_optimise()] designed for
+#' costing large tables. Accepts a numeric vector of doses and returns a numeric
+#' vector of costs in pence of the same length.
+#'
+#' Unlike [dmd_dose_optimise()], this function:
+#' \itemize{
+#'   \item Calls the memoized candidate preparation step **once** regardless of
+#'     how many doses are supplied.
+#'   \item Applies unit-matching and `preparation` filters **once**.
+#'   \item Runs only the DP optimisation per dose element, skipping the full
+#'     result-assembly (combination tibble, notes, etc.).
+#'   \item Returns a plain `numeric` vector — not a tibble — suitable for use
+#'     directly inside [dplyr::mutate()].
+#' }
+#'
+#' When multiple preparation groups match (e.g. no `preparation` filter is
+#' supplied), the **minimum cost across all groups** is returned for each dose.
+#'
+#' @param query,dose_unit,db,method,max_dist,price,objective,preparation,active_only,can_split
+#'   As in [dmd_dose_optimise()]. `objective` accepts only a single value here
+#'   (not `"both"`); default is `"cheapest"`.
+#' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
+#'   or negative elements are returned as `na_value` without error.
+#' @param na_value Scalar returned for doses that are `NA`, non-positive, or for
+#'   which no solution is found. Default `NA_real_`.
+#'
+#' @return A `numeric` vector of length `length(dose)` giving the dose cost in
+#'   pence. Use `/ 100` for GBP. `NA` (or `na_value`) where no solution exists.
+#'
+#' @seealso [dmd_dose_optimise()] for the full result tibble with combination
+#'   details.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Vectorised costing inside a mutate — no map_dbl needed
+#' library(dplyr)
+#' treatment_df |>
+#'   mutate(
+#'     ritux_gbp = dmd_dose_cost(
+#'       query       = "rituximab",
+#'       dose        = day1_ritux_mg,
+#'       dose_unit   = "mg",
+#'       objective   = "cheapest",
+#'       preparation = "infusion"
+#'     ) / 100
+#'   )
+#' }
+dmd_dose_cost <- function(
+  query,
+  dose,
+  dose_unit = NULL,
+  db = dmdprices::dmd_master,
+  method = c("partial", "exact", "fuzzy"),
+  max_dist = 3,
+  price = c("basic_price", "nhs_indicative_price"),
+  objective = c("cheapest", "min_items"),
+  preparation = NULL,
+  active_only = TRUE,
+  can_split = TRUE,
+  na_value = NA_real_
+) {
+  method <- match.arg(method)
+  price <- match.arg(price)
+  objective <- match.arg(objective)
+
+  if (!is.numeric(dose)) {
+    cli::cli_abort("{.arg dose} must be a numeric vector.")
+  }
+  if (is.null(dose_unit)) {
+    dose_unit <- "mg"
+  }
+  dose_unit <- tolower(dose_unit)
+
+  # ── Shared candidate preparation (memoized — runs once per argument set) ──
+  enriched <- .dmd_prepare_candidates_memo(
+    query = query,
+    db = db,
+    method = method,
+    max_dist = max_dist,
+    active_only = active_only,
+    price = price
+  )
+  if (is.null(enriched)) {
+    return(rep(na_value, length(dose)))
+  }
+
+  # ── Static row filters applied once ───────────────────────────────────────
+  dose_unit_info <- .canonicalise_unit(1, dose_unit)
+  if (is.na(dose_unit_info$unit)) {
+    cli::cli_abort("Unsupported {.arg dose_unit}: {.val {dose_unit}}.")
+  }
+  unit_canon <- dose_unit_info$unit
+
+  keep <- !is.na(enriched$per_item_dose) & !is.na(enriched$strength_unit_canon)
+  row_mass_unit <- ifelse(
+    grepl("/", enriched$strength_unit_canon),
+    sub("/.*", "", enriched$strength_unit_canon),
+    enriched$strength_unit_canon
+  )
+  keep <- keep & (row_mass_unit == unit_canon)
+  enriched <- enriched[keep, , drop = FALSE]
+
+  if (!is.null(preparation)) {
+    enriched <- enriched[
+      grepl(
+        tolower(preparation),
+        tolower(enriched$preparation_group),
+        fixed = TRUE
+      ) |
+        grepl(
+          tolower(preparation),
+          tolower(enriched$preparation_label),
+          fixed = TRUE
+        ),
+      ,
+      drop = FALSE
+    ]
+  }
+
+  if (nrow(enriched) == 0) {
+    return(rep(na_value, length(dose)))
+  }
+
+  medicine_root <- .medicine_root(enriched$drug_stem)
+  groups <- unique(enriched[,
+    c("preparation_group", "preparation_label"),
+    drop = FALSE
+  ])
+
+  # ── Per-dose DP loop ───────────────────────────────────────────────────────
+  vapply(
+    dose,
+    function(d) {
+      if (is.na(d) || d <= 0) {
+        return(na_value)
+      }
+      dose_canon <- .canonicalise_unit(d, dose_unit)
+
+      best_cost <- Inf
+      for (g in seq_len(nrow(groups))) {
+        sub <- enriched[
+          enriched$preparation_group == groups$preparation_group[g],
+          ,
+          drop = FALSE
+        ]
+        row <- .optimise_group(
+          group_df = sub,
+          dose_canonical = dose_canon$value,
+          dose_unit_canon = dose_canon$unit,
+          objective = objective,
+          medicine_root = medicine_root,
+          preparation_group = groups$preparation_group[g],
+          preparation_label = groups$preparation_label[g],
+          can_split = can_split
+        )
+        if (!is.null(row)) {
+          cost <- if (can_split) {
+            row$cost_prorata_pence
+          } else {
+            row$cost_whole_pack_pence
+          }
+          if (!is.na(cost) && cost < best_cost) best_cost <- cost
+        }
+      }
+      if (is.infinite(best_cost)) na_value else best_cost
+    },
+    numeric(1L)
+  )
+}
+
 # Empty result scaffold with the declared columns.
 .empty_dose_result <- function() {
   tibble::tibble(

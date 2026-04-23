@@ -1,5 +1,23 @@
 # dmdprices (development version)
 
+# dmdprices 0.5.0
+
+## Added
+
+- `dmd_dose_cost()` — vectorised companion to `dmd_dose_optimise()`. Accepts a
+  numeric vector of doses and returns a plain numeric vector of costs in pence.
+  Designed for use inside `dplyr::mutate()` without `purrr::map_dbl()`.
+- `preparation` argument of `dmd_dose_optimise()` and `dmd_dose_cost()` now
+  accepts a plain case-insensitive substring (e.g. `"infusion"`) rather than
+  requiring the exact preparation group key.
+
+## Performance
+
+- The expensive dose-independent work in `dmd_dose_optimise()` (price lookup,
+  strength parsing, preparation classification) is now memoized for the session
+  via `memoise`. Repeated calls for the same drug within a session (e.g. across
+  all rows of a table) incur that cost only once.
+
 # dmdprices 0.4.0
 
 ## Added
