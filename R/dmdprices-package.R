@@ -50,6 +50,6 @@
 #' @importFrom cli cli_abort cli_inform cli_progress_step cli_warn
 #' @importFrom stringdist stringdist
 #' @importFrom tibble tibble tribble
-#' @importFrom memoise memoise
+#' @importFrom memoise memoise cache_memory
 ## usethis namespace: end
 NULL

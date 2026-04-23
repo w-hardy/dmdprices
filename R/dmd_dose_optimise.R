@@ -69,7 +69,12 @@
 
 # Session-level memoized version — free after the first call for any given
 # (query, db, method, max_dist, active_only, price) combination.
-.dmd_prepare_candidates_memo <- memoise::memoise(.dmd_prepare_candidates)
+# Cache is capped at 256 MB to prevent unbounded growth in long-running
+# sessions (Shiny apps, batch analyses across many drug names).
+.dmd_prepare_candidates_memo <- memoise::memoise(
+  .dmd_prepare_candidates,
+  cache = memoise::cache_memory(max_size = 256e6)
+)
 
 #' Find the cheapest or minimum-item combination for a clinical dose
 #'
@@ -118,7 +123,10 @@
 #'   row per AMPP picked, identifying the specific branded product(s) used.
 #'   `dose_cost_pence` is the cost (in pence) of supplying the requested dose:
 #'   pro-rata item cost when `can_split = TRUE` (hospital), or whole-pack cost
-#'   when `can_split = FALSE` (community).
+#'   when `can_split = FALSE` (community). In the `combination` tibble, `count`
+#'   is the number of discrete dispensing units: individual tablets/capsules/
+#'   containers when `can_split = TRUE`, or whole packs when
+#'   `can_split = FALSE`.
 #'
 #' @seealso [dmd_price_lookup()], [dmd_parse_strength()]
 #'
@@ -328,7 +336,7 @@ dmd_dose_optimise <- function(
   } else {
     result$cost_whole_pack_pence
   }
-  result
+  result[, names(.empty_dose_result())]
 }
 
 # ── Vectorised cost lookup ────────────────────────────────────────────────────
@@ -403,7 +411,14 @@ dmd_dose_cost <- function(
   objective <- match.arg(objective)
 
   if (!is.numeric(dose)) {
-    cli::cli_abort("{.arg dose} must be a numeric vector.")
+    cli::cli_abort(c(
+      "{.arg dose} must be a numeric vector.",
+      "i" = paste0(
+        "Unlike {.fn dmd_dose_optimise}, {.fn dmd_dose_cost} does not accept ",
+        "a dose string. Supply a numeric vector, e.g. {.code dose = 900} ",
+        "rather than {.code dose = \"900 mg\"}."
+      )
+    ))
   }
   if (is.null(dose_unit)) {
     dose_unit <- "mg"
