@@ -126,24 +126,26 @@
   price_for_cost[is.na(price_for_cost)] <- Inf
 
   for (t in 1L:T) {
-    for (i in seq_along(strengths_int)) {
-      s <- strengths_int[i]
-      if (s > t) {
-        next
-      }
-      prev_idx <- t - s + 1L
+    valid <- which(strengths_int <= t)
+    if (length(valid) == 0L) next
 
-      cand_items <- min_items[prev_idx] + 1
-      if (cand_items < min_items[t + 1L]) {
-        min_items[t + 1L] <- cand_items
-        items_back[t + 1L] <- i
-      }
+    prev_idxs <- t - strengths_int[valid] + 1L
 
-      cand_cost <- min_cost[prev_idx] + price_for_cost[i]
-      if (cand_cost < min_cost[t + 1L]) {
-        min_cost[t + 1L] <- cand_cost
-        cost_back[t + 1L] <- i
-      }
+    # Fewest-items update: find the valid strength whose predecessor has the
+    # fewest items already, then apply if it beats the current cell.
+    cand_items <- min_items[prev_idxs] + 1
+    best_i <- which.min(cand_items)
+    if (cand_items[best_i] < min_items[t + 1L]) {
+      min_items[t + 1L] <- cand_items[best_i]
+      items_back[t + 1L] <- valid[best_i]
+    }
+
+    # Cheapest update: same logic for cost.
+    cand_cost <- min_cost[prev_idxs] + price_for_cost[valid]
+    best_c <- which.min(cand_cost)
+    if (cand_cost[best_c] < min_cost[t + 1L]) {
+      min_cost[t + 1L] <- cand_cost[best_c]
+      cost_back[t + 1L] <- valid[best_c]
     }
   }
 
