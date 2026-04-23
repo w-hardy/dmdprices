@@ -1022,3 +1022,75 @@ test_that("dmd_dose_cost accepts objective = 'all' as a shorthand", {
   expect_equal(cost_all, cost_triple)
   expect_true(!is.na(cost_all))
 })
+
+# ── dmd_dose_cost_range ───────────────────────────────────────────────────────
+
+test_that("dmd_dose_cost_range returns a tibble with lo_pence and hi_pence", {
+  res <- dmd_dose_cost_range(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_named(res, c("lo_pence", "hi_pence"))
+  expect_equal(nrow(res), 1L)
+})
+
+test_that("dmd_dose_cost_range: lo_pence <= hi_pence for all doses", {
+  doses <- c(500, 1000, 1500, 2000)
+  res <- dmd_dose_cost_range(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_equal(nrow(res), length(doses))
+  # Both columns finite
+  expect_true(all(is.finite(res$lo_pence)))
+  expect_true(all(is.finite(res$hi_pence)))
+  # Lower bound never exceeds upper bound
+  expect_true(all(res$lo_pence <= res$hi_pence))
+})
+
+test_that("dmd_dose_cost_range lo_pence matches dmd_dose_cost('cheapest')", {
+  doses <- c(500, 1000)
+  lo <- dmd_dose_cost_range(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )$lo_pence
+  expected <- dmd_dose_cost(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "cheapest"
+  )
+  expect_equal(lo, expected)
+})
+
+test_that("dmd_dose_cost_range hi_pence matches dmd_dose_cost('most_expensive')", {
+  doses <- c(500, 1000)
+  hi <- dmd_dose_cost_range(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )$hi_pence
+  expected <- dmd_dose_cost(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "most_expensive"
+  )
+  expect_equal(hi, expected)
+})
+
+test_that("dmd_dose_cost_range returns na_value for NA, zero, and negative doses", {
+  res <- dmd_dose_cost_range(
+    "metformin", dose = c(NA, 0, -1, 500), dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_true(is.na(res$lo_pence[1]))
+  expect_true(is.na(res$lo_pence[2]))
+  expect_true(is.na(res$lo_pence[3]))
+  expect_false(is.na(res$lo_pence[4]))
+})
+
+test_that("dmd_dose_cost_range length matches dose vector length", {
+  doses <- seq(500, 2500, by = 500)
+  res <- dmd_dose_cost_range(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_equal(nrow(res), length(doses))
+})

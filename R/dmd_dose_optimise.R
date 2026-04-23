@@ -72,14 +72,42 @@
   enriched
 }
 
-# Session-level memoized version — free after the first call for any given
-# (query, db, method, max_dist, active_only, price) combination.
-# Cache is capped at 1 GB to prevent unbounded growth in long-running
-# sessions (Shiny apps, batch analyses across many drug names).
-.dmd_prepare_candidates_memo <- memoise::memoise(
-  .dmd_prepare_candidates,
-  cache = cachem::cache_mem(max_size = 1024 * 1024^2)
-)
+# Session-level memo with a lightweight cache key. The bundled dmd_master is
+# a ~118k-row tibble; memoise::memoise() would digest() the whole object on
+# every call. Instead we key on scalars only:
+#   - dmd_db objects: their loaded_at timestamp (set by dmd_load()).
+#   - bundled dmd_master: its dmd_release_label attribute.
+#   - any other tibble: rlang::hash() as a one-shot fallback (rare in practice).
+# Cache is capped at 1 GB; entries are separated by a NUL byte to prevent
+# collisions from adjacent argument concatenation.
+local({
+  .memo_cache <- cachem::cache_mem(max_size = 1024 * 1024^2)
+
+  .db_cache_key <- function(db) {
+    if (inherits(db, "dmd_db")) return(as.character(db$loaded_at))
+    lbl <- attr(db, "dmd_release_label", exact = TRUE)
+    if (!is.null(lbl)) lbl else rlang::hash(db)
+  }
+
+  .dmd_prepare_candidates_memo <<- function(
+    query,
+    db,
+    method,
+    max_dist,
+    active_only,
+    price
+  ) {
+    key <- paste(
+      query, .db_cache_key(db), method, max_dist, active_only, price,
+      sep = "\x00"
+    )
+    hit <- .memo_cache$get(key)
+    if (!cachem::is.key_missing(hit)) return(hit)
+    result <- .dmd_prepare_candidates(query, db, method, max_dist, active_only, price)
+    .memo_cache$set(key, result)
+    result
+  }
+})
 
 #' Find the cheapest or minimum-item combination for a clinical dose
 #'
@@ -603,6 +631,84 @@ dmd_dose_cost <- function(
     },
     numeric(1L)
   )
+}
+
+# ── Cost range lookup ─────────────────────────────────────────────────────────
+
+#' Vectorised dose cost range lookup
+#'
+#' Returns the **cheapest** and **most expensive** achievable cost for each
+#' dose in a single call. A purpose-built alternative to calling
+#' [dmd_dose_cost()] twice with different `objective` values, with clearer
+#' naming for health-economics range analyses.
+#'
+#' The candidate preparation step is memoized, so even though this function
+#' runs the DP twice internally (once per bound), the expensive price-lookup
+#' and parsing work is only performed once per `(query, db, ...)` combination
+#' within a session.
+#'
+#' @inheritParams dmd_dose_cost
+#' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
+#'   or negative elements yield `na_value` in both output columns.
+#' @param na_value Scalar returned for doses that are `NA`, non-positive, or
+#'   for which no solution is found. Default `NA_real_`.
+#'
+#' @return A [tibble][tibble::tibble] with `length(dose)` rows and two columns:
+#'   \describe{
+#'     \item{`lo_pence`}{Cheapest achievable dose cost in pence. Divide by 100
+#'       for GBP.}
+#'     \item{`hi_pence`}{Most expensive achievable dose cost in pence. Divide
+#'       by 100 for GBP.}
+#'   }
+#'   Both columns are `na_value` when no solution is found.
+#'
+#' @seealso [dmd_dose_cost()] for a single-objective numeric vector,
+#'   [dmd_dose_optimise()] for the full combination tibble with product detail.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Cost range for rituximab doses — divide by 100 for GBP
+#' library(dplyr)
+#' doses_mg <- c(375, 500, 700)
+#' dmd_dose_cost_range(
+#'   query       = "rituximab",
+#'   dose        = doses_mg,
+#'   dose_unit   = "mg",
+#'   preparation = "infusion"
+#' ) / 100
+#'
+#' # Use inside mutate() to add lo/hi cost columns to a treatment table
+#' treatment_df |>
+#'   dplyr::bind_cols(
+#'     dmd_dose_cost_range("rituximab", dose = treatment_df$dose_mg) / 100
+#'   )
+#' }
+dmd_dose_cost_range <- function(
+  query,
+  dose,
+  dose_unit = NULL,
+  db = dmdprices::dmd_master,
+  method = c("partial", "exact", "fuzzy"),
+  max_dist = 3,
+  price = c("basic_price", "nhs_indicative_price"),
+  preparation = NULL,
+  active_only = TRUE,
+  can_split = TRUE,
+  can_split_vials = FALSE,
+  na_value = NA_real_
+) {
+  shared <- list(
+    query = query, dose = dose, dose_unit = dose_unit,
+    db = db, method = method, max_dist = max_dist,
+    price = price, preparation = preparation,
+    active_only = active_only, can_split = can_split,
+    can_split_vials = can_split_vials, na_value = na_value
+  )
+  lo <- do.call(dmd_dose_cost, c(shared, list(objective = "cheapest")))
+  hi <- do.call(dmd_dose_cost, c(shared, list(objective = "most_expensive")))
+  tibble::tibble(lo_pence = lo, hi_pence = hi)
 }
 
 # Empty result scaffold with the declared columns.

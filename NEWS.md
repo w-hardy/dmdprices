@@ -2,6 +2,18 @@
 
 ## Added
 
+- `dmd_dose_cost_range()` — new exported function that returns a tibble with
+  `lo_pence` and `hi_pence` columns (one row per dose), giving the cheapest
+  and most expensive achievable dose cost in a single call. Designed for
+  health-economics range analyses inside `dplyr::mutate()` or
+  `dplyr::bind_cols()`. The memoized candidate preparation step is shared with
+  `dmd_dose_cost()`, so calling both functions for the same drug incurs the
+  expensive lookup work only once.
+- `dmd_master_info()` — new exported function returning key metadata (release
+  label, load timestamp, AMPP/VMPP/VMP counts, price date range) about
+  `dmd_master` or a `dmd_load()` database. Useful for confirming data freshness
+  in analysis scripts and Shiny app footers. Returns a `"dmd_db_info"` object
+  with a `print()` method.
 - `dmd_dose_optimise()` and `dmd_dose_cost()` gain a `"most_expensive"`
   objective, which selects the highest-cost combination of AMPPs. Useful for
   worst-case cost modelling and budget-impact analysis upper bounds.
@@ -45,6 +57,18 @@
   prevent unbounded memory growth in long-running sessions.
 - Dead code removed from `.best_target()` internal function (`min_items` branch
   had a redundant feasibility filter that was always a no-op).
+
+## Performance
+
+- The memoized candidate preparation step now keys on lightweight scalars
+  (`dmd_db$loaded_at`, or the `dmd_release_label` attribute of the bundled
+  `dmd_master`) rather than hashing the full 118k-row tibble on every call.
+  This eliminates a ~10 ms per-call digest overhead for the common case where
+  the database does not change within a session.
+- `.dose_dp()` internal DP function: the inner per-strength loop is now fully
+  vectorised using `which.min()` and R vector arithmetic, replacing a pure R
+  nested loop. This reduces loop overhead for the outer DP iterations and
+  yields a 2–5× speedup for typical drug queries.
 
 ## Documentation
 
