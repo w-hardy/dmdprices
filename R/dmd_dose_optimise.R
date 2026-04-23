@@ -103,6 +103,15 @@
   },
   cache = cachem::cache_mem(max_size = 1024 * 1024^2)
 )
+
+#' Find the cheapest or minimum-item combination for a clinical dose
+#'
+#' Given a dose (e.g. 900 mg), searches the dm+d for products matching `query`
+#' and returns the cheapest or most expensive combination of AMPPs that delivers
+#' that dose, #' and/or the combination using the fewest items (tablets,
+#' ampoules, etc.).
+#'
+#' Products are segregated into preparation groups automatically so that, e.g.,
 #' immediate-release and modified-release tablets are optimised separately and
 #' never mixed within a single combination. For each group, up to two rows are
 #' returned — one per objective.
