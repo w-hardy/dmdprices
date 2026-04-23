@@ -80,42 +80,29 @@
 #   - any other tibble: rlang::hash() as a one-shot fallback (rare in practice).
 # Cache is capped at 1 GB; entries are separated by a NUL byte to prevent
 # collisions from adjacent argument concatenation.
-local({
-  .memo_cache <- cachem::cache_mem(max_size = 1024 * 1024^2)
-
-  .db_cache_key <- function(db) {
-    if (inherits(db, "dmd_db")) return(as.character(db$loaded_at))
-    lbl <- attr(db, "dmd_release_label", exact = TRUE)
-    if (!is.null(lbl)) lbl else rlang::hash(db)
+.db_cache_key <- function(db) {
+  if (inherits(db, "dmd_db")) {
+    return(format(db$loaded_at, "%Y%m%dT%H%M%OS6"))
   }
+  lbl <- attr(db, "dmd_release_label", exact = TRUE)
+  if (!is.null(lbl)) lbl else rlang::hash(db)
+}
 
-  .dmd_prepare_candidates_memo <<- function(
-    query,
-    db,
-    method,
-    max_dist,
-    active_only,
-    price
-  ) {
-    key <- paste(
-      query, .db_cache_key(db), method, max_dist, active_only, price,
-      sep = "\x00"
-    )
-    hit <- .memo_cache$get(key)
-    if (!cachem::is.key_missing(hit)) return(hit)
-    result <- .dmd_prepare_candidates(query, db, method, max_dist, active_only, price)
-    .memo_cache$set(key, result)
-    result
-  }
-})
-
-#' Find the cheapest or minimum-item combination for a clinical dose
-#'
-#' Given a dose (e.g. 900 mg), searches the dm+d for products matching `query`
-#' and returns the cheapest combination of AMPPs that delivers that dose,
-#' and/or the combination using the fewest items (tablets, ampoules, etc.).
-#'
-#' Products are segregated into preparation groups automatically so that, e.g.,
+.dmd_prepare_candidates_memo <- memoise::memoise(
+  .dmd_prepare_candidates,
+  hash = function(args) {
+    rlang::hash(paste(
+      args$query,
+      .db_cache_key(args$db),
+      args$method,
+      args$max_dist,
+      args$active_only,
+      args$price,
+      sep = "\x1f"
+    ))
+  },
+  cache = cachem::cache_mem(max_size = 1024 * 1024^2)
+)
 #' immediate-release and modified-release tablets are optimised separately and
 #' never mixed within a single combination. For each group, up to two rows are
 #' returned — one per objective.
@@ -240,7 +227,11 @@ dmd_dose_optimise <- function(
       "{.arg can_split} must be a single logical value (TRUE or FALSE)."
     )
   }
-  if (!is.logical(can_split_vials) || length(can_split_vials) != 1L || is.na(can_split_vials)) {
+  if (
+    !is.logical(can_split_vials) ||
+      length(can_split_vials) != 1L ||
+      is.na(can_split_vials)
+  ) {
     cli::cli_abort(
       "{.arg can_split_vials} must be a single logical value (TRUE or FALSE)."
     )
@@ -253,7 +244,8 @@ dmd_dose_optimise <- function(
   }
   if ("both" %in% objective) {
     lifecycle::deprecate_warn(
-      "0.6.0", 'dmd_dose_optimise(objective = "both")',
+      "0.6.0",
+      'dmd_dose_optimise(objective = "both")',
       details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
@@ -420,7 +412,7 @@ dmd_dose_optimise <- function(
 #' When multiple preparation groups match (e.g. no `preparation` filter is
 #' supplied), the **minimum cost across all groups** is returned for each dose.
 #'
-#' @param query,dose_unit,db,method,max_dist,price,objective,preparation,active_only,can_split
+#' @param query,dose_unit,db,method,max_dist,price,preparation,active_only,can_split
 #'   As in [dmd_dose_optimise()].
 #' @param objective Character vector of one or more of `"cheapest"`,
 #'   `"min_items"`, `"most_expensive"`, or `"all"`. The cost returned per dose
@@ -483,7 +475,8 @@ dmd_dose_cost <- function(
   }
   if ("both" %in% objective) {
     lifecycle::deprecate_warn(
-      "0.6.0", 'dmd_dose_cost(objective = "both")',
+      "0.6.0",
+      'dmd_dose_cost(objective = "both")',
       details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
@@ -608,13 +601,17 @@ dmd_dose_cost <- function(
               can_split = can_split,
               can_split_vials = can_split_vials
             )
-            if (is.null(row)) next
+            if (is.null(row)) {
+              next
+            }
             cost <- if (can_split) {
               row$cost_prorata_pence
             } else {
               row$cost_whole_pack_pence
             }
-            if (is.na(cost)) next
+            if (is.na(cost)) {
+              next
+            }
             if (is_max) {
               if (cost > best) best <- cost
             } else {
@@ -700,11 +697,18 @@ dmd_dose_cost_range <- function(
   na_value = NA_real_
 ) {
   shared <- list(
-    query = query, dose = dose, dose_unit = dose_unit,
-    db = db, method = method, max_dist = max_dist,
-    price = price, preparation = preparation,
-    active_only = active_only, can_split = can_split,
-    can_split_vials = can_split_vials, na_value = na_value
+    query = query,
+    dose = dose,
+    dose_unit = dose_unit,
+    db = db,
+    method = method,
+    max_dist = max_dist,
+    price = price,
+    preparation = preparation,
+    active_only = active_only,
+    can_split = can_split,
+    can_split_vials = can_split_vials,
+    na_value = na_value
   )
   lo <- do.call(dmd_dose_cost, c(shared, list(objective = "cheapest")))
   hi <- do.call(dmd_dose_cost, c(shared, list(objective = "most_expensive")))

@@ -2,7 +2,9 @@
 % Please edit documentation in R/dmd_dose_optimise.R
 \name{dmd_dose_optimise}
 \alias{dmd_dose_optimise}
-\title{Find the cheapest or minimum-item combination for a clinical dose}
+\title{immediate-release and modified-release tablets are optimised separately and
+never mixed within a single combination. For each group, up to two rows are
+returned — one per objective.}
 \usage{
 dmd_dose_optimise(
   query,
@@ -78,15 +80,9 @@ containers when \code{can_split = TRUE}, or whole packs when
 \code{can_split = FALSE}.
 }
 \description{
-Given a dose (e.g. 900 mg), searches the dm+d for products matching \code{query}
-and returns the cheapest combination of AMPPs that delivers that dose,
-and/or the combination using the fewest items (tablets, ampoules, etc.).
-}
-\details{
-Products are segregated into preparation groups automatically so that, e.g.,
 immediate-release and modified-release tablets are optimised separately and
-never mixed within a single combination. For each group, one row per objective
-is returned.
+never mixed within a single combination. For each group, up to two rows are
+returned — one per objective.
 }
 \examples{
 \dontrun{
@@ -105,18 +101,6 @@ dmd_dose_optimise(
 
 # Community pharmacy — whole packs must be dispensed
 dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
-
-# Worst-case cost (most expensive AMPPs)
-dmd_dose_optimise("metformin", dose = 1000, dose_unit = "mg",
-                  objective = "most_expensive")
-
-# All three objectives at once
-dmd_dose_optimise("metformin", dose = 1000, dose_unit = "mg",
-                  objective = "all")
-
-# Vial sharing for IV preparations
-dmd_dose_optimise("rituximab", dose = 250, dose_unit = "mg",
-                  preparation = "infusion", can_split_vials = TRUE)
 }
 }
 \seealso{

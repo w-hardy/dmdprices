@@ -151,22 +151,30 @@ dmd_master_info <- function(db = dmdprices::dmd_master) {
     if (!is.null(lbl)) as.character(lbl) else NA_character_
   }
 
-  loaded_at <- if (is_db) db$loaded_at else structure(NA_real_, class = c("POSIXct", "POSIXt"))
+  loaded_at <- if (is_db) {
+    db$loaded_at
+  } else {
+    structure(NA_real_, class = c("POSIXct", "POSIXt"))
+  }
 
   price_date_range <- if ("price_date" %in% names(master)) {
     pd <- master$price_date[!is.na(master$price_date)]
-    if (length(pd) > 0L) c(min(pd), max(pd)) else c(NA_character_, NA_character_)
+    if (length(pd) > 0L) {
+      c(min(pd), max(pd))
+    } else {
+      c(NA_character_, NA_character_)
+    }
   } else {
     c(NA_character_, NA_character_)
   }
 
   structure(
     list(
-      release_label    = release_label,
-      loaded_at        = loaded_at,
-      n_ampps          = dplyr::n_distinct(master$ampp_snomed_code, na.rm = TRUE),
-      n_vmpps          = dplyr::n_distinct(master$vmpp_snomed_code, na.rm = TRUE),
-      n_vmps           = dplyr::n_distinct(master$vmp_snomed_code,  na.rm = TRUE),
+      release_label = release_label,
+      loaded_at = loaded_at,
+      n_ampps = dplyr::n_distinct(master$ampp_snomed_code, na.rm = TRUE),
+      n_vmpps = dplyr::n_distinct(master$vmpp_snomed_code, na.rm = TRUE),
+      n_vmps = dplyr::n_distinct(master$vmp_snomed_code, na.rm = TRUE),
       price_date_range = price_date_range
     ),
     class = "dmd_db_info"
@@ -185,7 +193,11 @@ print.dmd_db_info <- function(x, ...) {
 
   pd <- x$price_date_range
   pd_str <- if (!is.na(pd[[1]])) {
-    if (identical(pd[[1]], pd[[2]])) pd[[1]] else paste0(pd[[1]], " – ", pd[[2]])
+    if (identical(pd[[1]], pd[[2]])) {
+      pd[[1]]
+    } else {
+      paste0(pd[[1]], " - ", pd[[2]])
+    }
   } else {
     "unknown"
   }
