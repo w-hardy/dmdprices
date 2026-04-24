@@ -5,10 +5,14 @@
 
 # Safe wrapper around .pick_scale() that applies two additional caps so that
 # dose_canonical * s never overflows as.integer() and stays within the DP
-# table hard cap (dp_cap cells).  Without this, a repeating-decimal strength
+# table hard cap (dp_cap cells). Without this, a repeating-decimal strength
 # (e.g. 1400 mg / 11.7 ml = 119.658...) can push the scale to 1e7, causing
 # 900 * 1e7 = 9e9 > .Machine$integer.max, which coerces to NA_integer_ and
 # triggers "missing value where TRUE/FALSE needed" in .optimise_group().
+#
+# Returns the minimum of: the base scale from .pick_scale() (capped at
+# max_scale), an integer-overflow cap, and a DP-table-size cap. The effective
+# result may be well below max_scale when strengths or dose are large.
 
 .pick_scale_safe <- function(
   strengths,
@@ -44,15 +48,6 @@
     }
   }
   s
-}
-
-# ── Pro-rata per-item price ───────────────────────────────────────────────────
-
-.per_item_price <- function(pack_price, pack_size) {
-  if (is.na(pack_price) || is.na(pack_size) || pack_size <= 0) {
-    return(NA_real_)
-  }
-  pack_price / pack_size
 }
 
 # ── Whole-pack cost for one strength ──────────────────────────────────────────
@@ -131,24 +126,26 @@
   price_for_cost[is.na(price_for_cost)] <- Inf
 
   for (t in 1L:T) {
-    for (i in seq_along(strengths_int)) {
-      s <- strengths_int[i]
-      if (s > t) {
-        next
-      }
-      prev_idx <- t - s + 1L
+    valid <- which(strengths_int <= t)
+    if (length(valid) == 0L) next
 
-      cand_items <- min_items[prev_idx] + 1
-      if (cand_items < min_items[t + 1L]) {
-        min_items[t + 1L] <- cand_items
-        items_back[t + 1L] <- i
-      }
+    prev_idxs <- t - strengths_int[valid] + 1L
 
-      cand_cost <- min_cost[prev_idx] + price_for_cost[i]
-      if (cand_cost < min_cost[t + 1L]) {
-        min_cost[t + 1L] <- cand_cost
-        cost_back[t + 1L] <- i
-      }
+    # Fewest-items update: find the valid strength whose predecessor has the
+    # fewest items already, then apply if it beats the current cell.
+    cand_items <- min_items[prev_idxs] + 1
+    best_i <- which.min(cand_items)
+    if (cand_items[best_i] < min_items[t + 1L]) {
+      min_items[t + 1L] <- cand_items[best_i]
+      items_back[t + 1L] <- valid[best_i]
+    }
+
+    # Cheapest update: same logic for cost.
+    cand_cost <- min_cost[prev_idxs] + price_for_cost[valid]
+    best_c <- which.min(cand_cost)
+    if (cand_cost[best_c] < min_cost[t + 1L]) {
+      min_cost[t + 1L] <- cand_cost[best_c]
+      cost_back[t + 1L] <- valid[best_c]
     }
   }
 
@@ -691,8 +688,9 @@
 ) {
   pack_df <- .build_pack_df(group_df)
 
-  # One coin per unique pack_dose × AMPP combination; we keep all rows and
-  # select cheapest per pack_dose for the DP price vector.
+  # One DP coin per unique pack_dose. The coin price is the cheapest (or,
+  # when objective is "most_expensive", the dearest) priced pack at that
+  # pack_dose level.
   pack_doses <- sort(unique(pack_df$pack_dose[
     !is.na(pack_df$pack_dose) & pack_df$pack_dose > 0
   ]))
@@ -700,7 +698,12 @@
     return(NULL)
   }
 
-  cheapest_per_pack_dose <- vapply(
+  is_max <- identical(objective, "most_expensive")
+
+  # For most_expensive we seed the DP with the dearest pack per pack_dose and
+  # later reconstruct with the dearest AMPP; for the other objectives we keep
+  # the cheapest-per-pack_dose behaviour.
+  price_per_pack_dose <- vapply(
     pack_doses,
     function(d) {
       rows <- pack_df[
@@ -713,7 +716,11 @@
       if (nrow(rows) == 0) {
         return(NA_real_)
       }
-      min(rows$pack_price_pence, na.rm = TRUE)
+      if (is_max) {
+        max(rows$pack_price_pence, na.rm = TRUE)
+      } else {
+        min(rows$pack_price_pence, na.rm = TRUE)
+      }
     },
     numeric(1)
   )
@@ -735,8 +742,12 @@
     return(NULL)
   }
 
-  dp <- .dose_dp(strengths_int, cheapest_per_pack_dose, dose_int, max_over)
-  best <- .best_target(dp, dose_int, max_over, objective)
+  dp <- .dose_dp(strengths_int, price_per_pack_dose, dose_int, max_over)
+  best <- if (is_max) {
+    .best_target_max(dp, dose_int, max_over)
+  } else {
+    .best_target(dp, dose_int, max_over, objective)
+  }
   if (is.null(best)) {
     return(NULL)
   }
@@ -762,13 +773,15 @@
       drop = FALSE
     ]
 
-    # Cheapest pack for this pack_dose.
+    # Pick the cheapest / most expensive priced pack for this pack_dose,
+    # mirroring the objective used to seed the DP.
     priced <- rows[!is.na(rows$pack_price_pence), , drop = FALSE]
     if (nrow(priced) == 0) {
       chosen <- rows[1, , drop = FALSE]
       subtotal_whole <- NA_real_
     } else {
-      chosen <- priced[which.min(priced$pack_price_pence), , drop = FALSE]
+      pick <- if (is_max) which.max else which.min
+      chosen <- priced[pick(priced$pack_price_pence), , drop = FALSE]
       subtotal_whole <- chosen$pack_price_pence * counts[i]
     }
 
@@ -813,7 +826,10 @@
   }
   notes <- c(notes, "no-pack-splitting")
   if (nrow(combination) > 0) {
-    notes <- c(notes, "cheapest-pack-per-dose")
+    notes <- c(
+      notes,
+      if (is_max) "most-expensive-pack-per-dose" else "cheapest-pack-per-dose"
+    )
   }
 
   # total_items = packs dispensed (the discrete units in a community setting).

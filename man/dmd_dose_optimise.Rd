@@ -12,10 +12,11 @@ dmd_dose_optimise(
   method = c("partial", "exact", "fuzzy"),
   max_dist = 3,
   price = c("basic_price", "nhs_indicative_price"),
-  objective = c("both", "cheapest", "min_items"),
+  objective = c("cheapest", "min_items"),
   preparation = NULL,
   active_only = TRUE,
-  can_split = TRUE
+  can_split = TRUE,
+  can_split_vials = FALSE
 )
 }
 \arguments{
@@ -38,7 +39,10 @@ same shape as \link{dmd_master}. Default: bundled \link{dmd_master}.}
 \code{"nhs_indicative_price"}. Falls back to the other column when the chosen
 one is NA for an individual AMPP (a note is added).}
 
-\item{objective}{\code{"both"} (default), \code{"cheapest"}, or \code{"min_items"}.}
+\item{objective}{Character vector of one or more objectives: \code{"cheapest"},
+\code{"min_items"}, \code{"most_expensive"}. Pass \code{"all"} as a shorthand for all
+three. Defaults to \code{c("cheapest", "min_items")}. Each objective produces
+one row per preparation group in the result.}
 
 \item{preparation}{Optional character — a case-insensitive plain substring
 matched against \code{preparation_group} or \code{preparation_label} before
@@ -56,6 +60,10 @@ is normal in community pharmacy. Concentration-based preparations
 regardless of this setting. When \code{can_split = FALSE}, reported costs
 are whole-pack costs rather than pro-rata costs, and a
 \code{"no-pack-splitting"} note is added.}
+
+\item{can_split_vials}{Logical. If \code{TRUE}, concentration-based preparations
+(vials, ampoules) may be costed as a fraction of a container (vial
+sharing). Defaults to \code{FALSE}, which costs whole containers only.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per
@@ -71,8 +79,9 @@ containers when \code{can_split = TRUE}, or whole packs when
 }
 \description{
 Given a dose (e.g. 900 mg), searches the dm+d for products matching \code{query}
-and returns the cheapest combination of AMPPs that delivers that dose,
-and/or the combination using the fewest items (tablets, ampoules, etc.).
+and returns the cheapest or most expensive combination of AMPPs that delivers
+that dose, #' and/or the combination using the fewest items (tablets,
+ampoules, etc.).
 }
 \details{
 Products are segregated into preparation groups automatically so that, e.g.,

@@ -1,12 +1,11 @@
-# - a strength with NA basic_price but a nhs_indicative_price (fallback)
-# - a concentration vial whose strength_canonical is a repeating decimal
-#   (Rituximab 1400mg/11.7ml) to regression-test the per_item_dose fix
 # Fake dmd_db used by dose-optimisation tests. Covers:
 # - two strengths of one preparation (metformin 500mg / 1000mg tablets)
 # - a modified-release variant at different prices
 # - an oral solution with mg/ml concentration
 # - a solution-for-injection ampoule
 # - a strength with NA basic_price but a nhs_indicative_price (fallback)
+# - a concentration vial whose strength_canonical is a repeating decimal
+#   (Rituximab 1400mg/11.7ml) to regression-test the per_item_dose fix
 .fake_dose_db <- function() {
   master <- tibble::tibble(
     medicine = c(

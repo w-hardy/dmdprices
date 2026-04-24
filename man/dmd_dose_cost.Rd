@@ -16,15 +16,27 @@ dmd_dose_cost(
   preparation = NULL,
   active_only = TRUE,
   can_split = TRUE,
+  can_split_vials = FALSE,
   na_value = NA_real_
 )
 }
 \arguments{
-\item{query, dose_unit, db, method, max_dist, price, objective, preparation, active_only, can_split}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. \code{objective} accepts only a single value here
-(not \code{"both"}); default is \code{"cheapest"}.}
+\item{query, dose_unit, db, method, max_dist, price, preparation, active_only, can_split}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}.}
 
 \item{dose}{A \strong{numeric vector} of dose values in \code{dose_unit}. \code{NA}, zero,
 or negative elements are returned as \code{na_value} without error.}
+
+\item{objective}{Character vector of one or more of \code{"cheapest"},
+\code{"min_items"}, \code{"most_expensive"}, or \code{"all"}. The cost returned per dose
+element is aggregated across preparation groups using each objective's
+natural extremum (minimum for \code{"cheapest"} / \code{"min_items"}; maximum for
+\code{"most_expensive"}). When multiple objectives are supplied, the
+\strong{minimum} of the per-objective aggregates is returned — i.e. the
+default \code{c("cheapest", "min_items")} returns the cheapest achievable cost,
+while \code{"most_expensive"} alone returns the worst-case cost across groups.}
+
+\item{can_split_vials}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. If \code{TRUE}, vials and
+ampoules are costed as a fraction of a container (vial sharing).}
 
 \item{na_value}{Scalar returned for doses that are \code{NA}, non-positive, or for
 which no solution is found. Default \code{NA_real_}.}

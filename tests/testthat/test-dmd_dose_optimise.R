@@ -639,3 +639,458 @@ test_that("dmd_dose_cost with no preparation returns min cost across groups", {
   cost_all <- dmd_dose_cost("rituximab", dose = 900, dose_unit = "mg", db = db)
   expect_true(cost_all <= min(cost_infusion, cost_injection, na.rm = TRUE))
 })
+
+# ── most_expensive objective ──────────────────────────────────────────────────
+
+test_that("objective = 'most_expensive' returns cost >= cheapest for same group", {
+  ch <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "cheapest"
+  )
+  me <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "most_expensive"
+  )
+  expect_s3_class(me, "tbl_df")
+  expect_equal(nrow(me), 1L)
+  expect_equal(me$objective, "most_expensive")
+  expect_true(
+    is.na(me$dose_cost_pence) || is.na(ch$dose_cost_pence) ||
+      me$dose_cost_pence >= ch$dose_cost_pence
+  )
+})
+
+test_that("objective = c('cheapest', 'most_expensive') returns two rows", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = c("cheapest", "most_expensive")
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_equal(nrow(res), 2L)
+  expect_setequal(res$objective, c("cheapest", "most_expensive"))
+})
+
+test_that("objective = 'all' returns three rows per preparation group", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 1000,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "all"
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_equal(nrow(res), 3L)
+  expect_setequal(res$objective, c("cheapest", "min_items", "most_expensive"))
+})
+
+test_that("objective = 'both' triggers a deprecation warning", {
+  expect_warning(
+    dmd_dose_optimise(
+      "metformin",
+      dose = 1000,
+      dose_unit = "mg",
+      db = db,
+      preparation = "tablet|none|oral",
+      objective = "both"
+    ),
+    regexp = "both"
+  )
+})
+
+test_that("objective = 'both' still returns cheapest and min_items rows", {
+  res <- suppressWarnings(
+    dmd_dose_optimise(
+      "metformin",
+      dose = 1000,
+      dose_unit = "mg",
+      db = db,
+      preparation = "tablet|none|oral",
+      objective = "both"
+    )
+  )
+  expect_setequal(res$objective, c("cheapest", "min_items"))
+})
+
+# ── can_split_vials ───────────────────────────────────────────────────────────
+
+test_that("can_split_vials = TRUE gives non-integer count and vial-sharing note", {
+  # 250mg dose against 500mg/50ml vials — should use half a vial (count = 0.5)
+  res <- dmd_dose_optimise(
+    "rituximab",
+    dose = 250,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest",
+    can_split_vials = TRUE
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_true(nrow(res) >= 1L)
+  combo <- res$combination[[1]]
+  expect_false(combo$count[1] == as.integer(combo$count[1]))
+  expect_true(any(grepl("vial-sharing", res$notes)))
+})
+
+test_that("can_split_vials = TRUE cost <= whole-vial cost for same dose", {
+  cost_whole <- dmd_dose_optimise(
+    "rituximab",
+    dose = 250,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest",
+    can_split_vials = FALSE
+  )$dose_cost_pence
+
+  cost_shared <- dmd_dose_optimise(
+    "rituximab",
+    dose = 250,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest",
+    can_split_vials = TRUE
+  )$dose_cost_pence
+
+  expect_true(
+    is.na(cost_shared) || is.na(cost_whole) ||
+      cost_shared <= cost_whole
+  )
+})
+
+# ── Regression: pack-level DP + most_expensive (bug #2) ───────────────────────
+
+test_that("most_expensive + can_split = FALSE picks the dearest pack", {
+  # 100mg: 100-per-pack at 150p (cheap per mg)
+  # 500mg:   1-per-pack at 950p (expensive per pack)
+  # For 400mg with can_split = FALSE: cheapest pack-level = 1×500mg (950p is
+  #   actually not cheapest; 1×100mg-pack = 150p covers 400mg? No, 1×100mg-pack
+  #   gives 10,000 mg total so yes covers 400mg for 150p).
+  # So cheapest pack-level answer = 1×100mg-pack = 150p.
+  # most_expensive pack-level answer = 1×500mg-pack = 950p (single pack that
+  #   covers the dose at the highest cost).
+  m_lim <- tibble::tibble(
+    medicine = c("Metformin 100mg tablets", "Metformin 500mg tablets"),
+    pack_size = c(100L, 1L),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VP1", "VP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(150L, 950L),
+    nhs_indicative_price = c(150L, 950L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Metformin 100mg 100 tablet", "Metformin 500mg 1 tablet"),
+    ampp_snomed_code = c("A1", "A2")
+  )
+  db_lim <- structure(
+    list(master = m_lim, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+
+  res_ch <- dmd_dose_optimise(
+    "metformin", dose = "400 mg", db = db_lim,
+    preparation = "tablet|none|oral",
+    objective = "cheapest", can_split = FALSE
+  )
+  res_me <- dmd_dose_optimise(
+    "metformin", dose = "400 mg", db = db_lim,
+    preparation = "tablet|none|oral",
+    objective = "most_expensive", can_split = FALSE
+  )
+
+  expect_equal(res_me$objective, "most_expensive")
+  # most_expensive must cost at least as much as cheapest in the same group.
+  expect_true(res_me$cost_whole_pack_pence >= res_ch$cost_whole_pack_pence)
+  # And the note should reflect the correct selection rule.
+  expect_true(grepl("most-expensive-pack-per-dose", res_me$notes))
+  expect_true(grepl("no-pack-splitting", res_me$notes))
+})
+
+# ── Regression: dmd_dose_cost + most_expensive (bug #1) ───────────────────────
+
+test_that("dmd_dose_cost with objective = 'most_expensive' returns the worst-case cost", {
+  cost_ch <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "cheapest"
+  )
+  cost_me <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "most_expensive"
+  )
+  expect_true(!is.na(cost_me))
+  expect_true(cost_me >= cost_ch)
+})
+
+test_that("dmd_dose_cost most_expensive picks max across preparation groups", {
+  # rituximab has two infusion-priced AMPPs in the fake db; across both
+  # groups the most_expensive aggregate should be >= either group alone.
+  cost_inf <- dmd_dose_cost(
+    "rituximab", dose = 900, dose_unit = "mg", db = db,
+    preparation = "infusion", objective = "most_expensive"
+  )
+  cost_all <- dmd_dose_cost(
+    "rituximab", dose = 900, dose_unit = "mg", db = db,
+    objective = "most_expensive"
+  )
+  expect_true(!is.na(cost_all))
+  expect_true(cost_all >= cost_inf)
+})
+
+test_that("dmd_dose_cost default c('cheapest','min_items') still returns the minimum", {
+  # Backward-compatibility sanity check after the aggregation refactor.
+  cost_default <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  cost_ch <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "cheapest"
+  )
+  cost_mi <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "min_items"
+  )
+  expect_equal(cost_default, min(cost_ch, cost_mi, na.rm = TRUE))
+})
+
+# ── Regression: vial-sharing + most_expensive ─────────────────────────────────
+
+test_that("can_split_vials = TRUE + most_expensive picks the dearest vial fraction", {
+  ch <- dmd_dose_optimise(
+    "rituximab", dose = 250, dose_unit = "mg", db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest", can_split_vials = TRUE
+  )
+  me <- dmd_dose_optimise(
+    "rituximab", dose = 250, dose_unit = "mg", db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "most_expensive", can_split_vials = TRUE
+  )
+  expect_equal(me$objective, "most_expensive")
+  expect_true(any(grepl("vial-sharing", me$notes)))
+  expect_true(me$dose_cost_pence >= ch$dose_cost_pence)
+  # Non-integer count on the combination row.
+  combo <- me$combination[[1]]
+  expect_false(combo$count[1] == as.integer(combo$count[1]))
+})
+
+# ── Regression: %g format in print.dmd_dose_combination (bug #3) ──────────────
+
+test_that("print.dmd_dose_combination renders fractional counts without warning", {
+  res <- dmd_dose_optimise(
+    "rituximab", dose = 250, dose_unit = "mg", db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest", can_split_vials = TRUE
+  )
+  combo <- res$combination[[1]]
+  # Count is fractional — %d would warn; %g must not.
+  expect_false(combo$count[1] == as.integer(combo$count[1]))
+  expect_no_warning(out <- capture.output(print(combo)))
+  # And the fraction must appear verbatim in the printed output.
+  expect_true(any(grepl(format(combo$count[1]), out, fixed = TRUE)))
+})
+
+# ── Validation: empty and invalid objective vectors ───────────────────────────
+
+test_that("objective = character(0) errors with a helpful message", {
+  expect_error(
+    dmd_dose_optimise(
+      "metformin", dose = 500, dose_unit = "mg", db = db,
+      objective = character(0)
+    ),
+    regexp = "at least one"
+  )
+  expect_error(
+    dmd_dose_cost(
+      "metformin", dose = 500, dose_unit = "mg", db = db,
+      objective = character(0)
+    ),
+    regexp = "at least one"
+  )
+})
+
+test_that("objective = 'bogus' errors via match.arg", {
+  expect_error(
+    dmd_dose_optimise(
+      "metformin", dose = 500, dose_unit = "mg", db = db,
+      objective = "bogus"
+    )
+  )
+})
+
+# ── Edge cases: invalid pack_size and pack_price ──────────────────────────────
+
+test_that("rows with pack_size <= 0 yield NA per-item price and do not crash", {
+  m <- tibble::tibble(
+    medicine = c("Metformin 500mg tablets", "Metformin 1000mg tablets"),
+    pack_size = c(0L, 28L), # 0 is invalid and must be ignored
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VP1", "VP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(100L, 180L),
+    nhs_indicative_price = c(110L, 190L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Metformin 500mg bad 0 tablet", "Metformin 1000mg 28 tablet"),
+    ampp_snomed_code = c("A1", "A2")
+  )
+  edge_db <- structure(
+    list(master = m, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+  # Must not error. The zero-pack-size row can't contribute pro-rata; the
+  # 1000mg row must still deliver the dose.
+  expect_no_error(
+    res <- dmd_dose_optimise(
+      "metformin", dose = 1000, dose_unit = "mg", db = edge_db,
+      preparation = "tablet|none|oral"
+    )
+  )
+  expect_true(nrow(res) >= 1L)
+})
+
+test_that("all pack_size = 0 returns an empty result rather than crashing", {
+  m <- tibble::tibble(
+    medicine = "Metformin 500mg tablets",
+    pack_size = 0L,
+    unit = "tablet",
+    vmp_snomed_code = "V1",
+    vmpp_snomed_code = "VP1",
+    drug_tariff_category = "Part VIIIA Category M",
+    basic_price = 100L,
+    nhs_indicative_price = 110L,
+    price_basis = "NHS Indicative Price",
+    price_date = "2025-08-08",
+    ampp_name = "Metformin 500mg bad 0 tablet",
+    ampp_snomed_code = "A1"
+  )
+  edge_db <- structure(
+    list(master = m, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+  memoise::forget(.dmd_prepare_candidates_memo)
+  expect_no_error(
+    dmd_dose_cost(
+      "metformin", dose = 500, dose_unit = "mg", db = edge_db
+    )
+  )
+})
+
+# ── preparation filter that matches nothing ───────────────────────────────────
+
+test_that("preparation filter that matches no group warns and returns empty", {
+  expect_warning(
+    res <- dmd_dose_optimise(
+      "metformin", dose = 500, dose_unit = "mg", db = db,
+      preparation = "nonexistent-preparation-xyz"
+    ),
+    regexp = "No candidates remain"
+  )
+  expect_equal(nrow(res), 0L)
+})
+
+# ── dmd_dose_cost with objective = 'all' ──────────────────────────────────────
+
+test_that("dmd_dose_cost accepts objective = 'all' as a shorthand", {
+  cost_all <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "all"
+  )
+  # Minimum across cheapest/min_items/most_expensive per-objective aggregates
+  # = cost for cheapest (since most_expensive dominates and cheapest/min_items
+  # share the same minimum floor). Must match explicitly listing the three.
+  cost_triple <- dmd_dose_cost(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral",
+    objective = c("cheapest", "min_items", "most_expensive")
+  )
+  expect_equal(cost_all, cost_triple)
+  expect_true(!is.na(cost_all))
+})
+
+# ── dmd_dose_cost_range ───────────────────────────────────────────────────────
+
+test_that("dmd_dose_cost_range returns a tibble with lo_pence and hi_pence", {
+  res <- dmd_dose_cost_range(
+    "metformin", dose = 1000, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_s3_class(res, "tbl_df")
+  expect_named(res, c("lo_pence", "hi_pence"))
+  expect_equal(nrow(res), 1L)
+})
+
+test_that("dmd_dose_cost_range: lo_pence <= hi_pence for all doses", {
+  doses <- c(500, 1000, 1500, 2000)
+  res <- dmd_dose_cost_range(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_equal(nrow(res), length(doses))
+  # Both columns finite
+  expect_true(all(is.finite(res$lo_pence)))
+  expect_true(all(is.finite(res$hi_pence)))
+  # Lower bound never exceeds upper bound
+  expect_true(all(res$lo_pence <= res$hi_pence))
+})
+
+test_that("dmd_dose_cost_range lo_pence matches dmd_dose_cost('cheapest')", {
+  doses <- c(500, 1000)
+  lo <- dmd_dose_cost_range(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )$lo_pence
+  expected <- dmd_dose_cost(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "cheapest"
+  )
+  expect_equal(lo, expected)
+})
+
+test_that("dmd_dose_cost_range hi_pence matches dmd_dose_cost('most_expensive')", {
+  doses <- c(500, 1000)
+  hi <- dmd_dose_cost_range(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )$hi_pence
+  expected <- dmd_dose_cost(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral", objective = "most_expensive"
+  )
+  expect_equal(hi, expected)
+})
+
+test_that("dmd_dose_cost_range returns na_value for NA, zero, and negative doses", {
+  res <- dmd_dose_cost_range(
+    "metformin", dose = c(NA, 0, -1, 500), dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_true(is.na(res$lo_pence[1]))
+  expect_true(is.na(res$lo_pence[2]))
+  expect_true(is.na(res$lo_pence[3]))
+  expect_false(is.na(res$lo_pence[4]))
+})
+
+test_that("dmd_dose_cost_range length matches dose vector length", {
+  doses <- seq(500, 2500, by = 500)
+  res <- dmd_dose_cost_range(
+    "metformin", dose = doses, dose_unit = "mg", db = db,
+    preparation = "tablet|none|oral"
+  )
+  expect_equal(nrow(res), length(doses))
+})

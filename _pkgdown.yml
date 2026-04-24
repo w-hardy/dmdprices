@@ -44,6 +44,7 @@ reference:
     contents:
       - dmd_dose_optimise
       - dmd_dose_cost
+      - dmd_dose_cost_range
       - dmd_parse_strength
   - title: "Inflation adjustment"
     desc: "Adjust costs using NHS Cost Inflation Index (NHS CII)"
@@ -60,6 +61,7 @@ reference:
     desc: "Bundled dataset"
     contents:
       - dmd_master
+      - dmd_master_info
   - title: "Package"
     contents:
       - dmdprices-package

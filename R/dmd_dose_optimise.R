@@ -58,29 +58,58 @@
 
   is_concentration <- !is.na(enriched$denominator_unit)
   enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
+
+  # Pro-rata per-item price for solid forms. NA pack_size or non-positive
+  # pack_size yields NA; NA pack_price propagates through division.
+  safe_pack_size <- enriched$pack_size
+  safe_pack_size[!is.na(safe_pack_size) & safe_pack_size <= 0] <- NA_real_
   enriched$per_item_price_pence <- ifelse(
     is_concentration,
     enriched$pack_price_pence,
-    mapply(.per_item_price, enriched$pack_price_pence, enriched$pack_size)
+    enriched$pack_price_pence / safe_pack_size
   )
 
   enriched
 }
 
-# Session-level memoized version — free after the first call for any given
-# (query, db, method, max_dist, active_only, price) combination.
-# Cache is capped at 1 GB to prevent unbounded growth in long-running
-# sessions (Shiny apps, batch analyses across many drug names).
+# Session-level memo with a lightweight cache key. The bundled dmd_master is
+# a ~118k-row tibble; memoise::memoise() would digest() the whole object on
+# every call. Instead we key on scalars only:
+#   - dmd_db objects: their loaded_at timestamp (set by dmd_load()).
+#   - bundled dmd_master: its dmd_release_label attribute.
+#   - any other tibble: rlang::hash() as a one-shot fallback (rare in practice).
+# Cache is capped at 1 GB; entries are separated by a NUL byte to prevent
+# collisions from adjacent argument concatenation.
+.db_cache_key <- function(db) {
+  if (inherits(db, "dmd_db")) {
+    return(format(db$loaded_at, "%Y%m%dT%H%M%OS6"))
+  }
+  lbl <- attr(db, "dmd_release_label", exact = TRUE)
+  if (!is.null(lbl)) lbl else rlang::hash(db)
+}
+
 .dmd_prepare_candidates_memo <- memoise::memoise(
   .dmd_prepare_candidates,
+  hash = function(args) {
+    rlang::hash(paste(
+      args$query,
+      .db_cache_key(args$db),
+      args$method,
+      args$max_dist,
+      args$active_only,
+      args$price,
+      sep = "\x1f"
+    ))
+  },
   cache = cachem::cache_mem(max_size = 1024 * 1024^2)
 )
 
 #' Find the cheapest or minimum-item combination for a clinical dose
 #'
 #' Given a dose (e.g. 900 mg), searches the dm+d for products matching `query`
-#' and returns the cheapest combination of AMPPs that delivers that dose,
-#' and/or the combination using the fewest items (tablets, ampoules, etc.).
+#' and returns the cheapest or most expensive combination of AMPPs that delivers
+#' that dose, #' and/or the combination using the fewest items (tablets,
+#' ampoules, etc.).
 #'
 #' Products are segregated into preparation groups automatically so that, e.g.,
 #' immediate-release and modified-release tablets are optimised separately and
@@ -100,7 +129,10 @@
 #' @param price        Which price column to use — `"basic_price"` (default) or
 #'   `"nhs_indicative_price"`. Falls back to the other column when the chosen
 #'   one is NA for an individual AMPP (a note is added).
-#' @param objective    `"both"` (default), `"cheapest"`, or `"min_items"`.
+#' @param objective    Character vector of one or more objectives: `"cheapest"`,
+#'   `"min_items"`, `"most_expensive"`. Pass `"all"` as a shorthand for all
+#'   three. Defaults to `c("cheapest", "min_items")`. Each objective produces
+#'   one row per preparation group in the result.
 #' @param preparation  Optional character — a case-insensitive plain substring
 #'   matched against `preparation_group` or `preparation_label` before
 #'   returning results. An exact key (e.g. `\"tablet|none|oral\"`) continues to
@@ -116,6 +148,9 @@
 #'   regardless of this setting. When `can_split = FALSE`, reported costs
 #'   are whole-pack costs rather than pro-rata costs, and a
 #'   `"no-pack-splitting"` note is added.
+#' @param can_split_vials Logical. If `TRUE`, concentration-based preparations
+#'   (vials, ampoules) may be costed as a fraction of a container (vial
+#'   sharing). Defaults to `FALSE`, which costs whole containers only.
 #'
 #' @return A [tibble][tibble::tibble] with one row per
 #'   `(preparation_group, objective)` combination. See the package vignette for
@@ -158,10 +193,11 @@ dmd_dose_optimise <- function(
   method = c("partial", "exact", "fuzzy"),
   max_dist = 3,
   price = c("basic_price", "nhs_indicative_price"),
-  objective = c("both", "cheapest", "min_items"),
+  objective = c("cheapest", "min_items"),
   preparation = NULL,
   active_only = TRUE,
-  can_split = TRUE
+  can_split = TRUE,
+  can_split_vials = FALSE
 ) {
   # ── Resolve dose / dose_unit ─────────────────────────────────────────────
   if (is.character(dose)) {
@@ -200,15 +236,38 @@ dmd_dose_optimise <- function(
       "{.arg can_split} must be a single logical value (TRUE or FALSE)."
     )
   }
+  if (
+    !is.logical(can_split_vials) ||
+      length(can_split_vials) != 1L ||
+      is.na(can_split_vials)
+  ) {
+    cli::cli_abort(
+      "{.arg can_split_vials} must be a single logical value (TRUE or FALSE)."
+    )
+  }
   method <- match.arg(method)
   price <- match.arg(price)
-  objective <- match.arg(objective)
 
-  objectives <- switch(
+  if (identical(objective, "all")) {
+    objective <- c("cheapest", "min_items", "most_expensive")
+  }
+  if ("both" %in% objective) {
+    lifecycle::deprecate_warn(
+      "0.6.0",
+      'dmd_dose_optimise(objective = "both")',
+      details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
+    )
+    objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
+  }
+  if (length(objective) == 0L) {
+    cli::cli_abort(
+      '{.arg objective} must contain at least one of {.val cheapest}, {.val min_items}, {.val most_expensive} (or {.val all}).'
+    )
+  }
+  objective <- match.arg(
     objective,
-    both = c("cheapest", "min_items"),
-    cheapest = "cheapest",
-    min_items = "min_items"
+    c("cheapest", "min_items", "most_expensive"),
+    several.ok = TRUE
   )
 
   # Canonicalise requested dose
@@ -302,7 +361,7 @@ dmd_dose_optimise <- function(
       ,
       drop = FALSE
     ]
-    for (obj in objectives) {
+    for (obj in objective) {
       row <- .optimise_group(
         group_df = sub,
         dose_canonical = dose_canon$value,
@@ -311,7 +370,8 @@ dmd_dose_optimise <- function(
         medicine_root = medicine_root,
         preparation_group = groups$preparation_group[g],
         preparation_label = groups$preparation_label[g],
-        can_split = can_split
+        can_split = can_split,
+        can_split_vials = can_split_vials
       )
       if (!is.null(row)) out[[length(out) + 1L]] <- row
     }
@@ -361,9 +421,18 @@ dmd_dose_optimise <- function(
 #' When multiple preparation groups match (e.g. no `preparation` filter is
 #' supplied), the **minimum cost across all groups** is returned for each dose.
 #'
-#' @param query,dose_unit,db,method,max_dist,price,objective,preparation,active_only,can_split
-#'   As in [dmd_dose_optimise()]. `objective` accepts only a single value here
-#'   (not `"both"`); default is `"cheapest"`.
+#' @param query,dose_unit,db,method,max_dist,price,preparation,active_only,can_split
+#'   As in [dmd_dose_optimise()].
+#' @param objective Character vector of one or more of `"cheapest"`,
+#'   `"min_items"`, `"most_expensive"`, or `"all"`. The cost returned per dose
+#'   element is aggregated across preparation groups using each objective's
+#'   natural extremum (minimum for `"cheapest"` / `"min_items"`; maximum for
+#'   `"most_expensive"`). When multiple objectives are supplied, the
+#'   **minimum** of the per-objective aggregates is returned — i.e. the
+#'   default `c("cheapest", "min_items")` returns the cheapest achievable cost,
+#'   while `"most_expensive"` alone returns the worst-case cost across groups.
+#' @param can_split_vials As in [dmd_dose_optimise()]. If `TRUE`, vials and
+#'   ampoules are costed as a fraction of a container (vial sharing).
 #' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
 #'   or negative elements are returned as `na_value` without error.
 #' @param na_value Scalar returned for doses that are `NA`, non-positive, or for
@@ -404,11 +473,33 @@ dmd_dose_cost <- function(
   preparation = NULL,
   active_only = TRUE,
   can_split = TRUE,
+  can_split_vials = FALSE,
   na_value = NA_real_
 ) {
   method <- match.arg(method)
   price <- match.arg(price)
-  objective <- match.arg(objective)
+
+  if (identical(objective, "all")) {
+    objective <- c("cheapest", "min_items", "most_expensive")
+  }
+  if ("both" %in% objective) {
+    lifecycle::deprecate_warn(
+      "0.6.0",
+      'dmd_dose_cost(objective = "both")',
+      details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
+    )
+    objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
+  }
+  if (length(objective) == 0L) {
+    cli::cli_abort(
+      '{.arg objective} must contain at least one of {.val cheapest}, {.val min_items}, {.val most_expensive} (or {.val all}).'
+    )
+  }
+  objective <- match.arg(
+    objective,
+    c("cheapest", "min_items", "most_expensive"),
+    several.ok = TRUE
+  )
 
   if (!is.numeric(dose)) {
     cli::cli_abort(c(
@@ -482,6 +573,13 @@ dmd_dose_cost <- function(
   ])
 
   # ── Per-dose DP loop ───────────────────────────────────────────────────────
+  # Aggregation semantics:
+  #   - cheapest / min_items: minimum cost across preparation groups
+  #   - most_expensive:       maximum cost across preparation groups
+  #   - multiple objectives:  per-objective aggregate, then minimum across
+  #                           objectives (backward-compatible for the default
+  #                           c("cheapest", "min_items"), conservative when
+  #                           "most_expensive" is mixed in)
   vapply(
     dose,
     function(d) {
@@ -490,36 +588,140 @@ dmd_dose_cost <- function(
       }
       dose_canon <- .canonicalise_unit(d, dose_unit)
 
-      best_cost <- Inf
-      for (g in seq_len(nrow(groups))) {
-        sub <- enriched[
-          enriched$preparation_group == groups$preparation_group[g],
-          ,
-          drop = FALSE
-        ]
-        row <- .optimise_group(
-          group_df = sub,
-          dose_canonical = dose_canon$value,
-          dose_unit_canon = dose_canon$unit,
-          objective = objective,
-          medicine_root = medicine_root,
-          preparation_group = groups$preparation_group[g],
-          preparation_label = groups$preparation_label[g],
-          can_split = can_split
-        )
-        if (!is.null(row)) {
-          cost <- if (can_split) {
-            row$cost_prorata_pence
-          } else {
-            row$cost_whole_pack_pence
+      per_obj_cost <- vapply(
+        objective,
+        function(obj) {
+          is_max <- identical(obj, "most_expensive")
+          best <- if (is_max) -Inf else Inf
+          for (g in seq_len(nrow(groups))) {
+            sub <- enriched[
+              enriched$preparation_group == groups$preparation_group[g],
+              ,
+              drop = FALSE
+            ]
+            row <- .optimise_group(
+              group_df = sub,
+              dose_canonical = dose_canon$value,
+              dose_unit_canon = dose_canon$unit,
+              objective = obj,
+              medicine_root = medicine_root,
+              preparation_group = groups$preparation_group[g],
+              preparation_label = groups$preparation_label[g],
+              can_split = can_split,
+              can_split_vials = can_split_vials
+            )
+            if (is.null(row)) {
+              next
+            }
+            cost <- if (can_split) {
+              row$cost_prorata_pence
+            } else {
+              row$cost_whole_pack_pence
+            }
+            if (is.na(cost)) {
+              next
+            }
+            if (is_max) {
+              if (cost > best) best <- cost
+            } else {
+              if (cost < best) best <- cost
+            }
           }
-          if (!is.na(cost) && cost < best_cost) best_cost <- cost
-        }
-      }
-      if (is.infinite(best_cost)) na_value else best_cost
+          if (is.infinite(best)) NA_real_ else best
+        },
+        numeric(1L)
+      )
+
+      finite <- per_obj_cost[!is.na(per_obj_cost)]
+      if (length(finite) == 0L) na_value else min(finite)
     },
     numeric(1L)
   )
+}
+
+# ── Cost range lookup ─────────────────────────────────────────────────────────
+
+#' Vectorised dose cost range lookup
+#'
+#' Returns the **cheapest** and **most expensive** achievable cost for each
+#' dose in a single call. A purpose-built alternative to calling
+#' [dmd_dose_cost()] twice with different `objective` values, with clearer
+#' naming for health-economics range analyses.
+#'
+#' The candidate preparation step is memoized, so even though this function
+#' runs the DP twice internally (once per bound), the expensive price-lookup
+#' and parsing work is only performed once per `(query, db, ...)` combination
+#' within a session.
+#'
+#' @inheritParams dmd_dose_cost
+#' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
+#'   or negative elements yield `na_value` in both output columns.
+#' @param na_value Scalar returned for doses that are `NA`, non-positive, or
+#'   for which no solution is found. Default `NA_real_`.
+#'
+#' @return A [tibble][tibble::tibble] with `length(dose)` rows and two columns:
+#'   \describe{
+#'     \item{`lo_pence`}{Cheapest achievable dose cost in pence. Divide by 100
+#'       for GBP.}
+#'     \item{`hi_pence`}{Most expensive achievable dose cost in pence. Divide
+#'       by 100 for GBP.}
+#'   }
+#'   Both columns are `na_value` when no solution is found.
+#'
+#' @seealso [dmd_dose_cost()] for a single-objective numeric vector,
+#'   [dmd_dose_optimise()] for the full combination tibble with product detail.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Cost range for rituximab doses — divide by 100 for GBP
+#' library(dplyr)
+#' doses_mg <- c(375, 500, 700)
+#' dmd_dose_cost_range(
+#'   query       = "rituximab",
+#'   dose        = doses_mg,
+#'   dose_unit   = "mg",
+#'   preparation = "infusion"
+#' ) / 100
+#'
+#' # Use inside mutate() to add lo/hi cost columns to a treatment table
+#' treatment_df |>
+#'   dplyr::bind_cols(
+#'     dmd_dose_cost_range("rituximab", dose = treatment_df$dose_mg) / 100
+#'   )
+#' }
+dmd_dose_cost_range <- function(
+  query,
+  dose,
+  dose_unit = NULL,
+  db = dmdprices::dmd_master,
+  method = c("partial", "exact", "fuzzy"),
+  max_dist = 3,
+  price = c("basic_price", "nhs_indicative_price"),
+  preparation = NULL,
+  active_only = TRUE,
+  can_split = TRUE,
+  can_split_vials = FALSE,
+  na_value = NA_real_
+) {
+  shared <- list(
+    query = query,
+    dose = dose,
+    dose_unit = dose_unit,
+    db = db,
+    method = method,
+    max_dist = max_dist,
+    price = price,
+    preparation = preparation,
+    active_only = active_only,
+    can_split = can_split,
+    can_split_vials = can_split_vials,
+    na_value = na_value
+  )
+  lo <- do.call(dmd_dose_cost, c(shared, list(objective = "cheapest")))
+  hi <- do.call(dmd_dose_cost, c(shared, list(objective = "most_expensive")))
+  tibble::tibble(lo_pence = lo, hi_pence = hi)
 }
 
 # Empty result scaffold with the declared columns.
@@ -560,10 +762,12 @@ print.dmd_dose_combination <- function(x, ...) {
     cat("<dmd_dose_combination: empty>\n")
     return(invisible(x))
   }
+  # %g keeps integer counts compact while rendering fractional vial-sharing
+  # counts (e.g. 0.5) without sprintf warnings.
   lines <- vapply(
     seq_len(nrow(x)),
     function(i) {
-      sprintf("  %d \u00d7 %s", x$count[i], x$ampp_name[i])
+      sprintf("  %g \u00d7 %s", x$count[i], x$ampp_name[i])
     },
     character(1)
   )

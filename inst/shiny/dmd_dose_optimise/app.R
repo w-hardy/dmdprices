@@ -11,7 +11,7 @@ fmt_combination <- function(comb) {
   }
   lines <- vapply(
     seq_len(nrow(comb)),
-    function(i) sprintf("%d \u00d7 %s", comb$count[i], comb$ampp_name[i]),
+    function(i) sprintf("%g \u00d7 %s", comb$count[i], comb$ampp_name[i]),
     character(1)
   )
   paste(lines, collapse = "<br>")
@@ -74,16 +74,17 @@ ui <- fluidPage(
         choices  = c("Basic price" = "basic_price", "NHS indicative" = "nhs_indicative_price"),
         selected = "basic_price"
       ),
-      radioButtons(
-        "objective", "Objective",
+      checkboxGroupInput(
+        "objective", "Objectives",
         choices  = c(
-          "Both"       = "both",
-          "Cheapest"   = "cheapest",
-          "Min items"  = "min_items"
+          "Cheapest"       = "cheapest",
+          "Min items"      = "min_items",
+          "Most expensive" = "most_expensive"
         ),
-        selected = "both"
+        selected = c("cheapest", "min_items")
       ),
       checkboxInput("can_split", "Allow pack splitting (hospital)", value = TRUE),
+      checkboxInput("can_split_vials", "Allow vial sharing (concentration preps)", value = FALSE),
       textInput(
         "preparation", "Filter by preparation (optional)",
         placeholder = "e.g. tablet|modified-release|oral"
@@ -138,19 +139,25 @@ server <- function(input, output, session) {
       input$dose > 0
     )
 
+    objs <- input$objective
+    if (is.null(objs) || length(objs) == 0L) {
+      objs <- "cheapest"
+    }
+
     prep_filter <- if (nzchar(trimws(input$preparation))) trimws(input$preparation) else NULL
 
     tryCatch(
       dmd_dose_optimise(
-        query       = trimws(input$query),
-        dose        = input$dose,
-        dose_unit   = input$dose_unit,
-        method      = input$method,
-        active_only = input$active_only,
-        price       = input$price,
-        objective   = input$objective,
-        preparation = prep_filter,
-        can_split   = input$can_split
+        query          = trimws(input$query),
+        dose           = input$dose,
+        dose_unit      = input$dose_unit,
+        method         = input$method,
+        active_only    = input$active_only,
+        price          = input$price,
+        objective      = objs,
+        preparation    = prep_filter,
+        can_split      = input$can_split,
+        can_split_vials = input$can_split_vials
       ),
       error = function(e) {
         list(error = conditionMessage(e))
