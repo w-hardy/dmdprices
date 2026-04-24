@@ -86,6 +86,8 @@
   when `can_split = TRUE`, and whole packs when `can_split = FALSE`.
 - Vignette `dose_optimisation` documents whole-pack dispensing, vial sharing,
   vectorised costing, cost ranges, and compound-product skipping.
+- The README and apps vignette now list all three Shiny apps as hosted and
+  locally runnable, including the dose optimiser app.
 
 # dmdprices 0.5.0
 

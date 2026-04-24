@@ -214,7 +214,13 @@ The dm+d is available from the NHSBSA TRUD service:
 
 ## Interactive apps
 
-Three local Shiny apps are included:
+No R required - use the hosted apps directly from the pkgdown apps page:
+
+- [dm+d Price Lookup](https://w-hardy.github.io/dmdprices/articles/apps.html#dmd-price-lookup)
+- [dm+d Dose Optimiser](https://w-hardy.github.io/dmdprices/articles/apps.html#dmd-dose-optimiser)
+- [NHS CII Cost Adjuster](https://w-hardy.github.io/dmdprices/articles/apps.html#nhs-cii-cost-adjuster)
+
+Or run locally:
 
 ```r
 run_dmd_price_lookup()
