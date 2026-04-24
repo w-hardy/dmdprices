@@ -24,7 +24,7 @@
   Set to `TRUE` to cost concentration preparations (vials, ampoules) as a
   fraction of a container (vial sharing), which adds `"vial-sharing"` to the
   `notes` column and returns a non-integer `count` in the combination tibble.
-- `cachem` and `lifecycle` added to `Imports`.
+- `bslib`, `cachem`, and `lifecycle` added to `Imports`.
 
 ## Deprecated
 
@@ -42,9 +42,18 @@
   selects the dearest whole-pack combination rather than falling through to
   the cheapest branch. The notes column reads `"most-expensive-pack-per-dose"`
   on this path.
+- `dmd_dose_optimise(objective = "most_expensive")` now follows a true
+  max-cost DP path rather than selecting the highest of the cheapest paths.
+- Concentration-based products now calculate the active quantity per container
+  correctly when the pack quantity shares the concentration denominator unit
+  (for example, `10mg/5ml` in a `100 ml` bottle).
+- Unsupported compound products with multiple active strengths in one VMP name
+  are skipped with a warning rather than optimised against an ambiguous dose.
 - `print.dmd_dose_combination()` and the dose-optimiser Shiny app's
   combination formatter use `%g` instead of `%d` so fractional
   vial-sharing counts (e.g. `0.5`) render without a warning.
+- The dose optimiser Shiny app now renders the selected-row combination detail
+  table through a normal `DTOutput()` / `renderDT()` pair.
 - `DT` moved back to `Imports` (from `Suggests`) so `run_dmd_price_lookup()`
   works on a fresh install without a separate `install.packages("DT")` step.
 - `dmd_dose_optimise()` result columns are now in the same order as the empty
@@ -53,8 +62,8 @@
   and `price_field_used`).
 - `dmd_dose_cost()` now emits an informative error when `dose` is a character
   string, explaining the difference from `dmd_dose_optimise()`.
-- Memoization cache is now capped at 256 MB via `memoise::cache_memory()` to
-  prevent unbounded memory growth in long-running sessions.
+- Memoization cache is now capped at 1 GB via `cachem::cache_mem()` to prevent
+  unbounded memory growth in long-running sessions.
 - Dead code removed from `.best_target()` internal function (`min_items` branch
   had a redundant feasibility filter that was always a no-op).
 
@@ -75,9 +84,8 @@
 - `dmd_dose_optimise()` `@return` now documents that `count` in the
   `combination` tibble means individual dispensing units (tablets/containers)
   when `can_split = TRUE`, and whole packs when `can_split = FALSE`.
-- Vignette `dose_optimisation` gains two new sections: "Community pharmacy:
-  whole-pack dispensing" (`can_split = FALSE`) and "Vectorised costing with
-  `dmd_dose_cost()`".
+- Vignette `dose_optimisation` documents whole-pack dispensing, vial sharing,
+  vectorised costing, cost ranges, and compound-product skipping.
 
 # dmdprices 0.5.0
 

@@ -30,6 +30,8 @@ navbar:
       menu:
         - text: dm+d Price Lookup
           href: articles/apps.html#dmd-price-lookup
+        - text: dm+d Dose Optimiser
+          href: articles/apps.html#dmd-dose-optimiser
         - text: NHS CII Cost Adjuster
           href: articles/apps.html#nhs-cii-cost-adjuster
 

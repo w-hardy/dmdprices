@@ -11,9 +11,10 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-Two Shiny apps are available for interactive use without writing any R code.
-You can access them online (hosted on Posit Connect Cloud) or run them locally
-if you have `dmdprices` installed.
+Three Shiny apps are available for interactive use without writing any R code.
+The price lookup and NHS CII apps can be accessed online (hosted on Posit
+Connect Cloud), and all three can be run locally if you have `dmdprices`
+installed.
 
 ---
 
@@ -43,6 +44,19 @@ dmdprices::run_dmd_price_lookup()
      </a>
   </p>
 </iframe>
+
+---
+
+## dm+d Dose Optimiser {#dmd-dose-optimiser}
+
+Find dose-delivering AMPP combinations by cheapest, minimum-items, or
+most-expensive objective.
+
+**Run locally:**
+
+```r
+dmdprices::run_dmd_dose_optimise()
+```
 
 ---
 
@@ -89,6 +103,12 @@ rsconnect::deployApp(
 )
 
 rsconnect::deployApp(
+  appDir    = system.file("shiny", "dmd_dose_optimise", package = "dmdprices"),
+  appName   = "dmd-dose-optimise",
+  appTitle  = "dm+d Dose Optimiser"
+)
+
+rsconnect::deployApp(
   appDir    = system.file("shiny", "inflate_nhscii", package = "dmdprices"),
   appName   = "inflate-nhscii",
   appTitle  = "NHS CII Cost Adjuster"
@@ -99,7 +119,7 @@ rsconnect::deployApp(
 
 ## Data attribution
 
-**dm+d Price Lookup** uses the NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release, published by the NHS Business Services Authority (NHSBSA). © Crown copyright. Licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+**dm+d Price Lookup** and **dm+d Dose Optimiser** use the NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release, published by the NHS Business Services Authority (NHSBSA). © Crown copyright. Licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
 
 **NHS CII Cost Adjuster** uses inflation rates from Jones et al. (2025), *Unit Costs of Health and Social Care 2024 Manual*, published by the Personal Social Services Research Unit (University of Kent) & Centre for Health Economics (University of York). <https://doi.org/10.22024/UniKent/01.02.109563>
 

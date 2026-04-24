@@ -55,7 +55,8 @@ attr(dmd_master, "dmd_release_label")
 ## Dose optimisation
 
 Given a clinical dose (e.g. 900 mg) `dmd_dose_optimise()` returns the cheapest
-and/or minimum-item combination of AMPPs from the dm+d that deliver it.
+and/or minimum-item combination of AMPPs from the dm+d that deliver it. It can
+also return the most expensive achievable combination for upper-bound costing.
 Preparations are segregated automatically so that immediate-release tablets,
 modified-release tablets, oral solutions, and injections are never mixed in a
 single combination.
@@ -76,6 +77,9 @@ dmd_dose_optimise(
 
 # Community pharmacy — whole packs must be dispensed
 dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
+
+# Worst-case cost
+dmd_dose_optimise("metformin", dose = "900 mg", objective = "most_expensive")
 ```
 
 Each row includes a `combination` list-column of specific branded products:
@@ -86,6 +90,11 @@ res$combination[[1]]
 ```
 
 See `vignette("dose_optimisation")` for a full walkthrough.
+
+For high-volume costing, use `dmd_dose_cost()` for a numeric vector of doses or
+`dmd_dose_cost_range()` to return cheapest and most-expensive costs together.
+Unsupported compound products with multiple active strengths in one name are
+skipped with a warning rather than optimised against an ambiguous dose.
 
 ---
 
@@ -200,6 +209,18 @@ Published by the **NHS Business Services Authority (NHSBSA)**.
 
 The dm+d is available from the NHSBSA TRUD service:
 <https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6>
+
+---
+
+## Interactive apps
+
+Three local Shiny apps are included:
+
+```r
+run_dmd_price_lookup()
+run_dmd_dose_optimise()
+run_inflate_nhscii()
+```
 
 ---
 

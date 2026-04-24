@@ -1,5 +1,108 @@
 # ── Memoized candidate preparation ──────────────────────────────────────────
 
+# Convert a character vector of unit labels to canonical unit labels.
+.canonicalise_unit_name <- function(unit) {
+  vapply(
+    unit,
+    function(u) .canonicalise_unit(1, u)$unit,
+    character(1)
+  )
+}
+
+# Convert a value/unit pair to a canonical value.
+.canonicalise_unit_value <- function(value, unit) {
+  mapply(
+    function(v, u) .canonicalise_unit(v, u)$value,
+    value,
+    unit,
+    SIMPLIFY = TRUE,
+    USE.NAMES = FALSE
+  )
+}
+
+# Total dose represented by one discrete optimisation item. For liquids with a
+# pack unit matching the denominator unit, use the pack quantity. For vials and
+# other container-count packs, use the concentration denominator volume.
+.per_item_dose <- function(enriched) {
+  out <- enriched$strength_canonical
+  is_concentration <- !is.na(enriched$denominator_unit)
+  if (!any(is_concentration)) {
+    return(out)
+  }
+
+  pack_unit_canon <- .canonicalise_unit_name(enriched$unit)
+  den_unit_canon <- .canonicalise_unit_name(enriched$denominator_unit)
+  den_value_canon <- .canonicalise_unit_value(
+    enriched$denominator_value,
+    enriched$denominator_unit
+  )
+
+  use_pack_quantity <- is_concentration &
+    !is.na(pack_unit_canon) &
+    !is.na(den_unit_canon) &
+    pack_unit_canon == den_unit_canon
+
+  multiplier <- den_value_canon
+  multiplier[use_pack_quantity] <- enriched$pack_size[use_pack_quantity]
+
+  out[is_concentration] <-
+    enriched$strength_canonical[is_concentration] *
+      multiplier[is_concentration]
+  out
+}
+
+.strength_token_count <- function(name) {
+  pattern <- paste0(
+    "(?i)\\d+(?:\\.\\d+)?\\s*",
+    "(?:micrograms?|mcg|mg|ng|nanograms?|g|units?|u)\\b"
+  )
+  matches <- gregexpr(pattern, name, perl = TRUE)
+  vapply(
+    matches,
+    function(m) {
+      if (length(m) == 1L && (is.na(m) || identical(m, -1L))) {
+        0L
+      } else {
+        length(m)
+      }
+    },
+    integer(1)
+  )
+}
+
+.is_unsupported_compound <- function(enriched) {
+  den_unit <- tolower(enriched$denominator_unit)
+  num_unit_canon <- .canonicalise_unit_name(enriched$strength_unit)
+  den_unit_canon <- .canonicalise_unit_name(den_unit)
+
+  topical_mass_concentration <- enriched$form %in% c("cream", "ointment", "gel") &
+    den_unit == "g"
+
+  same_dose_unit_ratio <- !is.na(den_unit) &
+    !is.na(num_unit_canon) &
+    !is.na(den_unit_canon) &
+    num_unit_canon == den_unit_canon &
+    num_unit_canon %in% c("mg", "unit")
+
+  multiple_strengths <- .strength_token_count(enriched$medicine) > 1L
+
+  (same_dose_unit_ratio | multiple_strengths) & !topical_mass_concentration
+}
+
+.drop_unsupported_compounds <- function(enriched) {
+  if (!"unsupported_compound" %in% names(enriched)) {
+    return(enriched)
+  }
+
+  n <- sum(enriched$unsupported_compound, na.rm = TRUE)
+  if (n > 0L) {
+    cli::cli_warn(
+      "{n} unsupported compound product{?s} skipped during dose optimisation."
+    )
+  }
+  enriched[!enriched$unsupported_compound, , drop = FALSE]
+}
+
 # Performs all dose-independent work: price lookup, strength parsing,
 # preparation classification, and price-field resolution. The result is
 # memoized at session level so repeated calls for the same
@@ -30,15 +133,8 @@
 
   enriched <- dplyr::bind_cols(candidates, parsed, prep)
 
-  # Per-item canonical dose: for concentration entries multiply by denominator
-  # volume and pack_size to recover total mass per container.
-  enriched$per_item_dose <- ifelse(
-    !is.na(enriched$denominator_unit),
-    enriched$strength_canonical *
-      enriched$denominator_value *
-      enriched$pack_size,
-    enriched$strength_canonical
-  )
+  enriched$unsupported_compound <- .is_unsupported_compound(enriched)
+  enriched$per_item_dose <- .per_item_dose(enriched)
 
   # Resolve price field with per-row fallback.
   alt_col <- setdiff(c("basic_price", "nhs_indicative_price"), price)
@@ -104,17 +200,19 @@
   cache = cachem::cache_mem(max_size = 1024 * 1024^2)
 )
 
-#' Find the cheapest or minimum-item combination for a clinical dose
+#' Find dose combinations for a clinical dose
 #'
 #' Given a dose (e.g. 900 mg), searches the dm+d for products matching `query`
-#' and returns the cheapest or most expensive combination of AMPPs that delivers
-#' that dose, #' and/or the combination using the fewest items (tablets,
-#' ampoules, etc.).
+#' and returns the cheapest, most expensive, and/or fewest-item combination of
+#' AMPPs that delivers that dose.
 #'
 #' Products are segregated into preparation groups automatically so that, e.g.,
 #' immediate-release and modified-release tablets are optimised separately and
-#' never mixed within a single combination. For each group, up to two rows are
-#' returned — one per objective.
+#' never mixed within a single combination. For each group, one row is returned
+#' per requested objective.
+#'
+#' Unsupported compound products with multiple active strengths in one VMP name
+#' are skipped with a warning rather than optimised against an ambiguous dose.
 #'
 #' @param query        Character string passed through to [dmd_price_lookup()].
 #' @param dose         Numeric dose value (in `dose_unit`), **or** a
@@ -144,9 +242,9 @@
 #'   (tablets, capsules) can be taken from a part-pack, as is normal in
 #'   hospital dispensing. `FALSE` requires whole packs to be dispensed, as
 #'   is normal in community pharmacy. Concentration-based preparations
-#'   (liquids, inhalers, vials) are **always** treated as unsplittable
-#'   regardless of this setting. When `can_split = FALSE`, reported costs
-#'   are whole-pack costs rather than pro-rata costs, and a
+#'   (liquids, inhalers, vials) are treated as one container regardless of this
+#'   setting unless `can_split_vials = TRUE`. When `can_split = FALSE`,
+#'   reported costs are whole-pack costs rather than pro-rata costs, and a
 #'   `"no-pack-splitting"` note is added.
 #' @param can_split_vials Logical. If `TRUE`, concentration-based preparations
 #'   (vials, ampoules) may be costed as a fraction of a container (vial
@@ -160,8 +258,8 @@
 #'   pro-rata item cost when `can_split = TRUE` (hospital), or whole-pack cost
 #'   when `can_split = FALSE` (community). In the `combination` tibble, `count`
 #'   is the number of discrete dispensing units: individual tablets/capsules/
-#'   containers when `can_split = TRUE`, or whole packs when
-#'   `can_split = FALSE`.
+#'   containers when `can_split = TRUE`, whole packs when `can_split = FALSE`,
+#'   or a fractional container when `can_split_vials = TRUE`.
 #'
 #' @seealso [dmd_price_lookup()], [dmd_parse_strength()]
 #'
@@ -286,6 +384,10 @@ dmd_dose_optimise <- function(
     price = price
   )
   if (is.null(enriched)) {
+    return(.empty_dose_result())
+  }
+  enriched <- .drop_unsupported_compounds(enriched)
+  if (nrow(enriched) == 0) {
     return(.empty_dose_result())
   }
 
@@ -528,6 +630,10 @@ dmd_dose_cost <- function(
   if (is.null(enriched)) {
     return(rep(na_value, length(dose)))
   }
+  enriched <- .drop_unsupported_compounds(enriched)
+  if (nrow(enriched) == 0) {
+    return(rep(na_value, length(dose)))
+  }
 
   # ── Static row filters applied once ───────────────────────────────────────
   dose_unit_info <- .canonicalise_unit(1, dose_unit)
@@ -719,8 +825,29 @@ dmd_dose_cost_range <- function(
     can_split_vials = can_split_vials,
     na_value = na_value
   )
-  lo <- do.call(dmd_dose_cost, c(shared, list(objective = "cheapest")))
-  hi <- do.call(dmd_dose_cost, c(shared, list(objective = "most_expensive")))
+  compound_warning_seen <- FALSE
+  call_cost <- function(obj) {
+    withCallingHandlers(
+      do.call(dmd_dose_cost, c(shared, list(objective = obj))),
+      warning = function(w) {
+        if (
+          grepl(
+            "unsupported compound product",
+            conditionMessage(w),
+            fixed = TRUE
+          )
+        ) {
+          if (compound_warning_seen) {
+            invokeRestart("muffleWarning")
+          }
+          compound_warning_seen <<- TRUE
+        }
+      }
+    )
+  }
+
+  lo <- call_cost("cheapest")
+  hi <- call_cost("most_expensive")
   tibble::tibble(lo_pence = lo, hi_pence = hi)
 }
 

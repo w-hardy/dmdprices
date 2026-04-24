@@ -2,7 +2,7 @@
 % Please edit documentation in R/dmd_dose_optimise.R
 \name{dmd_dose_optimise}
 \alias{dmd_dose_optimise}
-\title{Find the cheapest or minimum-item combination for a clinical dose}
+\title{Find dose combinations for a clinical dose}
 \usage{
 dmd_dose_optimise(
   query,
@@ -56,9 +56,9 @@ alternation.}
 (tablets, capsules) can be taken from a part-pack, as is normal in
 hospital dispensing. \code{FALSE} requires whole packs to be dispensed, as
 is normal in community pharmacy. Concentration-based preparations
-(liquids, inhalers, vials) are \strong{always} treated as unsplittable
-regardless of this setting. When \code{can_split = FALSE}, reported costs
-are whole-pack costs rather than pro-rata costs, and a
+(liquids, inhalers, vials) are treated as one container regardless of this
+setting unless \code{can_split_vials = TRUE}. When \code{can_split = FALSE},
+reported costs are whole-pack costs rather than pro-rata costs, and a
 \code{"no-pack-splitting"} note is added.}
 
 \item{can_split_vials}{Logical. If \code{TRUE}, concentration-based preparations
@@ -74,20 +74,22 @@ row per AMPP picked, identifying the specific branded product(s) used.
 pro-rata item cost when \code{can_split = TRUE} (hospital), or whole-pack cost
 when \code{can_split = FALSE} (community). In the \code{combination} tibble, \code{count}
 is the number of discrete dispensing units: individual tablets/capsules/
-containers when \code{can_split = TRUE}, or whole packs when
-\code{can_split = FALSE}.
+containers when \code{can_split = TRUE}, whole packs when \code{can_split = FALSE},
+or a fractional container when \code{can_split_vials = TRUE}.
 }
 \description{
 Given a dose (e.g. 900 mg), searches the dm+d for products matching \code{query}
-and returns the cheapest or most expensive combination of AMPPs that delivers
-that dose, #' and/or the combination using the fewest items (tablets,
-ampoules, etc.).
+and returns the cheapest, most expensive, and/or fewest-item combination of
+AMPPs that delivers that dose.
 }
 \details{
 Products are segregated into preparation groups automatically so that, e.g.,
 immediate-release and modified-release tablets are optimised separately and
-never mixed within a single combination. For each group, up to two rows are
-returned — one per objective.
+never mixed within a single combination. For each group, one row is returned
+per requested objective.
+
+Unsupported compound products with multiple active strengths in one VMP name
+are skipped with a warning rather than optimised against an ambiguous dose.
 }
 \examples{
 \dontrun{

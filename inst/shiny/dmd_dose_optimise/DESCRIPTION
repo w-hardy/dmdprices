@@ -4,4 +4,6 @@ Title: dm+d Dose Optimiser
 
 Version: 0.0.1
 
+Imports: shiny, dmdprices, DT, bslib
+
 Remotes: w-hardy/dmdprices

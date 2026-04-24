@@ -106,7 +106,8 @@
 # dose_int      : integer target in scaled units.
 # max_over      : max allowed over-delivery in scaled units.
 #
-# Returns a list with `min_items`, `min_cost`, `items_back`, `cost_back`
+# Returns a list with `min_items`, `min_cost`, `max_cost`, `items_back`,
+# `cost_back`, and `max_back`
 # vectors indexed 1..(dose_int + max_over + 1) — index = t + 1.
 .dose_dp <- function(strengths_int, per_item_price, dose_int, max_over) {
   T <- as.integer(dose_int + max_over)
@@ -114,16 +115,23 @@
 
   min_items <- rep(INF, T + 1L)
   min_cost <- rep(INF, T + 1L)
+  max_cost <- rep(-INF, T + 1L)
+  max_items <- rep(-INF, T + 1L)
   items_back <- rep(NA_integer_, T + 1L)
   cost_back <- rep(NA_integer_, T + 1L)
+  max_back <- rep(NA_integer_, T + 1L)
 
   min_items[1] <- 0
   min_cost[1] <- 0
+  max_cost[1] <- 0
+  max_items[1] <- 0
 
   # Replace NA prices with Inf so they never win min_cost but still allow
-  # min_items reconstruction.
+  # min_items reconstruction. For max_cost, replace NA with -Inf.
   price_for_cost <- per_item_price
   price_for_cost[is.na(price_for_cost)] <- Inf
+  price_for_max <- per_item_price
+  price_for_max[is.na(price_for_max)] <- -Inf
 
   for (t in 1L:T) {
     valid <- which(strengths_int <= t)
@@ -147,13 +155,33 @@
       min_cost[t + 1L] <- cand_cost[best_c]
       cost_back[t + 1L] <- valid[best_c]
     }
+
+    # Most-expensive update: maximize cost, with more items as the within-cell
+    # tie-break so target-level ties can be resolved consistently later.
+    cand_max_cost <- max_cost[prev_idxs] + price_for_max[valid]
+    cand_max_items <- max_items[prev_idxs] + 1
+    best_m <- which.max(cand_max_cost)
+    if (
+      cand_max_cost[best_m] > max_cost[t + 1L] ||
+        (
+          cand_max_cost[best_m] == max_cost[t + 1L] &&
+            cand_max_items[best_m] > max_items[t + 1L]
+        )
+    ) {
+      max_cost[t + 1L] <- cand_max_cost[best_m]
+      max_items[t + 1L] <- cand_max_items[best_m]
+      max_back[t + 1L] <- valid[best_m]
+    }
   }
 
   list(
     min_items = min_items,
     min_cost = min_cost,
+    max_cost = max_cost,
+    max_items = max_items,
     items_back = items_back,
-    cost_back = cost_back
+    cost_back = cost_back,
+    max_back = max_back
   )
 }
 
@@ -247,10 +275,11 @@
 .best_target_max <- function(dp, dose_int, max_over) {
   ts <- dose_int:(dose_int + max_over)
   idx <- ts + 1L
-  items_vec <- dp$min_items[idx]
-  cost_vec <- dp$min_cost[idx]
+  min_items_vec <- dp$min_items[idx]
+  items_vec <- dp$max_items[idx]
+  cost_vec <- dp$max_cost[idx]
 
-  feasible <- is.finite(items_vec)
+  feasible <- is.finite(min_items_vec)
   finite_cost <- is.finite(cost_vec)
 
   if (!any(feasible)) {
@@ -260,10 +289,10 @@
   if (!any(finite_cost & feasible)) {
     # No priced option — return the feasible target with most items as proxy.
     cand <- which(feasible)
-    chosen <- cand[which.max(items_vec[cand])][1]
+    chosen <- cand[which.max(min_items_vec[cand])][1]
     return(list(
       t = ts[chosen],
-      items = items_vec[chosen],
+      items = min_items_vec[chosen],
       cost = NA_real_,
       back = dp$items_back
     ))
@@ -290,7 +319,7 @@
     t = ts[chosen],
     items = items_vec[chosen],
     cost = cost_vec[chosen],
-    back = dp$cost_back
+    back = dp$max_back
   )
 }
 
@@ -390,15 +419,22 @@
     return(NULL)
   }
 
-  # Cheapest per-item price per per_item_dose level.
-  cheapest_per_strength <- vapply(
+  is_max <- identical(objective, "most_expensive")
+
+  # Objective-specific per-item price per per_item_dose level. The DP needs the
+  # highest priced AMPP for the max-cost path and the cheapest for all others.
+  price_per_strength <- vapply(
     strengths,
     function(s) {
       rows <- group_df[group_df$per_item_dose == s, , drop = FALSE]
       if (all(is.na(rows$per_item_price_pence))) {
         return(NA_real_)
       }
-      min(rows$per_item_price_pence, na.rm = TRUE)
+      if (is_max) {
+        max(rows$per_item_price_pence, na.rm = TRUE)
+      } else {
+        min(rows$per_item_price_pence, na.rm = TRUE)
+      }
     },
     numeric(1)
   )
@@ -420,9 +456,9 @@
     return(NULL)
   }
 
-  dp <- .dose_dp(strengths_int, cheapest_per_strength, dose_int, max_over)
+  dp <- .dose_dp(strengths_int, price_per_strength, dose_int, max_over)
 
-  best <- if (objective == "most_expensive") {
+  best <- if (is_max) {
     .best_target_max(dp, dose_int, max_over)
   } else {
     .best_target(dp, dose_int, max_over, objective)
@@ -433,7 +469,7 @@
   }
 
   # For "most_expensive" we want the most expensive AMPP per strength, not cheapest.
-  pick_ampp <- if (objective == "most_expensive") {
+  pick_ampp <- if (is_max) {
     function(rows) {
       priced <- rows[!is.na(rows$per_item_price_pence), , drop = FALSE]
       if (nrow(priced) == 0) {
@@ -480,7 +516,7 @@
     }
 
     wp_rows <- if (nrow(priced) > 0) priced else rows
-    if (objective == "most_expensive") {
+    if (is_max) {
       # Whole-pack: pick most expensive pack for this strength
       wp <- .whole_pack_most_expensive(wp_rows, counts[i])
     } else {
@@ -535,7 +571,7 @@
   if (price_fallback) {
     notes <- c(notes, "price-field-fallback")
   }
-  if (objective == "most_expensive") {
+  if (is_max) {
     notes <- c(notes, "most-expensive-AMPP-per-strength")
   } else if (nrow(combination) > 0) {
     notes <- c(notes, "cheapest-AMPP-per-strength")

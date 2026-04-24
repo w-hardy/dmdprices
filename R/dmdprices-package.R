@@ -4,15 +4,19 @@
 #' costs for inflation:
 #'
 #' * [dmd_price_lookup()] — search the bundled dm+d dataset by medicine name.
-#' * [dmd_dose_optimise()] — find the cheapest or minimum-item combination of
-#'   AMPPs that delivers a given clinical dose.
+#' * [dmd_dose_optimise()] — find dose-delivering AMPP combinations by cost or
+#'   item count.
+#' * [dmd_dose_cost()] — vectorised dose costing for use in data pipelines.
+#' * [dmd_dose_cost_range()] — vectorised cheapest / most-expensive dose costs.
 #' * [dmd_parse_strength()] — parse strengths out of VMP names.
 #' * [dmd_load()] — load a more recent dm+d release from a local
 #'   `dmdDataLoader` CSV directory.
+#' * [dmd_master_info()] — inspect bundled or loaded dm+d dataset metadata.
 #' * [nhscii()] — compute NHS Cost Inflation Index factors between financial
 #'   years.
 #' * [inflate_nhscii()] — adjust costs using NHS CII rates.
 #' * [run_dmd_price_lookup()] — launch the price lookup Shiny app locally.
+#' * [run_dmd_dose_optimise()] — launch the dose optimiser Shiny app locally.
 #' * [run_inflate_nhscii()] — launch the cost adjuster Shiny app locally.
 #'
 #' ## Typical workflow
@@ -51,5 +55,6 @@
 #' @importFrom stringdist stringdist
 #' @importFrom tibble tibble tribble
 #' @importFrom memoise memoise cache_memory
+#' @importFrom bslib bs_theme
 ## usethis namespace: end
 NULL

@@ -33,6 +33,8 @@ Pass a character vector to request multiple objectives at once, or use
 Preparations are segregated automatically: immediate-release tablets,
 modified-release tablets, oral solutions, and solutions for injection each
 get their own row so they are never mixed in a single combination.
+Compound products with multiple active strengths in one VMP name are skipped
+with a warning because the dose target would be ambiguous.
 
 ## A basic example
 
@@ -123,9 +125,12 @@ When `can_split = FALSE`:
 - In the `combination` tibble, `count` is the number of **packs** dispensed
   rather than individual tablets.
 
-Concentration-based preparations (liquids, vials, inhalers) are always
-whole-container regardless of `can_split`, since one container is the
-minimum dispensing unit.
+Concentration-based preparations (liquids, vials, inhalers) are treated as one
+container regardless of `can_split`, since one bottle, vial, or ampoule is the
+minimum dispensing unit. For liquids where the pack quantity is in the same
+unit as the concentration denominator (for example `10 mg/5 ml` in a `100 ml`
+bottle), the optimiser uses the total pack volume to calculate the active
+quantity in the container.
 
 ## Worst-case cost
 
@@ -217,6 +222,17 @@ Key differences from `dmd_dose_optimise()`:
   is returned. Specify `preparation` to restrict to a single route.
 - `NA`, zero, or negative dose elements return `NA` (or a custom `na_value`).
 
+Use `dmd_dose_cost_range()` when you need both lower and upper cost bounds:
+
+```{r, eval = FALSE}
+dmd_dose_cost_range(
+  "rituximab",
+  dose = c(375, 500, 700),
+  dose_unit = "mg",
+  preparation = "infusion"
+)
+```
+
 ## Cross-referencing with other dm+d data
 
 The `combination` list-column includes `vmpp_snomed_code` and
@@ -226,9 +242,9 @@ dm+d views or NHS Drug Tariff Part VIIIA CSVs.
 ## Limitations
 
 - Discrete items only — tablet splitting is not considered.
-- For liquids, each "item" is one container (bottle, ampoule, vial). A
-  small dose requested against a large container is delivered as one whole
-  container with an `over_delivery` flag.
-- Compound products (multiple active ingredients in one VMP) are not
-  optimised and are flagged in `notes`.
+- For liquids, each "item" is one container (bottle, ampoule, vial) unless
+  `can_split_vials = TRUE`. A small dose requested against a large container is
+  delivered as one whole container with an `over_delivery` flag.
+- Compound products (multiple active ingredients in one VMP) are skipped with
+  a warning and are not returned as optimiser rows.
 - Clinical safety (max single / max daily dose) is **not** enforced.

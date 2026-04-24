@@ -274,18 +274,29 @@ server <- function(input, output, session) {
       ),
       tags$div(
         class = "card-body p-0",
-        DT::renderDT(
-          datatable(
-            comb,
-            rownames  = FALSE,
-            selection = "none",
-            options   = list(
-              dom        = "t",
-              pageLength = 20,
-              scrollX    = TRUE
-            )
-          )
-        )
+        DTOutput("combination_table")
+      )
+    )
+  })
+
+  output$combination_table <- renderDT({
+    res <- results()
+    req(is.data.frame(res), nrow(res) > 0)
+
+    sel <- input$results_table_rows_selected
+    req(length(sel) > 0)
+
+    comb <- res$combination[[sel]]
+    req(!is.null(comb), nrow(comb) > 0)
+
+    datatable(
+      comb,
+      rownames  = FALSE,
+      selection = "none",
+      options   = list(
+        dom        = "t",
+        pageLength = 20,
+        scrollX    = TRUE
       )
     )
   })

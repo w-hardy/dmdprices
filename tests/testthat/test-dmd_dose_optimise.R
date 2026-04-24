@@ -442,6 +442,66 @@ test_that("infusion group finds exact 900mg for rituximab", {
   expect_equal(ch$over_delivery, 0)
 })
 
+test_that("oral liquid concentration uses pack volume, not denominator times pack volume", {
+  res <- dmd_dose_optimise(
+    "morphine",
+    dose = 20,
+    dose_unit = "mg",
+    db = db,
+    preparation = "oral solution",
+    objective = "cheapest"
+  )
+  combo <- res$combination[[1]]
+  expect_equal(combo$per_item_dose, 200)
+  expect_equal(res$dose_delivered, 200)
+})
+
+test_that("vial concentrations still use denominator volume for one container", {
+  res_500 <- dmd_dose_optimise(
+    "rituximab",
+    dose = 500,
+    dose_unit = "mg",
+    db = db,
+    preparation = "infusion",
+    objective = "min_items"
+  )
+  combo_500 <- res_500$combination[[1]]
+  expect_equal(combo_500$per_item_dose, 500)
+  expect_equal(res_500$dose_delivered, 500)
+
+  res_100 <- dmd_dose_optimise(
+    "rituximab",
+    dose = 100,
+    dose_unit = "mg",
+    db = db,
+    preparation = "infusion",
+    objective = "min_items"
+  )
+  combo_100 <- res_100$combination[[1]]
+  expect_equal(combo_100$per_item_dose, 100)
+  expect_equal(res_100$dose_delivered, 100)
+})
+
+test_that("dmd_dose_cost matches corrected oral liquid optimiser cost", {
+  full <- dmd_dose_optimise(
+    "morphine",
+    dose = 20,
+    dose_unit = "mg",
+    db = db,
+    preparation = "oral solution",
+    objective = "cheapest"
+  )
+  scalar <- dmd_dose_cost(
+    "morphine",
+    dose = 20,
+    dose_unit = "mg",
+    db = db,
+    preparation = "oral solution",
+    objective = "cheapest"
+  )
+  expect_equal(scalar, full$dose_cost_pence)
+})
+
 # ── preparation substring / partial matching ──────────────────────────────────
 
 test_that("preparation = 'infusion' matches infusion groups (partial match)", {
@@ -666,6 +726,41 @@ test_that("objective = 'most_expensive' returns cost >= cheapest for same group"
     is.na(me$dose_cost_pence) || is.na(ch$dose_cost_pence) ||
       me$dose_cost_pence >= ch$dose_cost_pence
   )
+})
+
+test_that("objective = 'most_expensive' follows the true max-cost DP path", {
+  m <- tibble::tibble(
+    medicine = c("Testdrug 100mg tablets", "Testdrug 200mg tablets"),
+    pack_size = c(1L, 1L),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VP1", "VP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(100L, 1L),
+    nhs_indicative_price = c(100L, 1L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Testdrug 100mg 1 tablet", "Testdrug 200mg 1 tablet"),
+    ampp_snomed_code = c("A1", "A2")
+  )
+  max_db <- structure(
+    list(master = m, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+
+  res <- dmd_dose_optimise(
+    "testdrug",
+    dose = 200,
+    dose_unit = "mg",
+    db = max_db,
+    preparation = "tablet|none|oral",
+    objective = "most_expensive"
+  )
+  combo <- res$combination[[1]]
+  expect_equal(res$dose_cost_pence, 400)
+  expect_equal(res$dose_delivered, 400)
+  expect_equal(combo$medicine, "Testdrug 100mg tablets")
+  expect_equal(combo$count, 4L)
 })
 
 test_that("objective = c('cheapest', 'most_expensive') returns two rows", {
@@ -930,6 +1025,93 @@ test_that("objective = 'bogus' errors via match.arg", {
       objective = "bogus"
     )
   )
+})
+
+# ── Unsupported compound products ─────────────────────────────────────────────
+
+test_that("compound products are skipped with a warning", {
+  m <- tibble::tibble(
+    medicine = "Co-codamol 8mg/500mg tablets",
+    pack_size = 32L,
+    unit = "tablet",
+    vmp_snomed_code = "V1",
+    vmpp_snomed_code = "VP1",
+    drug_tariff_category = "Part VIIIA Category M",
+    basic_price = 100L,
+    nhs_indicative_price = 100L,
+    price_basis = "NHS Indicative Price",
+    price_date = "2025-08-08",
+    ampp_name = "Co-codamol 8mg/500mg 32 tablet",
+    ampp_snomed_code = "A1"
+  )
+  compound_db <- structure(
+    list(master = m, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+
+  expect_warning(
+    res <- dmd_dose_optimise(
+      "co-codamol", dose = 8, dose_unit = "mg", db = compound_db
+    ),
+    regexp = "compound product"
+  )
+  expect_equal(nrow(res), 0L)
+
+  expect_warning(
+    cost <- dmd_dose_cost(
+      "co-codamol", dose = 8, dose_unit = "mg", db = compound_db
+    ),
+    regexp = "compound product"
+  )
+  expect_true(is.na(cost))
+
+  warnings <- character()
+  withCallingHandlers(
+    range <- dmd_dose_cost_range(
+      "co-codamol", dose = 8, dose_unit = "mg", db = compound_db
+    ),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(length(warnings), 1L)
+  expect_true(is.na(range$lo_pence))
+  expect_true(is.na(range$hi_pence))
+})
+
+test_that("compound rows are skipped while supported rows still optimise", {
+  m <- tibble::tibble(
+    medicine = c("Testdrug 100mg tablets", "Testdrug 100mg/500mg tablets"),
+    pack_size = c(28L, 28L),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VP1", "VP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(100L, 50L),
+    nhs_indicative_price = c(100L, 50L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Testdrug 100mg 28 tablet", "Testdrug compound 28 tablet"),
+    ampp_snomed_code = c("A1", "A2")
+  )
+  mixed_db <- structure(
+    list(master = m, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+
+  expect_warning(
+    res <- dmd_dose_optimise(
+      "testdrug",
+      dose = 100,
+      dose_unit = "mg",
+      db = mixed_db,
+      objective = "cheapest"
+    ),
+    regexp = "compound product"
+  )
+  expect_equal(nrow(res), 1L)
+  expect_false(any(grepl("compound", res$combination[[1]]$ampp_name)))
 })
 
 # ── Edge cases: invalid pack_size and pack_price ──────────────────────────────
