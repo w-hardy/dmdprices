@@ -61,3 +61,31 @@ test_that("all three indices are available", {
   expect_equal(nhscii("2020/21", "2021/22", index = "pay"), 1.0307)
   expect_equal(nhscii("2020/21", "2021/22", index = "prices"), 1.0172)
 })
+
+test_that("2014/15 is a valid from_year", {
+  # Same-year returns 1
+  expect_equal(nhscii("2014/15", "2014/15"), 1)
+
+  # One-step from 2014/15 to 2015/16 uses the 2015/16 rate
+  expect_equal(
+    nhscii("2014/15", "2015/16", index = "pay_and_prices"),
+    1.0040,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    nhscii("2014/15", "2015/16", index = "prices"),
+    1.0056,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    nhscii("2014/15", "2015/16", index = "pay"),
+    1.0030,
+    tolerance = 1e-12
+  )
+
+  # Multi-year from 2014/15 is consistent with chained calculation
+  fwd_15_23 <- nhscii("2015/16", "2023/24", index = "pay_and_prices")
+  fwd_14_15 <- nhscii("2014/15", "2015/16", index = "pay_and_prices")
+  fwd_14_23 <- nhscii("2014/15", "2023/24", index = "pay_and_prices")
+  expect_equal(fwd_14_23, fwd_14_15 * fwd_15_23, tolerance = 1e-12)
+})

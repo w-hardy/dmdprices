@@ -1,7 +1,7 @@
 #' NHS Cost Inflation Index (NHS CII) annual rates
 #'
 #' Internal annual percentage rates used by [nhscii()] and [inflate_nhscii()].
-#' Values currently cover financial years 2015/16 to 2023/24.
+#' Values currently cover financial years 2014/15 to 2023/24.
 #'
 #' @details
 #' Source: Jones KC et al. (2025). Unit Costs of Health and Social Care 2024
@@ -16,8 +16,9 @@
 #' @keywords internal
 .nhscii_rates <- list(
   pay_and_prices = stats::setNames(
-    c(0.40, 2.09, 1.24, 1.60, 2.14, 2.49, 2.58, 7.32, 4.31),
+    c(NA_real_, 0.40, 2.09, 1.24, 1.60, 2.14, 2.49, 2.58, 7.32, 4.31),
     c(
+      "2014/15",
       "2015/16",
       "2016/17",
       "2017/18",
@@ -30,8 +31,9 @@
     )
   ),
   prices = stats::setNames(
-    c(0.56, 2.06, 1.30, 1.59, 1.30, 0.84, 1.72, 7.15, 3.45),
+    c(NA_real_, 0.56, 2.06, 1.30, 1.59, 1.30, 0.84, 1.72, 7.15, 3.45),
     c(
+      "2014/15",
       "2015/16",
       "2016/17",
       "2017/18",
@@ -44,8 +46,9 @@
     )
   ),
   pay = stats::setNames(
-    c(0.30, 2.10, 1.21, 1.60, 2.58, 3.41, 3.07, 7.41, 4.79),
+    c(NA_real_, 0.30, 2.10, 1.21, 1.60, 2.58, 3.41, 3.07, 7.41, 4.79),
     c(
+      "2014/15",
       "2015/16",
       "2016/17",
       "2017/18",
