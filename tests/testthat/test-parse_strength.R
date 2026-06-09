@@ -59,6 +59,64 @@ test_that("unparseable names return NAs", {
   res <- dmd_parse_strength("Gauze dressing sterile")
   expect_true(is.na(res$strength_value))
   expect_true(is.na(res$strength_canonical))
+  expect_false(res$is_combination)
+  expect_equal(res$n_components, 0L)
+})
+
+test_that("single-strength products expose one ingredient component", {
+  res <- dmd_parse_strength("Metformin 500mg tablets")
+  expect_false(res$is_combination)
+  expect_equal(res$n_components, 1L)
+  comp <- res$components[[1]]
+  expect_equal(comp$value, 500)
+  expect_equal(comp$canonical_value, 500)
+  expect_equal(comp$canonical_unit, "mg")
+})
+
+test_that("two-ingredient combinations parse into components, not a ratio", {
+  res <- dmd_parse_strength(c(
+    "Co-codamol 8mg/500mg tablets",
+    "Co-amilofruse 5mg/40mg tablets"
+  ))
+  expect_true(all(res$is_combination))
+  expect_equal(res$n_components, c(2L, 2L))
+  # The mass/mass ratio must NOT be treated as a concentration
+  expect_true(all(is.na(res$strength_canonical)))
+  expect_true(all(is.na(res$denominator_unit)))
+  expect_equal(res$drug_stem, c("Co-codamol", "Co-amilofruse"))
+
+  cocodamol <- res$components[[1]]
+  expect_equal(cocodamol$value, c(8, 500))
+  expect_equal(cocodamol$canonical_value, c(8, 500))
+  expect_equal(cocodamol$canonical_unit, c("mg", "mg"))
+  expect_equal(res$tail[[1]], "tablets")
+})
+
+test_that("three-ingredient combinations parse all components", {
+  res <- dmd_parse_strength("Generic Alyftrek 50mg/20mg/4mg tablets")
+  expect_true(res$is_combination)
+  expect_equal(res$n_components, 3L)
+  expect_equal(res$components[[1]]$value, c(50, 20, 4))
+})
+
+test_that("combination liquids capture the shared volume denominator", {
+  res <- dmd_parse_strength("Co-trimoxazole 80mg/400mg/5ml oral suspension")
+  expect_true(res$is_combination)
+  expect_equal(res$n_components, 2L)
+  expect_equal(res$denominator_value, 5)
+  expect_equal(res$denominator_unit, "ml")
+  expect_equal(res$components[[1]]$value, c(80, 400))
+  expect_equal(res$tail, "oral suspension")
+})
+
+test_that("mass-per-volume concentrations are not treated as combinations", {
+  res <- dmd_parse_strength(c(
+    "Morphine 10mg/5ml oral solution",
+    "Heparin 100units/ml solution for injection ampoules"
+  ))
+  expect_false(any(res$is_combination))
+  expect_equal(res$strength_canonical, c(2, 100))
+  expect_equal(res$strength_unit_canon, c("mg/ml", "unit/ml"))
 })
 
 test_that(".classify_preparation distinguishes IR vs MR tablets", {

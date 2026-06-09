@@ -69,9 +69,145 @@
   "(?<tail>.*)$"
 )
 
+# ── Combination (multi-ingredient) products ───────────────────────────────────
+
+# Mass / biological-activity units that a true ingredient strength can take.
+# A combination product (e.g. co-codamol "8mg/500mg") lists two or more of
+# these joined by "/". A concentration (e.g. "10mg/5ml") instead has a
+# volume / dose / count denominator and is NOT a combination.
+.mass_unit_alt <- "micrograms?|mcg|mg|ng|nanograms?|g|units?|u"
+
+# Matches names whose strength is a run of two or more mass tokens joined by
+# "/", optionally followed by a single volume/dose denominator that applies to
+# the whole combination (e.g. co-trimoxazole "80mg/400mg/5ml suspension").
+# Capture groups: 1 drug, 2 block, 3 den_amt, 4 den_unit, 5 tail.
+.combination_regex <- paste0(
+  "(?i)^",
+  "(.+?)\\s+",
+  "(",
+  "\\d+(?:\\.\\d+)?\\s*(?:", .mass_unit_alt, ")",
+  "(?:\\s*/\\s*\\d+(?:\\.\\d+)?\\s*(?:", .mass_unit_alt, "))+",
+  ")",
+  "(?:\\s*/\\s*(\\d+(?:\\.\\d+)?)?\\s*(ml|litres?|l|doses?|actuations?))?",
+  "(?:\\s+(.*))?$"
+)
+
+# Zero-row template for the per-ingredient `components` list-column.
+.empty_components <- function() {
+  tibble::tibble(
+    value = numeric(),
+    unit = character(),
+    canonical_value = numeric(),
+    canonical_unit = character()
+  )
+}
+
+# Build a one-row strength tibble with a uniform schema (used by every branch
+# of .parse_strength_one() so combination and non-combination rows bind cleanly).
+.strength_row <- function(
+  drug_stem,
+  strength_value,
+  strength_unit,
+  denominator_value,
+  denominator_unit,
+  tail,
+  strength_canonical,
+  strength_unit_canon,
+  is_combination = FALSE,
+  components = NULL
+) {
+  if (is.null(components)) {
+    components <- .empty_components()
+  }
+  tibble::tibble(
+    drug_stem = drug_stem,
+    strength_value = strength_value,
+    strength_unit = strength_unit,
+    denominator_value = denominator_value,
+    denominator_unit = denominator_unit,
+    tail = tail,
+    strength_canonical = strength_canonical,
+    strength_unit_canon = strength_unit_canon,
+    is_combination = is_combination,
+    n_components = nrow(components),
+    components = list(components)
+  )
+}
+
+# Parse a single "<amt><unit>" mass token into a one-row component tibble,
+# or NULL if it is not a recognised mass token.
+.parse_one_component <- function(token) {
+  m <- regmatches(
+    token,
+    regexec(
+      paste0("(?i)^\\s*(\\d+(?:\\.\\d+)?)\\s*(", .mass_unit_alt, ")\\s*$"),
+      token,
+      perl = TRUE
+    )
+  )[[1]]
+  if (length(m) == 0) {
+    return(NULL)
+  }
+  amt <- as.numeric(m[2])
+  unit <- tolower(m[3])
+  can <- .canonicalise_unit(amt, unit)
+  tibble::tibble(
+    value = amt,
+    unit = unit,
+    canonical_value = can$value,
+    canonical_unit = can$unit
+  )
+}
+
+# Returns a strength row for a combination product, or NULL if `name` is not a
+# combination (so the caller falls back to single-strength parsing).
+.parse_combination_one <- function(name) {
+  m <- regmatches(name, regexec(.combination_regex, name, perl = TRUE))[[1]]
+  if (length(m) == 0) {
+    return(NULL)
+  }
+
+  drug <- m[2]
+  block <- m[3]
+  den_amt <- suppressWarnings(as.numeric(m[4]))
+  den_unit <- m[5]
+  tail <- m[6]
+
+  tokens <- trimws(strsplit(block, "/", fixed = TRUE)[[1]])
+  comps <- lapply(tokens, .parse_one_component)
+  comps <- comps[!vapply(comps, is.null, logical(1))]
+  if (length(comps) < 2L) {
+    return(NULL)
+  }
+  components <- dplyr::bind_rows(comps)
+
+  if (is.na(den_unit) || !nzchar(den_unit)) {
+    den_unit <- NA_character_
+    den_amt <- NA_real_
+  } else {
+    den_unit <- tolower(den_unit)
+    if (is.na(den_amt)) {
+      den_amt <- 1
+    }
+  }
+
+  .strength_row(
+    drug_stem = trimws(drug),
+    strength_value = NA_real_,
+    strength_unit = NA_character_,
+    denominator_value = den_amt,
+    denominator_unit = den_unit,
+    tail = if (is.na(tail)) NA_character_ else trimws(tail),
+    strength_canonical = NA_real_,
+    strength_unit_canon = NA_character_,
+    is_combination = TRUE,
+    components = components
+  )
+}
+
 .parse_strength_one <- function(name) {
   if (is.na(name) || !nzchar(name)) {
-    return(tibble::tibble(
+    return(.strength_row(
       drug_stem = NA_character_,
       strength_value = NA_real_,
       strength_unit = NA_character_,
@@ -83,9 +219,14 @@
     ))
   }
 
+  comb <- .parse_combination_one(name)
+  if (!is.null(comb)) {
+    return(comb)
+  }
+
   m <- regmatches(name, regexec(.strength_regex, name, perl = TRUE))[[1]]
   if (length(m) == 0) {
-    return(tibble::tibble(
+    return(.strength_row(
       drug_stem = name,
       strength_value = NA_real_,
       strength_unit = NA_character_,
@@ -122,7 +263,18 @@
     strength_unit_canon <- can_num$unit
   }
 
-  tibble::tibble(
+  component <- if (is.na(amt)) {
+    .empty_components()
+  } else {
+    tibble::tibble(
+      value = amt,
+      unit = tolower(unit),
+      canonical_value = can_num$value,
+      canonical_unit = can_num$unit
+    )
+  }
+
+  .strength_row(
     drug_stem = trimws(drug),
     strength_value = amt,
     strength_unit = tolower(unit),
@@ -134,7 +286,9 @@
     },
     tail = trimws(tail),
     strength_canonical = strength_canonical,
-    strength_unit_canon = strength_unit_canon
+    strength_unit_canon = strength_unit_canon,
+    is_combination = FALSE,
+    components = component
   )
 }
 
@@ -180,10 +334,22 @@
 #' (e.g. `mg/ml`, `microgram/dose`) from a VMP name. Also returns a canonical
 #' form (mass in mg, volume in ml, biological activity as `"unit"`).
 #'
+#' Combination (multi-ingredient) products such as co-codamol
+#' (`"8mg/500mg"`) or co-careldopa (`"25mg/100mg"`) are detected and their
+#' individual ingredient strengths returned in the `components` list-column,
+#' rather than being misread as a single mass-per-mass concentration. A
+#' trailing volume/dose denominator on a combination liquid (e.g. co-trimoxazole
+#' `"80mg/400mg/5ml"`) is captured in `denominator_value` / `denominator_unit`.
+#'
 #' @param name Character vector of VMP names.
 #' @return A [tibble][tibble::tibble] with one row per input, with columns:
 #'   `drug_stem`, `strength_value`, `strength_unit`, `denominator_value`,
-#'   `denominator_unit`, `tail`, `strength_canonical`, `strength_unit_canon`.
+#'   `denominator_unit`, `tail`, `strength_canonical`, `strength_unit_canon`,
+#'   `is_combination` (logical), `n_components` (integer count of parsed
+#'   ingredients), and `components` (a list-column of per-ingredient tibbles
+#'   with `value`, `unit`, `canonical_value`, and `canonical_unit`). For
+#'   combination products `strength_value` / `strength_canonical` are `NA`
+#'   because a single scalar strength is not meaningful; use `components`.
 #'
 #' @export
 #'
@@ -193,6 +359,11 @@
 #'   "Morphine 10mg/5ml oral solution",
 #'   "Salbutamol 100micrograms/dose inhaler CFC free"
 #' ))
+#'
+#' # Combination products expose per-ingredient strengths
+#' res <- dmd_parse_strength("Co-codamol 8mg/500mg tablets")
+#' res$is_combination
+#' res$components[[1]]
 dmd_parse_strength <- function(name) {
   if (!is.character(name)) {
     cli::cli_abort("{.arg name} must be a character vector.")
