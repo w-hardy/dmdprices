@@ -75,7 +75,12 @@
 # A combination product (e.g. co-codamol "8mg/500mg") lists two or more of
 # these joined by "/". A concentration (e.g. "10mg/5ml") instead has a
 # volume / dose / count denominator and is NOT a combination.
-.mass_unit_alt <- "micrograms?|mcg|mg|ng|nanograms?|g|units?|u"
+#
+# Standalone grams ("g") are deliberately excluded: a "<mass>mg/<n>g" pattern
+# (e.g. "250mg/5g vaginal cream") is a mass-per-gram (w/w) concentration, not a
+# two-ingredient combination. Such names fall through to the single-strength
+# parser, which captures the per-gram denominator.
+.mass_unit_alt <- "micrograms?|mcg|mg|ng|nanograms?|units?|u"
 
 # Matches names whose strength is a run of two or more mass tokens joined by
 # "/", optionally followed by a single volume/dose denominator that applies to
