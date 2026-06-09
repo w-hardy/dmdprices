@@ -55,7 +55,7 @@ ui <- fluidPage(
       hr(),
       helpText(
         tags$b("Source:"),
-        "Jones et al. (2025).",
+        "Jones et al. (2026).",
         tags$a(
           "Unit Costs of Health and Social Care 2025 Manual.",
           href = "https://doi.org/10.22024/UniKent/01.02.115569",

@@ -14,18 +14,17 @@ bibentry(
   author    = c(
     person("Karen C.", "Jones"),
     person("Helen",    "Weatherly"),
-    person("Sarah",   "Birch"),
-    person("Adriana", "Castelli"),
-    person("Martin",  "Chalkley"),
-    person("Alan",    "Dargan"),
-    person("Douglas", "Findlay"),
-    person("Minyue",  "Gao"),
-    person("Seb",     "Hinde"),
-    person("Sarah",   "Markham"),
-    person("Deb",     "Smith"),
-    person("Hansel",  "Teo")
+    person("Amy",      "Barker"),
+    person("Sarah",    "Birch"),
+    person("Adriana",  "Castelli"),
+    person("Alan",     "Dargan"),
+    person("Douglas",  "Findlay"),
+    person("Seb",      "Hinde"),
+    person("Sarah",    "Markham"),
+    person("Deborah",  "Smith"),
+    person("Hansel",   "Teo")
   ),
-  year        = "2025",
+  year        = "2026",
   institution = paste(
     "Personal Social Services Research Unit (University of Kent)",
     "& Centre for Health Economics (University of York)"
