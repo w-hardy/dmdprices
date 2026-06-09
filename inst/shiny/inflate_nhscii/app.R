@@ -57,8 +57,8 @@ ui <- fluidPage(
         tags$b("Source:"),
         "Jones et al. (2025).",
         tags$a(
-          "Unit Costs of Health and Social Care 2024 Manual.",
-          href = "https://doi.org/10.22024/UniKent/01.02.109563",
+          "Unit Costs of Health and Social Care 2025 Manual.",
+          href = "https://doi.org/10.22024/UniKent/01.02.115569",
           target = "_blank"
         ),
         "PSSRU (University of Kent) & Centre for Health Economics (University of York).",
@@ -68,7 +68,7 @@ ui <- fluidPage(
           target = "_blank"
         ),
         tags$br(),
-        "2023/24 figures are provisional.",
+        "2024/25 figures are provisional.",
         tags$br(),
         tags$a(
           "Report issues on GitHub.",

@@ -10,7 +10,7 @@ bibentry(
 
 bibentry(
   bibtype   = "TechReport",
-  title     = "Unit Costs of Health and Social Care 2024 Manual",
+  title     = "Unit Costs of Health and Social Care 2025 Manual",
   author    = c(
     person("Karen C.", "Jones"),
     person("Helen",    "Weatherly"),
@@ -31,6 +31,6 @@ bibentry(
     "& Centre for Health Economics (University of York)"
   ),
   address     = "Kent, UK",
-  doi         = "10.22024/UniKent/01.02.109563",
-  note        = "KAR id:109563"
+  doi         = "10.22024/UniKent/01.02.115569",
+  note        = "KAR id:115569"
 )

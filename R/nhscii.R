@@ -1,22 +1,25 @@
 #' NHS Cost Inflation Index (NHS CII) annual rates
 #'
 #' Internal annual percentage rates used by [nhscii()] and [inflate_nhscii()].
-#' Values currently cover financial years 2014/15 to 2023/24.
+#' Values currently cover financial years 2014/15 to 2024/25.
 #'
 #' @details
-#' Source: Jones KC et al. (2025). Unit Costs of Health and Social Care 2024
+#' Source: Jones KC et al. (2025). Unit Costs of Health and Social Care 2025
 #' Manual. PSSRU (University of Kent) & Centre for Health Economics (University
-#' of York). (\doi{10.22024/UniKent/01.02.109563}).
+#' of York). Available at <https://kar.kent.ac.uk/115569/>.
 #' Licensed under CC BY-NC-SA 4.0.
 #'
-#' Per the PSSRU manual, the 2023/24 values are provisional. This is standard
-#' for each annual publication, and later manuals may revise values when
-#' additional data become available.
+#' Per the PSSRU manual, the most recent year's values (currently 2024/25) are
+#' provisional. This is standard for each annual publication: the latest year
+#' is provisional and is typically revised in the following year's manual, after
+#' which it remains stable. Accordingly, the 2023/24 figures published as
+#' provisional in the previous manual have been revised here using the 2025
+#' manual.
 #'
 #' @keywords internal
 .nhscii_rates <- list(
   pay_and_prices = stats::setNames(
-    c(NA_real_, 0.40, 2.09, 1.24, 1.60, 2.14, 2.49, 2.58, 7.32, 4.31),
+    c(NA_real_, 0.40, 2.09, 1.24, 1.60, 2.14, 2.49, 2.58, 7.32, 2.47, 4.02),
     c(
       "2014/15",
       "2015/16",
@@ -27,11 +30,12 @@
       "2020/21",
       "2021/22",
       "2022/23",
-      "2023/24"
+      "2023/24",
+      "2024/25"
     )
   ),
   prices = stats::setNames(
-    c(NA_real_, 0.56, 2.06, 1.30, 1.59, 1.30, 0.84, 1.72, 7.15, 3.45),
+    c(NA_real_, 0.56, 2.06, 1.30, 1.59, 1.30, 0.84, 1.72, 7.15, 2.98, 2.04),
     c(
       "2014/15",
       "2015/16",
@@ -42,11 +46,12 @@
       "2020/21",
       "2021/22",
       "2022/23",
-      "2023/24"
+      "2023/24",
+      "2024/25"
     )
   ),
   pay = stats::setNames(
-    c(NA_real_, 0.30, 2.10, 1.21, 1.60, 2.58, 3.41, 3.07, 7.41, 4.79),
+    c(NA_real_, 0.30, 2.10, 1.21, 1.60, 2.58, 3.41, 3.07, 7.41, 2.18, 5.11),
     c(
       "2014/15",
       "2015/16",
@@ -57,7 +62,8 @@
       "2020/21",
       "2021/22",
       "2022/23",
-      "2023/24"
+      "2023/24",
+      "2024/25"
     )
   )
 )
@@ -126,17 +132,17 @@ build_index_levels <- function(rates) {
 #'
 #' @details
 #' Data source: Jones KC et al. (2025). Unit Costs of Health and Social Care
-#' 2024 Manual. PSSRU (University of Kent) & Centre for Health Economics
-#' (University of York). (\doi{10.22024/UniKent/01.02.109563}).
+#' 2025 Manual. PSSRU (University of Kent) & Centre for Health Economics
+#' (University of York). Available at <https://kar.kent.ac.uk/115569/>.
 #' Licensed under CC BY-NC-SA 4.0.
 #'
-#' The 2023/24 figures are provisional and may be revised in later PSSRU
-#' releases as additional data become available.
+#' The most recent year's figures (currently 2024/25) are provisional and may
+#' be revised in the next PSSRU release as additional data become available.
 #'
 #' @examples
-#' nhscii("2019/20", "2023/24")
-#' nhscii(2020, 2024) # same as "2019/20" -> "2023/24"
-#' nhscii("2021/22", "2023/24", index = "pay", output_type = "percent")
+#' nhscii("2019/20", "2024/25")
+#' nhscii(2020, 2025) # same as "2019/20" -> "2024/25"
+#' nhscii("2021/22", "2024/25", index = "pay", output_type = "percent")
 #'
 #' @export
 nhscii <- function(
