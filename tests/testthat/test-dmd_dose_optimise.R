@@ -1080,6 +1080,79 @@ test_that("compound products are skipped with a warning", {
   expect_true(is.na(range$hi_pence))
 })
 
+test_that("ingredient targeting doses combination products by one ingredient", {
+  db <- .fake_ingredient_db()
+
+  # Query "co" matches all three fixture products (Co-codamol x2, Codeine x1).
+  # Without an ingredient, the two combinations are skipped with a warning and
+  # only the single-ingredient codeine tablet survives.
+  expect_warning(
+    res_default <- dmd_dose_optimise(
+      "co", dose = 60, dose_unit = "mg", db = db
+    ),
+    regexp = "compound product"
+  )
+  expect_true(nrow(res_default) >= 1L)
+
+  # Targeting codeine doses against the codeine strength of every product,
+  # including the combinations — and emits no compound warning.
+  res <- expect_no_warning(
+    dmd_dose_optimise(
+      "co",
+      dose = 60,
+      dose_unit = "mg",
+      db = db,
+      ingredient = "codeine",
+      objective = "cheapest"
+    )
+  )
+  expect_true(nrow(res) >= 1L)
+  # 60 mg of codeine must be delivered (within over-delivery tolerance).
+  expect_true(all(res$dose_delivered >= 60 - 1e-9))
+  expect_equal(res$dose_requested[[1]], 60)
+})
+
+test_that("ingredient targeting selects the cheapest source of the ingredient", {
+  db <- .fake_ingredient_db()
+  # Per-tablet codeine: V1 8mg @ 100/32, V2 30mg @ 200/30, V3 30mg @ 150/28.
+  # For 60 mg codeine the cheapest whole-tablet route is 2x V3 (codeine alone).
+  res <- dmd_dose_optimise(
+    "co",
+    dose = 60,
+    dose_unit = "mg",
+    db = db,
+    ingredient = "codeine",
+    objective = "cheapest"
+  )
+  combo <- res$combination[[1]]
+  expect_true(any(grepl("Codeine phosphate 30mg", combo$ampp_name)))
+})
+
+test_that("ingredient targeting warns and returns nothing without VPI data", {
+  # Bundled dmd_master has an empty dmd_ingredients table.
+  expect_warning(
+    res <- dmd_dose_optimise(
+      "co-codamol",
+      dose = 30,
+      dose_unit = "mg",
+      ingredient = "codeine"
+    ),
+    regexp = "ingredient data"
+  )
+  expect_equal(nrow(res), 0L)
+})
+
+test_that("ingredient argument is validated", {
+  expect_error(
+    dmd_dose_optimise("metformin", dose = 500, ingredient = c("a", "b")),
+    regexp = "single non-empty string"
+  )
+  expect_error(
+    dmd_dose_optimise("metformin", dose = 500, ingredient = ""),
+    regexp = "single non-empty string"
+  )
+})
+
 test_that("compound rows are skipped while supported rows still optimise", {
   m <- tibble::tibble(
     medicine = c("Testdrug 100mg tablets", "Testdrug 100mg/500mg tablets"),

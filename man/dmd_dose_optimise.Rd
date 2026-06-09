@@ -14,6 +14,7 @@ dmd_dose_optimise(
   price = c("basic_price", "nhs_indicative_price"),
   objective = c("cheapest", "min_items"),
   preparation = NULL,
+  ingredient = NULL,
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE
@@ -51,6 +52,15 @@ work, but partial strings such as \verb{\\"infusion\\"} or \verb{\\"oral\\"} are
 accepted and will match any group whose key or label contains that text.
 Pipe characters in preparation keys are treated literally, not as regex
 alternation.}
+
+\item{ingredient}{Optional character. Name (or case-insensitive substring,
+e.g. \code{"codeine"}) of a single active ingredient to dose against. When
+supplied, candidates are restricted to products containing that ingredient
+and the dose is matched against the ingredient's own strength rather than
+the whole-product strength. This is what enables combination products such
+as co-codamol to be optimised for one ingredient. Requires ingredient (VPI)
+data: a \code{\link[=dmd_load]{dmd_load()}} database that includes it, or a rebuilt bundled
+\link{dmd_ingredients}. With no ingredient data, returns no results and warns.}
 
 \item{can_split}{Logical. \code{TRUE} (default) assumes that individual items
 (tablets, capsules) can be taken from a part-pack, as is normal in

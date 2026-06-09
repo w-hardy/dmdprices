@@ -77,29 +77,84 @@ raw <- list(
     csv_dir,
     "f_lookup_PriceBasisInfoType.csv",
     .col_names$lkp_pr_basis
+  ),
+  # Ingredient (VPI) extract for combination-product handling. Optional: a
+  # release without these files simply yields no ingredient data.
+  vpi = .read_dmd_optional(
+    csv_dir,
+    "f_vmp_VirtualProductIngredientType.csv",
+    .col_names$vpi
+  ),
+  ingredient = .read_dmd_optional(
+    csv_dir,
+    "f_ingredient_IngredientType.csv",
+    .col_names$ingredient
+  ),
+  lkp_uom = .read_dmd_optional(
+    csv_dir,
+    "f_lookup_UnitOfMeasureType.csv",
+    .col_names$lkp_uom
   )
 )
 
-dmd_master <- .build_master(raw) |>
-  # Attach release metadata as attributes (accessible via attr(dmd_master, ...))
-  structure(
-    dmd_release_week = dmd_release_week,
-    dmd_release_year = dmd_release_year,
-    dmd_release_date = dmd_release_date,
-    dmd_release_label = dmd_release_label,
-    dmd_source = "NHS Dictionary of Medicines and Devices (dm+d)",
-    dmd_publisher = "NHS Business Services Authority (NHSBSA)",
-    dmd_licence = "Open Government Licence v3.0",
-    dmd_licence_url = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+# ── Ingredient table + combination flag ───────────────────────────────────────
+
+# Per-ingredient strengths (one row per VMP/ingredient). Fall back to a typed
+# zero-row tibble when no VPI extract is present, so the bundled symbol always
+# exists with a stable schema.
+dmd_ingredients <- .build_ingredients(raw)
+if (is.null(dmd_ingredients)) {
+  message("No VPI extract found — bundling an empty dmd_ingredients table.")
+  dmd_ingredients <- tibble::tibble(
+    vmp_snomed_code = character(),
+    ingredient_snomed_code = character(),
+    ingredient_name = character(),
+    strength_value = numeric(),
+    strength_unit = character(),
+    denominator_value = numeric(),
+    denominator_unit = character(),
+    strength_canonical = numeric(),
+    strength_unit_canon = character()
   )
+}
+
+combination_flags <- .combination_flags(dmd_ingredients)
+
+master <- .build_master(raw)
+if (!is.null(combination_flags)) {
+  master <- master |>
+    dplyr::left_join(
+      combination_flags,
+      by = dplyr::join_by("vmp_snomed_code")
+    ) |>
+    dplyr::mutate(
+      is_combination = !is.na(.data$is_combination) & .data$is_combination
+    )
+}
+
+# Attach release metadata as attributes (accessible via attr(dmd_master, ...))
+dmd_master <- structure(
+  master,
+  dmd_release_week = dmd_release_week,
+  dmd_release_year = dmd_release_year,
+  dmd_release_date = dmd_release_date,
+  dmd_release_label = dmd_release_label,
+  dmd_source = "NHS Dictionary of Medicines and Devices (dm+d)",
+  dmd_publisher = "NHS Business Services Authority (NHSBSA)",
+  dmd_licence = "Open Government Licence v3.0",
+  dmd_licence_url = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+)
 
 message(
   "Built dmd_master: ",
   nrow(dmd_master),
-  " rows | release: ",
+  " rows | ",
+  nrow(dmd_ingredients),
+  " ingredient rows | release: ",
   dmd_release_label
 )
 
 # ── Save ──────────────────────────────────────────────────────────────────────
 
 usethis::use_data(dmd_master, overwrite = TRUE, compress = "xz")
+usethis::use_data(dmd_ingredients, overwrite = TRUE, compress = "xz")

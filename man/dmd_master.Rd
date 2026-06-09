@@ -74,6 +74,6 @@ Release metadata is stored as attributes and can be inspected with:
 }\if{html}{\out{</div>}}
 }
 \seealso{
-\code{\link[=dmd_price_lookup]{dmd_price_lookup()}}, \code{\link[=dmd_load]{dmd_load()}}
+\code{\link[=dmd_price_lookup]{dmd_price_lookup()}}, \code{\link[=dmd_load]{dmd_load()}}, \link{dmd_ingredients}
 }
 \keyword{datasets}

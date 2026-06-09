@@ -64,5 +64,54 @@
 #' dm+d is available from the NHSBSA TRUD service:\cr
 #' <https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6>
 #'
-#' @seealso [dmd_price_lookup()], [dmd_load()]
+#' @seealso [dmd_price_lookup()], [dmd_load()], [dmd_ingredients]
 "dmd_master"
+
+#' NHS dm+d per-ingredient strengths
+#'
+#' A tidy table of ingredient strengths built from the dm+d Virtual Product
+#' Ingredient (VPI) extract, with one row per (VMP, ingredient). It identifies
+#' the individual active ingredients — and their strengths — of every VMP,
+#' including combination products such as co-codamol, enabling
+#' ingredient-specific dose optimisation via [dmd_dose_optimise()].
+#'
+#' A VMP with two or more distinct ingredients is a combination product; this is
+#' also surfaced as the `is_combination` column on a [dmd_load()] database's
+#' `$master` table.
+#'
+#' @details
+#' The version bundled with the package may be **empty**: the VPI extract is an
+#' optional part of a dm+d release and is not always present. Rebuild the
+#' bundled data from a release that includes
+#' `f_vmp_VirtualProductIngredientType.csv` (see `data-raw/dmd_master.R`), or
+#' load a full release with [dmd_load()], to populate it. Check with
+#' `nrow(dmd_ingredients)`.
+#'
+#' @format A tibble with one row per VMP/ingredient and 9 columns:
+#' \describe{
+#'   \item{vmp_snomed_code}{`character`. SNOMED CT identifier for the VMP.}
+#'   \item{ingredient_snomed_code}{`character`. SNOMED CT identifier for the
+#'     ingredient substance (ISID).}
+#'   \item{ingredient_name}{`character`. Ingredient substance name,
+#'     e.g. `"Codeine phosphate"`.}
+#'   \item{strength_value}{`numeric`. Strength numerator value.}
+#'   \item{strength_unit}{`character`. Strength numerator unit (e.g. `"mg"`).}
+#'   \item{denominator_value}{`numeric`. Strength denominator value for
+#'     concentrations, else `NA`.}
+#'   \item{denominator_unit}{`character`. Strength denominator unit
+#'     (e.g. `"ml"`), else `NA`.}
+#'   \item{strength_canonical}{`numeric`. Strength in canonical units
+#'     (mass in mg), for cross-product comparison.}
+#'   \item{strength_unit_canon}{`character`. Canonical strength unit.}
+#' }
+#'
+#' @source
+#' NHS Dictionary of Medicines and Devices (dm+d). Published by the NHS Business
+#' Services Authority (NHSBSA).
+#'
+#' © Crown copyright. Contains public sector information licensed under the
+#' **Open Government Licence v3.0**.\cr
+#' <https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/>
+#'
+#' @seealso [dmd_master], [dmd_dose_optimise()], [dmd_load()]
+"dmd_ingredients"

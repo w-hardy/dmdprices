@@ -2,6 +2,21 @@
 
 ## Added
 
+- **Combination-product handling (#8).** `dmd_parse_strength()` now detects
+  multi-ingredient products (e.g. co-codamol `"8mg/500mg"`) and returns each
+  ingredient's strength in a new `components` list-column with `is_combination`
+  / `n_components` flags, instead of misreading the mass/mass strength as a
+  concentration.
+- `dmd_load()` now reads the dm+d Virtual Product Ingredient (VPI) extract when
+  present, exposing a `$ingredients` table of per-ingredient strengths and an
+  `is_combination` flag on `$master`. A new bundled [dmd_ingredients] dataset
+  documents the schema (empty until rebuilt from a release containing VPI).
+- `dmd_dose_optimise()`, `dmd_dose_cost()`, and `dmd_dose_cost_range()` gain an
+  `ingredient` argument: dose against a single named active ingredient, which
+  lets combination products be optimised for one ingredient (e.g. the codeine
+  content of co-codamol). Without ingredient data, combination products
+  continue to be skipped with a warning.
+
 - `dmd_dose_cost_range()` — new exported function that returns a tibble with
   `lo_pence` and `hi_pence` columns (one row per dose), giving the cheapest
   and most expensive achievable dose cost in a single call. Designed for

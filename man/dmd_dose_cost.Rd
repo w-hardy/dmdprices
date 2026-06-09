@@ -14,6 +14,7 @@ dmd_dose_cost(
   price = c("basic_price", "nhs_indicative_price"),
   objective = c("cheapest", "min_items"),
   preparation = NULL,
+  ingredient = NULL,
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE,
@@ -21,7 +22,7 @@ dmd_dose_cost(
 )
 }
 \arguments{
-\item{query, dose_unit, db, method, max_dist, price, preparation, active_only, can_split}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}.}
+\item{query, dose_unit, db, method, max_dist, price, preparation, ingredient, active_only, can_split}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}.}
 
 \item{dose}{A \strong{numeric vector} of dose values in \code{dose_unit}. \code{NA}, zero,
 or negative elements are returned as \code{na_value} without error.}

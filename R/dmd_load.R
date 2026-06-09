@@ -8,10 +8,17 @@
 #'   Defaults to `getOption("dmdprices.path")`, allowing you to set a
 #'   project-wide default via `options(dmdprices.path = "~/dmdDataLoader")`.
 #'
-#' @return A `<dmd_db>` object: a list with two elements:
+#' @return A `<dmd_db>` object: a list with the elements:
 #'   * `$master`  — a [tibble][tibble::tibble] with one row per AMPP (branded
 #'     pack), containing Drug Tariff and NHS Indicative Price columns that mirror
-#'     the Drug Tariff Part VIIIA CSV format.
+#'     the Drug Tariff Part VIIIA CSV format. When ingredient data is available
+#'     it also carries an `is_combination` logical column.
+#'   * `$ingredients` — a [tibble][tibble::tibble] of per-ingredient strengths
+#'     (one row per VMP/ingredient) built from the dm+d Virtual Product
+#'     Ingredient (VPI) extract, or `NULL` if that extract was not present.
+#'     Columns: `vmp_snomed_code`, `ingredient_snomed_code`, `ingredient_name`,
+#'     `strength_value`, `strength_unit`, `denominator_value`,
+#'     `denominator_unit`, `strength_canonical`, `strength_unit_canon`.
 #'   * `$loaded_at` — a `POSIXct` timestamp recording when the data was loaded.
 #'
 #' @export
@@ -60,16 +67,53 @@ dmd_load <- function(path = getOption("dmdprices.path")) {
       csv_dir,
       "f_lookup_PriceBasisInfoType.csv",
       .col_names$lkp_pr_basis
+    ),
+    # Optional ingredient (VPI) extract — present in full dm+d releases, absent
+    # in some minimal exports. Enables combination-product handling.
+    vpi = .read_dmd_optional(
+      csv_dir,
+      "f_vmp_VirtualProductIngredientType.csv",
+      .col_names$vpi
+    ),
+    ingredient = .read_dmd_optional(
+      csv_dir,
+      "f_ingredient_IngredientType.csv",
+      .col_names$ingredient
+    ),
+    lkp_uom = .read_dmd_optional(
+      csv_dir,
+      "f_lookup_UnitOfMeasureType.csv",
+      .col_names$lkp_uom
     )
   )
 
   cli::cli_progress_step("Joining pricing hierarchy")
 
   master <- .build_master(raw)
+  ingredients <- .build_ingredients(raw)
+
+  if (!is.null(ingredients)) {
+    flags <- .combination_flags(ingredients)
+    master <- master |>
+      dplyr::left_join(flags, by = dplyr::join_by("vmp_snomed_code")) |>
+      dplyr::mutate(
+        is_combination = !is.na(.data$is_combination) & .data$is_combination
+      )
+    n_comb <- dplyr::n_distinct(
+      ingredients$vmp_snomed_code[
+        ingredients$vmp_snomed_code %in%
+          flags$vmp_snomed_code[flags$is_combination]
+      ]
+    )
+    cli::cli_progress_step(
+      "Loaded ingredient data ({n_comb} combination VMP{?s})"
+    )
+  }
 
   structure(
     list(
       master = master,
+      ingredients = ingredients,
       loaded_at = Sys.time()
     ),
     class = "dmd_db"
@@ -86,11 +130,29 @@ print.dmd_db <- function(x, ...) {
   n_dt <- sum(!is.na(x$master$basic_price))
   n_ip <- sum(!is.na(x$master$nhs_indicative_price))
 
-  cli::cli_inform(c(
+  msg <- c(
     "v" = "dm+d database loaded at {format(x$loaded_at, '%Y-%m-%d %H:%M')}",
     "*" = "{n_vmp} VMPs  |  {n_vmpp} VMPPs  |  {n_ampp} AMPPs",
     "*" = "{n_dt} Drug Tariff prices  |  {n_ip} NHS Indicative Prices"
-  ))
+  )
+
+  if (!is.null(x$ingredients)) {
+    n_ing <- dplyr::n_distinct(x$ingredients$ingredient_snomed_code, na.rm = TRUE)
+    n_comb <- if ("is_combination" %in% names(x$master)) {
+      dplyr::n_distinct(
+        x$master$vmp_snomed_code[x$master$is_combination],
+        na.rm = TRUE
+      )
+    } else {
+      0L
+    }
+    msg <- c(
+      msg,
+      "*" = "{n_ing} ingredients  |  {n_comb} combination VMP{?s}"
+    )
+  }
+
+  cli::cli_inform(msg)
   invisible(x)
 }
 

@@ -131,6 +131,13 @@
   parsed <- dmd_parse_strength(candidates$medicine)
   prep <- .classify_preparation(parsed$tail)
 
+  # The database may already carry an authoritative `is_combination` flag
+  # (derived from the dm+d VPI ingredient data). Prefer it over the parser's
+  # name-based heuristic and avoid a duplicate-name clash in bind_cols().
+  if ("is_combination" %in% names(candidates)) {
+    parsed$is_combination <- NULL
+  }
+
   enriched <- dplyr::bind_cols(candidates, parsed, prep)
 
   enriched$unsupported_compound <- .is_unsupported_compound(enriched)
@@ -157,6 +164,91 @@
 
   # Pro-rata per-item price for solid forms. NA pack_size or non-positive
   # pack_size yields NA; NA pack_price propagates through division.
+  safe_pack_size <- enriched$pack_size
+  safe_pack_size[!is.na(safe_pack_size) & safe_pack_size <= 0] <- NA_real_
+  enriched$per_item_price_pence <- ifelse(
+    is_concentration,
+    enriched$pack_price_pence,
+    enriched$pack_price_pence / safe_pack_size
+  )
+
+  enriched
+}
+
+.validate_ingredient <- function(ingredient) {
+  if (is.null(ingredient)) {
+    return(invisible())
+  }
+  if (
+    !is.character(ingredient) ||
+      length(ingredient) != 1L ||
+      is.na(ingredient) ||
+      !nzchar(trimws(ingredient))
+  ) {
+    cli::cli_abort("{.arg ingredient} must be NULL or a single non-empty string.")
+  }
+  invisible()
+}
+
+# Resolve the per-ingredient strength table for a database: the loaded
+# `$ingredients` for a <dmd_db>, otherwise the bundled `dmd_ingredients`.
+.resolve_ingredients <- function(db) {
+  if (inherits(db, "dmd_db")) {
+    return(db$ingredients)
+  }
+  tryCatch(dmdprices::dmd_ingredients, error = function(...) NULL)
+}
+
+# Restrict candidates to products containing `ingredient` and dose against that
+# ingredient's strength (rather than the parsed whole-product strength). This is
+# what lets combination products (e.g. co-codamol) be optimised for a single
+# active ingredient. Returns a zero-row frame (with a warning) when ingredient
+# data is unavailable or nothing matches.
+.apply_ingredient_targeting <- function(enriched, db, ingredient) {
+  ing_tbl <- .resolve_ingredients(db)
+  if (is.null(ing_tbl) || nrow(ing_tbl) == 0L) {
+    cli::cli_warn(c(
+      "No ingredient data available to target {.val {ingredient}}.",
+      "i" = "Load a dm+d release that includes the VPI extract with {.fn dmd_load}, or rebuild the bundled data."
+    ))
+    return(enriched[0, , drop = FALSE])
+  }
+
+  matches <- ing_tbl[
+    grepl(ingredient, ing_tbl$ingredient_name, ignore.case = TRUE),
+    ,
+    drop = FALSE
+  ]
+  if (nrow(matches) == 0L) {
+    cli::cli_warn("No ingredient matching {.val {ingredient}} found.")
+    return(enriched[0, , drop = FALSE])
+  }
+  # One strength per VMP (first match wins if a VMP lists it more than once).
+  matches <- matches[!duplicated(matches$vmp_snomed_code), , drop = FALSE]
+
+  idx <- match(enriched$vmp_snomed_code, matches$vmp_snomed_code)
+  keep <- !is.na(idx)
+  enriched <- enriched[keep, , drop = FALSE]
+  idx <- idx[keep]
+  if (nrow(enriched) == 0L) {
+    return(enriched)
+  }
+
+  enriched$strength_value <- matches$strength_value[idx]
+  enriched$strength_unit <- matches$strength_unit[idx]
+  enriched$denominator_value <- matches$denominator_value[idx]
+  enriched$denominator_unit <- matches$denominator_unit[idx]
+  enriched$strength_canonical <- matches$strength_canonical[idx]
+  enriched$strength_unit_canon <- matches$strength_unit_canon[idx]
+  enriched$targeted_ingredient <- matches$ingredient_name[idx]
+
+  # The named ingredient gives an unambiguous dose, so these rows are now
+  # optimisable even when the product is a combination.
+  enriched$unsupported_compound <- FALSE
+  enriched$per_item_dose <- .per_item_dose(enriched)
+
+  is_concentration <- !is.na(enriched$denominator_unit)
+  enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
   safe_pack_size <- enriched$pack_size
   safe_pack_size[!is.na(safe_pack_size) & safe_pack_size <= 0] <- NA_real_
   enriched$per_item_price_pence <- ifelse(
@@ -238,6 +330,14 @@
 #'   accepted and will match any group whose key or label contains that text.
 #'   Pipe characters in preparation keys are treated literally, not as regex
 #'   alternation.
+#' @param ingredient  Optional character. Name (or case-insensitive substring,
+#'   e.g. `"codeine"`) of a single active ingredient to dose against. When
+#'   supplied, candidates are restricted to products containing that ingredient
+#'   and the dose is matched against the ingredient's own strength rather than
+#'   the whole-product strength. This is what enables combination products such
+#'   as co-codamol to be optimised for one ingredient. Requires ingredient (VPI)
+#'   data: a [dmd_load()] database that includes it, or a rebuilt bundled
+#'   [dmd_ingredients]. With no ingredient data, returns no results and warns.
 #' @param can_split    Logical. `TRUE` (default) assumes that individual items
 #'   (tablets, capsules) can be taken from a part-pack, as is normal in
 #'   hospital dispensing. `FALSE` requires whole packs to be dispensed, as
@@ -293,10 +393,12 @@ dmd_dose_optimise <- function(
   price = c("basic_price", "nhs_indicative_price"),
   objective = c("cheapest", "min_items"),
   preparation = NULL,
+  ingredient = NULL,
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE
 ) {
+  .validate_ingredient(ingredient)
   # ── Resolve dose / dose_unit ─────────────────────────────────────────────
   if (is.character(dose)) {
     if (length(dose) != 1L) {
@@ -385,6 +487,9 @@ dmd_dose_optimise <- function(
   )
   if (is.null(enriched)) {
     return(.empty_dose_result())
+  }
+  if (!is.null(ingredient)) {
+    enriched <- .apply_ingredient_targeting(enriched, db, ingredient)
   }
   enriched <- .drop_unsupported_compounds(enriched)
   if (nrow(enriched) == 0) {
@@ -523,7 +628,7 @@ dmd_dose_optimise <- function(
 #' When multiple preparation groups match (e.g. no `preparation` filter is
 #' supplied), the **minimum cost across all groups** is returned for each dose.
 #'
-#' @param query,dose_unit,db,method,max_dist,price,preparation,active_only,can_split
+#' @param query,dose_unit,db,method,max_dist,price,preparation,ingredient,active_only,can_split
 #'   As in [dmd_dose_optimise()].
 #' @param objective Character vector of one or more of `"cheapest"`,
 #'   `"min_items"`, `"most_expensive"`, or `"all"`. The cost returned per dose
@@ -573,11 +678,13 @@ dmd_dose_cost <- function(
   price = c("basic_price", "nhs_indicative_price"),
   objective = c("cheapest", "min_items"),
   preparation = NULL,
+  ingredient = NULL,
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE,
   na_value = NA_real_
 ) {
+  .validate_ingredient(ingredient)
   method <- match.arg(method)
   price <- match.arg(price)
 
@@ -629,6 +736,9 @@ dmd_dose_cost <- function(
   )
   if (is.null(enriched)) {
     return(rep(na_value, length(dose)))
+  }
+  if (!is.null(ingredient)) {
+    enriched <- .apply_ingredient_targeting(enriched, db, ingredient)
   }
   enriched <- .drop_unsupported_compounds(enriched)
   if (nrow(enriched) == 0) {
@@ -806,11 +916,13 @@ dmd_dose_cost_range <- function(
   max_dist = 3,
   price = c("basic_price", "nhs_indicative_price"),
   preparation = NULL,
+  ingredient = NULL,
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE,
   na_value = NA_real_
 ) {
+  .validate_ingredient(ingredient)
   shared <- list(
     query = query,
     dose = dose,
@@ -820,6 +932,7 @@ dmd_dose_cost_range <- function(
     max_dist = max_dist,
     price = price,
     preparation = preparation,
+    ingredient = ingredient,
     active_only = active_only,
     can_split = can_split,
     can_split_vials = can_split_vials,
