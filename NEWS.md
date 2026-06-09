@@ -25,8 +25,12 @@
 - `dmd_dose_optimise()`, `dmd_dose_cost()`, and `dmd_dose_cost_range()` gain an
   `ingredient` argument: dose against a single named active ingredient, which
   lets combination products be optimised for one ingredient (e.g. the codeine
-  content of co-codamol). Without ingredient data, combination products
-  continue to be skipped with a warning.
+  content of co-codamol). Matching is case-insensitive and word-boundary based,
+  so `"codeine"` does not also match `"dihydrocodeine"`; a warning is emitted
+  when the term resolves to several distinct ingredients, or when a targeted
+  ingredient is recorded in a non-mass unit (e.g. GBq, mmol) that cannot be
+  dosed by mass. Without ingredient data, combination products continue to be
+  skipped with a warning.
 
 - `dmd_dose_cost_range()` — new exported function that returns a tibble with
   `lo_pence` and `hi_pence` columns (one row per dose), giving the cheapest
@@ -60,6 +64,10 @@
 
 ## Fixed
 
+- `dmd_price_lookup(method = "partial")` now matches the query as a literal
+  substring rather than a regular expression, so queries containing regex
+  metacharacters (e.g. the `"[I-131]"` in radiopharmaceutical names) no longer
+  error.
 - `dmd_dose_cost(objective = "most_expensive")` now returns the worst-case cost
   (maximum across preparation groups) instead of silently returning the
   cheapest. Aggregation across multiple objectives uses each objective's

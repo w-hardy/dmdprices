@@ -1155,6 +1155,145 @@ test_that("ingredient argument is validated", {
   )
 })
 
+# Inline db with codeine and dihydrocodeine products + ingredient strengths.
+.codeine_db <- function() {
+  master <- tibble::tibble(
+    medicine = c(
+      "Co-codamol 30mg/500mg tablets",
+      "Dihydrocodeine 30mg tablets"
+    ),
+    pack_size = c(30, 28),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VPP1", "VPP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(200L, 150L),
+    nhs_indicative_price = c(205L, 160L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c(
+      "Co-codamol 30mg/500mg 30 tablet",
+      "Dihydrocodeine 30mg 28 tablet"
+    ),
+    ampp_snomed_code = c("APP1", "APP2"),
+    is_combination = c(TRUE, FALSE)
+  )
+  ingredients <- tibble::tibble(
+    vmp_snomed_code = c("V1", "V1", "V2"),
+    ingredient_snomed_code = c("I_cod", "I_para", "I_dihy"),
+    ingredient_name = c(
+      "Codeine phosphate", "Paracetamol", "Dihydrocodeine tartrate"
+    ),
+    strength_value = c(30, 500, 30),
+    strength_unit = c("mg", "mg", "mg"),
+    denominator_value = NA_real_,
+    denominator_unit = NA_character_,
+    strength_canonical = c(30, 500, 30),
+    strength_unit_canon = c("mg", "mg", "mg")
+  )
+  structure(
+    list(master = master, ingredients = ingredients, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+}
+
+test_that("ingredient matching is word-boundary based (codeine != dihydrocodeine)", {
+  db <- .codeine_db()
+  # Query "co" matches both products; ingredient "codeine" must keep only the
+  # Co-codamol (Codeine phosphate) row, NOT the dihydrocodeine product.
+  res <- expect_no_warning(
+    dmd_dose_optimise(
+      "co", dose = 30, dose_unit = "mg", db = db,
+      ingredient = "codeine", objective = "cheapest"
+    )
+  )
+  combo <- res$combination[[1]]
+  expect_true(all(grepl("Co-codamol", combo$medicine)))
+  expect_false(any(grepl("Dihydrocodeine", combo$medicine)))
+
+  # Targeting dihydrocodeine explicitly does match the dihydrocodeine product.
+  res2 <- dmd_dose_optimise(
+    "co", dose = 30, dose_unit = "mg", db = db,
+    ingredient = "dihydrocodeine", objective = "cheapest"
+  )
+  expect_true(any(grepl("Dihydrocodeine", res2$combination[[1]]$medicine)))
+})
+
+test_that("ambiguous ingredient term warns and uses all matches", {
+  master <- tibble::tibble(
+    medicine = "Sodium combo 100mg/200mg tablets",
+    pack_size = 10, unit = "tablet",
+    vmp_snomed_code = "V1", vmpp_snomed_code = "VPP1",
+    drug_tariff_category = "Part VIIIA Category M",
+    basic_price = 100L, nhs_indicative_price = 100L,
+    price_basis = "NHS Indicative Price", price_date = "2025-08-08",
+    ampp_name = "Sodium combo 10 tablet", ampp_snomed_code = "APP1",
+    is_combination = TRUE
+  )
+  ingredients <- tibble::tibble(
+    vmp_snomed_code = c("V1", "V1"),
+    ingredient_snomed_code = c("I_a", "I_b"),
+    ingredient_name = c("Sodium chloride", "Sodium lactate"),
+    strength_value = c(100, 200), strength_unit = c("mg", "mg"),
+    denominator_value = NA_real_, denominator_unit = NA_character_,
+    strength_canonical = c(100, 200), strength_unit_canon = c("mg", "mg")
+  )
+  db <- structure(
+    list(master = master, ingredients = ingredients, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+
+  warnings <- character()
+  withCallingHandlers(
+    dmd_dose_optimise(
+      "sodium", dose = 100, dose_unit = "mg", db = db,
+      ingredient = "sodium", objective = "cheapest"
+    ),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_true(any(grepl("matched 2 distinct ingredients", warnings)))
+})
+
+test_that("targeting a non-mass ingredient warns and yields no dose", {
+  master <- tibble::tibble(
+    medicine = "Sodium iodide [I-131] 5.5GBq capsules",
+    pack_size = 1, unit = "capsule",
+    vmp_snomed_code = "V9", vmpp_snomed_code = "VPP9",
+    drug_tariff_category = "Part VIIIA Category C",
+    basic_price = 50000L, nhs_indicative_price = 50000L,
+    price_basis = "NHS Indicative Price", price_date = "2025-08-08",
+    ampp_name = "Sodium iodide [I-131] 5.5GBq 1 capsule",
+    ampp_snomed_code = "APP9", is_combination = FALSE
+  )
+  ingredients <- tibble::tibble(
+    vmp_snomed_code = "V9", ingredient_snomed_code = "I_nai",
+    ingredient_name = "Sodium iodide",
+    strength_value = 5.5, strength_unit = "gbq",
+    denominator_value = NA_real_, denominator_unit = NA_character_,
+    strength_canonical = NA_real_, strength_unit_canon = NA_character_
+  )
+  db <- structure(
+    list(master = master, ingredients = ingredients, loaded_at = Sys.time()),
+    class = "dmd_db"
+  )
+  warnings <- character()
+  res <- withCallingHandlers(
+    dmd_dose_optimise(
+      "Sodium iodide", dose = 1, dose_unit = "mg", db = db,
+      ingredient = "Sodium iodide"
+    ),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_true(any(grepl("non-mass strength", warnings)))
+  expect_equal(nrow(res), 0L)
+})
+
 test_that("compound rows are skipped while supported rows still optimise", {
   m <- tibble::tibble(
     medicine = c("Testdrug 100mg tablets", "Testdrug 100mg/500mg tablets"),

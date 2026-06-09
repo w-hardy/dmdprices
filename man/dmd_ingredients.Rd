@@ -19,8 +19,13 @@ concentrations, else \code{NA}.}
 \item{denominator_unit}{\code{character}. Strength denominator unit
 (e.g. \code{"ml"}), else \code{NA}.}
 \item{strength_canonical}{\code{numeric}. Strength in canonical units
-(mass in mg), for cross-product comparison.}
-\item{strength_unit_canon}{\code{character}. Canonical strength unit.}
+(mass in mg, volume in ml, or biological activity as \code{"unit"}), for
+cross-product comparison. \code{NA} for strengths recorded in units that have
+no mass equivalent (e.g. radioactivity in GBq/MBq, amount of substance in
+mmol, vaccine antigen units, or volumes such as microlitre). Such
+ingredients cannot be dose-optimised by mass via \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}.}
+\item{strength_unit_canon}{\code{character}. Canonical strength unit, or \code{NA}
+when the strength has no mass/volume/activity equivalent.}
 }
 }
 \source{

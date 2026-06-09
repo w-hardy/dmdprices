@@ -53,13 +53,19 @@ accepted and will match any group whose key or label contains that text.
 Pipe characters in preparation keys are treated literally, not as regex
 alternation.}
 
-\item{ingredient}{Optional character. Name (or case-insensitive substring,
-e.g. \code{"codeine"}) of a single active ingredient to dose against. When
-supplied, candidates are restricted to products containing that ingredient
-and the dose is matched against the ingredient's own strength rather than
-the whole-product strength. This is what enables combination products such
-as co-codamol to be optimised for one ingredient. Requires ingredient (VPI)
-data: a \code{\link[=dmd_load]{dmd_load()}} database that includes it, or a rebuilt bundled
+\item{ingredient}{Optional character. Name of a single active ingredient to
+dose against (e.g. \code{"codeine"}). When supplied, candidates are restricted
+to products containing that ingredient and the dose is matched against the
+ingredient's own strength rather than the whole-product strength. This is
+what enables combination products such as co-codamol to be optimised for
+one ingredient. Matching is case-insensitive and \strong{word-boundary} based,
+so \code{"codeine"} matches \code{"Codeine phosphate"} but not \code{"dihydrocodeine"};
+ingredient names are matched as written in the dm+d (including salt forms).
+If the term still resolves to more than one distinct ingredient, all are
+used and a warning lists them. Ingredients recorded in non-mass units
+(e.g. radioactivity in GBq, electrolytes in mmol) cannot be converted to a
+mass dose; such candidates are skipped with a warning. Requires ingredient
+(VPI) data: a \code{\link[=dmd_load]{dmd_load()}} database that includes it, or a rebuilt bundled
 \link{dmd_ingredients}. With no ingredient data, returns no results and warns.}
 
 \item{can_split}{Logical. \code{TRUE} (default) assumes that individual items

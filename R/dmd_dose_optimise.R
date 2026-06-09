@@ -214,15 +214,32 @@
     return(enriched[0, , drop = FALSE])
   }
 
-  matches <- ing_tbl[
-    grepl(ingredient, ing_tbl$ingredient_name, ignore.case = TRUE),
-    ,
-    drop = FALSE
-  ]
+  # Match the ingredient name on a word boundary so that, e.g., "codeine" does
+  # not also match "dihydrocodeine". \Q...\E quotes any regex metacharacters in
+  # the user-supplied term.
+  pattern <- paste0("\\b\\Q", ingredient, "\\E\\b")
+  is_match <- grepl(
+    pattern,
+    ing_tbl$ingredient_name,
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+  matches <- ing_tbl[is_match, , drop = FALSE]
   if (nrow(matches) == 0L) {
     cli::cli_warn("No ingredient matching {.val {ingredient}} found.")
     return(enriched[0, , drop = FALSE])
   }
+
+  # The term may still resolve to more than one distinct ingredient (e.g. a
+  # base substance and its salt). Surface that rather than silently choosing.
+  distinct_names <- sort(unique(matches$ingredient_name))
+  if (length(distinct_names) > 1L) {
+    cli::cli_warn(c(
+      "{.arg ingredient} {.val {ingredient}} matched {length(distinct_names)} distinct ingredients: {.val {distinct_names}}.",
+      "i" = "All matches are used; supply a more specific name to narrow this."
+    ))
+  }
+
   # One strength per VMP (first match wins if a VMP lists it more than once).
   matches <- matches[!duplicated(matches$vmp_snomed_code), , drop = FALSE]
 
@@ -246,6 +263,18 @@
   # optimisable even when the product is a combination.
   enriched$unsupported_compound <- FALSE
   enriched$per_item_dose <- .per_item_dose(enriched)
+
+  # Some ingredients are recorded in non-mass units (e.g. GBq, mmol, vaccine
+  # units) that cannot be canonicalised to a mass dose. Those rows yield an NA
+  # per-item dose and are dropped downstream; warn instead of failing silently.
+  na_canon <- is.na(enriched$strength_canonical)
+  if (any(na_canon)) {
+    bad_units <- sort(unique(stats::na.omit(enriched$strength_unit[na_canon])))
+    cli::cli_warn(c(
+      "{sum(na_canon)} candidate{?s} for {.val {ingredient}} ha{?s/ve} a non-mass strength and cannot be dosed by mass; skipped.",
+      "i" = "Strength unit{?s}: {.val {bad_units}}."
+    ))
+  }
 
   is_concentration <- !is.na(enriched$denominator_unit)
   enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
@@ -330,13 +359,19 @@
 #'   accepted and will match any group whose key or label contains that text.
 #'   Pipe characters in preparation keys are treated literally, not as regex
 #'   alternation.
-#' @param ingredient  Optional character. Name (or case-insensitive substring,
-#'   e.g. `"codeine"`) of a single active ingredient to dose against. When
-#'   supplied, candidates are restricted to products containing that ingredient
-#'   and the dose is matched against the ingredient's own strength rather than
-#'   the whole-product strength. This is what enables combination products such
-#'   as co-codamol to be optimised for one ingredient. Requires ingredient (VPI)
-#'   data: a [dmd_load()] database that includes it, or a rebuilt bundled
+#' @param ingredient  Optional character. Name of a single active ingredient to
+#'   dose against (e.g. `"codeine"`). When supplied, candidates are restricted
+#'   to products containing that ingredient and the dose is matched against the
+#'   ingredient's own strength rather than the whole-product strength. This is
+#'   what enables combination products such as co-codamol to be optimised for
+#'   one ingredient. Matching is case-insensitive and **word-boundary** based,
+#'   so `"codeine"` matches `"Codeine phosphate"` but not `"dihydrocodeine"`;
+#'   ingredient names are matched as written in the dm+d (including salt forms).
+#'   If the term still resolves to more than one distinct ingredient, all are
+#'   used and a warning lists them. Ingredients recorded in non-mass units
+#'   (e.g. radioactivity in GBq, electrolytes in mmol) cannot be converted to a
+#'   mass dose; such candidates are skipped with a warning. Requires ingredient
+#'   (VPI) data: a [dmd_load()] database that includes it, or a rebuilt bundled
 #'   [dmd_ingredients]. With no ingredient data, returns no results and warns.
 #' @param can_split    Logical. `TRUE` (default) assumes that individual items
 #'   (tablets, capsules) can be taken from a part-pack, as is normal in

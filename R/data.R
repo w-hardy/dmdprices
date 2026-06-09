@@ -101,8 +101,13 @@
 #'   \item{denominator_unit}{`character`. Strength denominator unit
 #'     (e.g. `"ml"`), else `NA`.}
 #'   \item{strength_canonical}{`numeric`. Strength in canonical units
-#'     (mass in mg), for cross-product comparison.}
-#'   \item{strength_unit_canon}{`character`. Canonical strength unit.}
+#'     (mass in mg, volume in ml, or biological activity as `"unit"`), for
+#'     cross-product comparison. `NA` for strengths recorded in units that have
+#'     no mass equivalent (e.g. radioactivity in GBq/MBq, amount of substance in
+#'     mmol, vaccine antigen units, or volumes such as microlitre). Such
+#'     ingredients cannot be dose-optimised by mass via [dmd_dose_optimise()].}
+#'   \item{strength_unit_canon}{`character`. Canonical strength unit, or `NA`
+#'     when the strength has no mass/volume/activity equivalent.}
 #' }
 #'
 #' @source
