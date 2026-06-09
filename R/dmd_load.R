@@ -72,17 +72,17 @@ dmd_load <- function(path = getOption("dmdprices.path")) {
     # in some minimal exports. Enables combination-product handling.
     vpi = .read_dmd_optional(
       csv_dir,
-      "f_vmp_VirtualProductIngredientType.csv",
+      "f_vmp_VpiType.csv",
       .col_names$vpi
     ),
     ingredient = .read_dmd_optional(
       csv_dir,
-      "f_ingredient_IngredientType.csv",
+      "f_ingredient.csv",
       .col_names$ingredient
     ),
     lkp_uom = .read_dmd_optional(
       csv_dir,
-      "f_lookup_UnitOfMeasureType.csv",
+      "f_lookup_UoMHistoryInfoType.csv",
       .col_names$lkp_uom
     )
   )

@@ -1,5 +1,16 @@
 # dmdprices (development version)
 
+## Data
+
+- Bundled `dmd_master` and `dmd_ingredients` datasets updated to **dm+d Week 15
+  2026 (06 April 2026)**, replacing the previous Week 34 2025 (14 August 2025)
+  release.
+- `dmd_load()` and `data-raw/dmd_master.R` updated to reflect renamed CSV files
+  in this release: `f_vmp_VpiType.csv` (was `f_vmp_VirtualProductIngredientType.csv`),
+  `f_ingredient.csv` (was `f_ingredient_IngredientType.csv`), and
+  `f_lookup_UoMHistoryInfoType.csv` (was `f_lookup_UnitOfMeasureType.csv`, now
+  4-column schema without `INVALID`).
+
 ## Added
 
 - **Combination-product handling (#8).** `dmd_parse_strength()` now detects

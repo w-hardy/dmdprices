@@ -35,10 +35,10 @@ library(usethis)
 dmd_loader_path <- here::here("..", "dmdDataLoader")
 
 # dm+d release metadata (update with each new release)
-# File naming convention: f_vmp2_3<DDMMYY>.xml → week 34, 14 August 2025
-dmd_release_week <- "34"
-dmd_release_year <- "2025"
-dmd_release_date <- as.Date("2025-08-14")
+# File naming convention: f_vmp2_3<DDMMYY>.xml → week 15, 06 April 2026
+dmd_release_week <- "15"
+dmd_release_year <- "2026"
+dmd_release_date <- as.Date("2026-04-06")
 dmd_release_label <- paste0(
   "Week ",
   dmd_release_week,
@@ -82,17 +82,17 @@ raw <- list(
   # release without these files simply yields no ingredient data.
   vpi = .read_dmd_optional(
     csv_dir,
-    "f_vmp_VirtualProductIngredientType.csv",
+    "f_vmp_VpiType.csv",
     .col_names$vpi
   ),
   ingredient = .read_dmd_optional(
     csv_dir,
-    "f_ingredient_IngredientType.csv",
+    "f_ingredient.csv",
     .col_names$ingredient
   ),
   lkp_uom = .read_dmd_optional(
     csv_dir,
-    "f_lookup_UnitOfMeasureType.csv",
+    "f_lookup_UoMHistoryInfoType.csv",
     .col_names$lkp_uom
   )
 )

@@ -1,7 +1,7 @@
 #' NHS dm+d medicine pricing master table
 #'
 #' A joined pricing table built from the NHS Dictionary of Medicines and
-#' Devices (dm+d), release **Week 34 2025 (14 August 2025)**. The table
+#' Devices (dm+d), release **Week 15 2026 (06 April 2026)**. The table
 #' combines Virtual Medicinal Products (VMPs), Virtual Medicinal Product Packs
 #' (VMPPs), Actual Medicinal Product Packs (AMPPs), Drug Tariff reimbursement
 #' prices, and NHS Indicative Prices into a single flat tibble.
@@ -16,7 +16,7 @@
 #'
 #' ```r
 #' attr(dmd_master, "dmd_release_label")
-#' # [1] "Week 34 2025 (14 August 2025)"
+#' # [1] "Week 15 2026 (06 April 2026)"
 #' ```
 #'
 #' @format A tibble with 118,196 rows and 12 columns. One row per AMPP
@@ -54,8 +54,8 @@
 #' }
 #'
 #' @source
-#' NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release
-#' (14 August 2025). Published by the NHS Business Services Authority (NHSBSA).
+#' NHS Dictionary of Medicines and Devices (dm+d), Week 15 2026 release
+#' (06 April 2026). Published by the NHS Business Services Authority (NHSBSA).
 #'
 #' © Crown copyright. Contains public sector information licensed under the
 #' **Open Government Licence v3.0**.\cr
@@ -83,7 +83,7 @@
 #' The version bundled with the package may be **empty**: the VPI extract is an
 #' optional part of a dm+d release and is not always present. Rebuild the
 #' bundled data from a release that includes
-#' `f_vmp_VirtualProductIngredientType.csv` (see `data-raw/dmd_master.R`), or
+#' `f_vmp_VpiType.csv` (see `data-raw/dmd_master.R`), or
 #' load a full release with [dmd_load()], to populate it. Check with
 #' `nrow(dmd_ingredients)`.
 #'

@@ -40,8 +40,8 @@ description, e.g.
 }
 }
 \source{
-NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release
-(14 August 2025). Published by the NHS Business Services Authority (NHSBSA).
+NHS Dictionary of Medicines and Devices (dm+d), Week 15 2026 release
+(06 April 2026). Published by the NHS Business Services Authority (NHSBSA).
 
 © Crown copyright. Contains public sector information licensed under the
 \strong{Open Government Licence v3.0}.\cr
@@ -55,7 +55,7 @@ dmd_master
 }
 \description{
 A joined pricing table built from the NHS Dictionary of Medicines and
-Devices (dm+d), release \strong{Week 34 2025 (14 August 2025)}. The table
+Devices (dm+d), release \strong{Week 15 2026 (06 April 2026)}. The table
 combines Virtual Medicinal Products (VMPs), Virtual Medicinal Product Packs
 (VMPPs), Actual Medicinal Product Packs (AMPPs), Drug Tariff reimbursement
 prices, and NHS Indicative Prices into a single flat tibble.
@@ -70,7 +70,7 @@ Use \code{\link[=dmd_price_lookup]{dmd_price_lookup()}} to query this dataset by
 Release metadata is stored as attributes and can be inspected with:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{attr(dmd_master, "dmd_release_label")
-# [1] "Week 34 2025 (14 August 2025)"
+# [1] "Week 15 2026 (06 April 2026)"
 }\if{html}{\out{</div>}}
 }
 \seealso{

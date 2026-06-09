@@ -1129,13 +1129,15 @@ test_that("ingredient targeting selects the cheapest source of the ingredient", 
 })
 
 test_that("ingredient targeting warns and returns nothing without VPI data", {
-  # Bundled dmd_master has an empty dmd_ingredients table.
+  # Use a db with no $ingredients element to exercise the no-VPI path.
+  db_no_vpi <- .fake_dose_db()  # has no $ingredients
   expect_warning(
     res <- dmd_dose_optimise(
-      "co-codamol",
-      dose = 30,
+      "metformin",
+      dose = 500,
       dose_unit = "mg",
-      ingredient = "codeine"
+      db = db_no_vpi,
+      ingredient = "metformin"
     ),
     regexp = "ingredient data"
   )

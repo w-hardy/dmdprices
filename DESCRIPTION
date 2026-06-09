@@ -3,7 +3,7 @@ Title: Look Up Medicine Prices from the NHS dm+d
 Version: 0.5.0
 Authors@R: person("Will", "Hardy", email = "w.hardy@bangor.ac.uk", role = c("aut", "cre"))
 Description: Provides the bundled NHS dm+d (Dictionary of Medicines and
-    Devices) pricing dataset (Week 34 2025) and tools to query Drug Tariff
+    Devices) pricing dataset (Week 15 2026) and tools to query Drug Tariff
     and NHS Indicative Prices by medicine name. Also supports loading updated
     releases from the NHSBSA dmdDataLoader CSV output. Output columns mirror
     the NHS Drug Tariff Part VIIIA CSV format so that dm+d and Drug Tariff

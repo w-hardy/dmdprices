@@ -49,7 +49,7 @@ also surfaced as the \code{is_combination} column on a \code{\link[=dmd_load]{dm
 The version bundled with the package may be \strong{empty}: the VPI extract is an
 optional part of a dm+d release and is not always present. Rebuild the
 bundled data from a release that includes
-\code{f_vmp_VirtualProductIngredientType.csv} (see \code{data-raw/dmd_master.R}), or
+\code{f_vmp_VpiType.csv} (see \code{data-raw/dmd_master.R}), or
 load a full release with \code{\link[=dmd_load]{dmd_load()}}, to populate it. Check with
 \code{nrow(dmd_ingredients)}.
 }

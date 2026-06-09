@@ -71,7 +71,7 @@
   # Ingredient substance lookup (ISID → name).
   ingredient = c("ISID", "ISIDDT", "ISIDPREV", "INVALID", "NM"),
   # Unit-of-measure lookup (CD → DESC).
-  lkp_uom = c("CD", "CDDT", "CDPREV", "INVALID", "DESC")
+  lkp_uom = c("CD", "CDDT", "CDPREV", "DESC")
 )
 
 # ── Unit-of-measure lookup ────────────────────────────────────────────────────
