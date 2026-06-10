@@ -63,6 +63,12 @@ pkgdown::build_site()  # Rebuild docs site
 - **`can_split` semantics:** `TRUE` = hospital (pro-rata per tablet/capsule); `FALSE` = community (whole packs only). Concentration-based preps (liquids, vials) are always unsplittable.
 - **Result schema:** `.empty_dose_result()` in `dmd_dose_optimise.R` is the canonical column definition. All code paths must return a tibble conforming to this schema.
 
+## Maintaining the Bundled Data
+
+`dmd_master` / `dmd_ingredients` are rebuilt from a dmdDataLoader CSV export via `data-raw/dmd_master.R` (`source()` it from the package root — it saves **both** `.rda` files). Update the release metadata in that script, in `R/data.R`, and in `DESCRIPTION`, then run `document()` / `test()` / `check()`. CSV filenames occasionally change between dm+d releases — update them in `R/dmd_load.R`, `data-raw/dmd_master.R`, and the column specs in `.col_names` (`utils.R`). Full process: `vignette("data_sources_updates")`.
+
+**UoM mapping:** pack units arrive as SNOMED codes and are resolved in `.build_master()` by (1) the curated `.uom_labels` — short, *canonicalisable* labels (`mg`/`ml`/`g`/`dose`/`unit`/…) used for dose costing — then (2) a fallback to the dm+d UoM lookup `DESC` (display-only). A unit that affects **dosing** (concentration pack units like `dose`, `actuation`, `ml`, `g`) must go in `.uom_labels` with a token `.canonicalise_unit()` recognises (`.unit_table` in `parse_strength.R`); display-only units (devices, containers) need nothing. Both layers run at build time. Verify a rebuild with `sum(grepl("^[0-9]+$", dmd_master$unit)) == 0`.
+
 ## Common Pitfalls
 
 - After changing any `@` roxygen tag or function signature, run `devtools::document()` before testing — stale `NAMESPACE`/`man/` files cause confusing failures.
