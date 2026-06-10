@@ -45,15 +45,14 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @importFrom dplyr arrange bind_cols bind_rows coalesce filter group_by
-#'   inner_join join_by left_join mutate n_distinct rename select slice_max
-#'   ungroup
+#' @importFrom dplyr arrange bind_cols bind_rows coalesce filter group_by inner_join join_by left_join mutate n_distinct rename select slice_max ungroup
 #' @importFrom readr col_character cols read_delim
 #' @importFrom rlang .data is_string `:=`
 #' @importFrom stringr regex str_detect str_squish str_to_lower str_to_upper
 #' @importFrom cli cli_abort cli_inform cli_progress_step cli_warn
 #' @importFrom stringdist stringdist
 #' @importFrom tibble tibble tribble
+#' @importFrom cachem cache_mem
 #' @importFrom memoise memoise cache_memory
 #' @importFrom bslib bs_theme
 ## usethis namespace: end

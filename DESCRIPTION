@@ -15,7 +15,6 @@ Encoding: UTF-8
 LazyData: true
 LazyDataCompression: xz
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Imports:
     bslib,
     cachem,
@@ -28,9 +27,9 @@ Imports:
     cli,
     tibble,
     memoise,
-    shiny,
-    DT
+    shiny
 Suggests:
+    DT,
     testthat (>= 3.0.0),
     withr,
     knitr,
@@ -43,3 +42,4 @@ URL: https://w-hardy.github.io/dmdprices/, https://github.com/w-hardy/dmdprices
 BugReports: https://github.com/w-hardy/dmdprices/issues
 Depends: 
     R (>= 4.1)
+Config/roxygen2/version: 8.0.0
