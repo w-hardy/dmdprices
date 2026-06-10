@@ -63,6 +63,10 @@
 
 ## Changed
 
+- `dmd_price_lookup()` now also searches the branded pack name (`ampp_name`),
+  not just the generic `medicine` name, so a query for a brand (e.g.
+  `"Buvidal"`) returns its packs while generic queries continue to work as
+  before. Applies to all three methods (`partial`, `exact`, `fuzzy`).
 - NHS CII rates updated to the PSSRU *Unit Costs of Health and Social Care 2025
   Manual*. Coverage now extends to 2024/25 (provisional), and the previously
   provisional 2023/24 figures have been revised to the values published in the

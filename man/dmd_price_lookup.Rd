@@ -18,16 +18,18 @@ dmd_price_lookup(
 \item{db}{A \verb{<dmd_db>} object from \code{\link[=dmd_load]{dmd_load()}}, or a tibble with the
 same columns as \link{dmd_master}. Defaults to the bundled \link{dmd_master} dataset.}
 
-\item{method}{One of:
+\item{method}{One of (each matches against the generic \code{medicine} name and
+the branded \code{ampp_name}):
 \itemize{
 \item \code{"partial"} \emph{(default)} — case-insensitive \strong{literal} substring match.
 The query is matched as written, so punctuation such as \code{"[I-131]"} is
 treated literally rather than as a regular expression. Suitable for
-general searching, e.g. \code{"metformin"}.
-\item \code{"exact"} — case-insensitive exact match against the full VMP name.
+general searching, e.g. \code{"metformin"} or \code{"Buvidal"}.
+\item \code{"exact"} — case-insensitive exact match against the full VMP name or the
+full branded pack name.
 \item \code{"fuzzy"} — approximate string matching (optimal string alignment
-distance via \code{\link[stringdist:stringdist]{stringdist::stringdist()}}). Tolerates typos. Tune
-sensitivity with \code{max_dist}.
+distance via \code{\link[stringdist:stringdist]{stringdist::stringdist()}}, taking the closer of the generic
+and brand names). Tolerates typos. Tune sensitivity with \code{max_dist}.
 }}
 
 \item{max_dist}{Maximum edit distance for \code{method = "fuzzy"} (default \code{3}).
@@ -55,17 +57,24 @@ A \link[tibble:tibble]{tibble} with the following columns:\tabular{ll}{
 }
 \description{
 Searches a dm+d pricing table for medicines whose names match \code{query}.
-Returns a tibble in the same column format as the NHS Drug Tariff Part VIIIA
-CSV, with Drug Tariff and NHS Indicative Price columns appended.
+Both the generic VMP name (\code{medicine}) and the branded pack name
+(\code{ampp_name}) are searched, so a query for either a brand (e.g. \code{"Buvidal"})
+or its generic (e.g. \code{"Buprenorphine ... prolonged-release"}) returns the
+matching packs. Returns a tibble in the same column format as the NHS Drug
+Tariff Part VIIIA CSV, with Drug Tariff and NHS Indicative Price columns
+appended.
 }
 \details{
-By default, the bundled \link{dmd_master} dataset (Week 34 2025, 14 August 2025)
+By default, the bundled \link{dmd_master} dataset (Week 15 2026, 06 April 2026)
 is used, so no setup is needed. Supply \code{db} to use a more recent release
 loaded with \code{\link[=dmd_load]{dmd_load()}}.
 }
 \examples{
 # Uses bundled data — no setup required
 dmd_price_lookup("metformin")
+
+# Brand names work too (matched against the branded pack name)
+dmd_price_lookup("Buvidal")
 
 dmd_price_lookup("Metformin 500mg tablets", method = "exact")
 
