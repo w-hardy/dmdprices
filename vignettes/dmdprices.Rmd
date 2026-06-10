@@ -17,7 +17,7 @@ library(dmdprices)
 
 ## Overview
 
-`dmdprices` provides price lookups against the NHS Dictionary of Medicines and Devices (dm+d). A bundled dataset (Week 34 2025) is included so no setup is needed for immediate use.
+`dmdprices` provides price lookups against the NHS Dictionary of Medicines and Devices (dm+d). A bundled dataset (Week 15 2026) is included so no setup is needed for immediate use.
 
 The main functions are:
 
@@ -120,7 +120,7 @@ convention. One row is returned per branded pack (AMPP).
 ## Data attribution
 
 The bundled `dmd_master` dataset is derived from the **NHS Dictionary of
-Medicines and Devices (dm+d)**, Week 34 2025 (14 August 2025), published by
+Medicines and Devices (dm+d)**, Week 15 2026 (06 April 2026), published by
 the **NHS Business Services Authority (NHSBSA)**.
 
 © Crown copyright. Licensed under the

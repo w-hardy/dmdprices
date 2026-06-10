@@ -97,7 +97,7 @@ ui <- fluidPage(
       hr(),
 
       helpText(
-        tags$b("Data:"), " NHS dm+d Week 34 2025 (14 August 2025).",
+        tags$b("Data:"), " NHS dm+d Week 15 2026 (06 April 2026).",
         " Prices are NHS Indicative or Drug Tariff Basic Prices (pence).",
         tags$br(),
         "\u00a9 Crown copyright. NHS Business Services Authority (NHSBSA).",

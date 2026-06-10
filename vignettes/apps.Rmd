@@ -135,9 +135,9 @@ rsconnect::deployApp(
 
 ## Data attribution
 
-**dm+d Price Lookup** and **dm+d Dose Optimiser** use the NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release, published by the NHS Business Services Authority (NHSBSA). © Crown copyright. Licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+**dm+d Price Lookup** and **dm+d Dose Optimiser** use the NHS Dictionary of Medicines and Devices (dm+d), Week 15 2026 release, published by the NHS Business Services Authority (NHSBSA). © Crown copyright. Licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
 
-**NHS CII Cost Adjuster** uses inflation rates from Jones et al. (2025), *Unit Costs of Health and Social Care 2024 Manual*, published by the Personal Social Services Research Unit (University of Kent) & Centre for Health Economics (University of York). <https://doi.org/10.22024/UniKent/01.02.109563>
+**NHS CII Cost Adjuster** uses inflation rates from Jones et al. (2026), *Unit Costs of Health and Social Care 2025 Manual*, published by the Personal Social Services Research Unit (University of Kent) & Centre for Health Economics (University of York). <https://doi.org/10.22024/UniKent/01.02.115569>
 
 Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 

@@ -19,6 +19,7 @@ Imports:
     bslib,
     cachem,
     dplyr,
+    DT,
     lifecycle,
     readr,
     stringr,
@@ -29,7 +30,6 @@ Imports:
     memoise,
     shiny
 Suggests:
-    DT,
     testthat (>= 3.0.0),
     withr,
     knitr,
