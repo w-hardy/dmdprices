@@ -1294,6 +1294,45 @@ test_that("targeting a non-mass ingredient warns and yields no dose", {
   expect_equal(nrow(res), 0L)
 })
 
+test_that("cheapest tie-break prefers the lowest over-delivery", {
+  # 16mg+24mg = 40mg exactly (2 items, 200p) ties on cost with a single 48mg
+  # tablet (1 item, 200p, 8mg over). The cheapest objective must pick the exact
+  # 40mg combination, not the cheaper-looking single tablet that over-delivers.
+  m <- tibble::tibble(
+    medicine = c(
+      "Tiebreak 16mg tablets",
+      "Tiebreak 24mg tablets",
+      "Tiebreak 48mg tablets"
+    ),
+    pack_size = c(1, 1, 1),
+    unit = c("tablet", "tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2", "V3"),
+    vmpp_snomed_code = c("VP1", "VP2", "VP3"),
+    drug_tariff_category = rep("Part VIIIA Category M", 3),
+    basic_price = c(100L, 100L, 200L),
+    nhs_indicative_price = c(100L, 100L, 200L),
+    price_basis = rep("NHS Indicative Price", 3),
+    price_date = rep("2025-08-08", 3),
+    ampp_name = c(
+      "Tiebreak 16mg 1 tablet",
+      "Tiebreak 24mg 1 tablet",
+      "Tiebreak 48mg 1 tablet"
+    ),
+    ampp_snomed_code = c("A1", "A2", "A3")
+  )
+  db_tie <- structure(list(master = m, loaded_at = Sys.time()), class = "dmd_db")
+
+  res <- dmd_dose_optimise(
+    "tiebreak", dose = 40, dose_unit = "mg", db = db_tie,
+    preparation = "tablet|none|oral", objective = "cheapest"
+  )
+  expect_equal(res$dose_delivered, 40)
+  expect_equal(res$over_delivery, 0)
+  expect_equal(res$total_items, 2)
+  combo <- res$combination[[1]]
+  expect_true(all(c("16mg", "24mg") %in% sub(".*?(\\d+mg).*", "\\1", combo$medicine)))
+})
+
 test_that("compound rows are skipped while supported rows still optimise", {
   m <- tibble::tibble(
     medicine = c("Testdrug 100mg tablets", "Testdrug 100mg/500mg tablets"),

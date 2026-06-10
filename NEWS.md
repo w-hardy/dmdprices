@@ -64,6 +64,18 @@
 
 ## Fixed
 
+- Cheapest dose optimisation now breaks cost ties by preferring the **lowest
+  over-delivery**. Previously it could return an over-delivering combination
+  (e.g. 2 × 32 mg = 64 mg for a 40 mg target) when an exact-dose combination of
+  equal cost existed, because the tie-break inspected the fewest-items path
+  rather than the cheapest path's over-delivery.
+- Pack units now resolve via the dm+d unit-of-measure lookup as a fallback, so
+  container codes not in the curated short-label table (e.g. the pre-filled
+  syringe unit on depot injections like buprenorphine prolonged-release) show
+  their proper label instead of a raw SNOMED code. Curated short labels
+  (`"ml"`, `"tablet"`, …) still take precedence. Takes effect when the bundled
+  data is rebuilt (`data-raw/dmd_master.R`) or a release is loaded with
+  `dmd_load()`.
 - `dmd_price_lookup(method = "partial")` now matches the query as a literal
   substring rather than a regular expression, so queries containing regex
   metacharacters (e.g. the `"[I-131]"` in radiopharmaceutical names) no longer

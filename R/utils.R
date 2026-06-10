@@ -132,6 +132,18 @@
 #' @param raw A named list as returned by `.load_raw()`.
 #' @noRd
 .build_master <- function(raw) {
+  # Build a fallback unit-of-measure label map (CD -> DESC) from the lookup
+  # extract, used for pack-unit codes that are not in the curated
+  # `.uom_labels`. `.uom_labels` is preferred so canonicalisable short labels
+  # (e.g. "ml", "tablet") are preserved for the dose-optimiser; the lookup only
+  # fills in otherwise-unmapped codes such as the pre-filled-syringe unit.
+  uom_desc <- if (is.null(raw$lkp_uom)) {
+    character()
+  } else {
+    u <- raw$lkp_uom[!duplicated(raw$lkp_uom$CD), , drop = FALSE]
+    stats::setNames(u$DESC, u$CD)
+  }
+
   # Valid VMPs
   vmp_valid <- raw$vmp |>
     dplyr::filter(is.na(.data$INVALID) | .data$INVALID == "") |>
@@ -181,11 +193,15 @@
     dplyr::left_join(ampp_valid, by = dplyr::join_by("VPPID")) |>
     dplyr::left_join(nhsip, by = dplyr::join_by("APPID")) |>
     dplyr::mutate(
-      Unit = dplyr::coalesce(
+      # unname() because named-vector lookups (.uom_labels / uom_desc) otherwise
+      # leave SNOMED codes as names on the resulting `unit` column.
+      Unit = unname(dplyr::coalesce(
         .uom_labels[.data$QTY_UOMCD],
         .uom_labels[.data$UNIT_DOSE_UOMCD],
+        uom_desc[.data$QTY_UOMCD],
+        uom_desc[.data$UNIT_DOSE_UOMCD],
         .data$QTY_UOMCD
-      ),
+      )),
       Pack_size = suppressWarnings(as.numeric(.data$QTYVAL)),
       "Basic Price" := dplyr::na_if(
         suppressWarnings(as.integer(.data$DT_PRICE)),

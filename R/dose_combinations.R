@@ -250,12 +250,14 @@
   cand <- which(cost_vec == min(cost_vec[finite_cost]))
   cand <- cand[cand %in% which(finite_cost)]
   if (length(cand) > 1) {
-    # Tie-break: fewer items, then smaller over-delivery.
-    it <- items_vec[cand]
-    sub <- cand[which(it == min(it))]
+    # Tie-break: smallest over-delivery first (least wasted drug), then fewer
+    # items. `items_vec` (dp$min_items) reflects the fewest-items path to each
+    # target, which need not be the cheapest path, so over-delivery — a property
+    # of the target itself — is the reliable primary key on a cost tie.
+    over <- ts[cand] - dose_int
+    sub <- cand[which(over == min(over))]
     if (length(sub) > 1) {
-      over <- ts[sub] - dose_int
-      sub <- sub[which.min(over)]
+      sub <- sub[which.min(items_vec[sub])]
     }
     chosen <- sub[1]
   } else {
