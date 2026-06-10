@@ -61,6 +61,15 @@
   `notes` column and returns a non-integer `count` in the combination tibble.
 - `bslib`, `cachem`, and `lifecycle` added to `Imports`.
 
+## Changed
+
+- NHS CII rates updated to the PSSRU *Unit Costs of Health and Social Care 2025
+  Manual*. Coverage now extends to 2024/25 (provisional), and the previously
+  provisional 2023/24 figures have been revised to the values published in the
+  2025 manual (#9).
+- `nhscii()` and `inflate_nhscii()` now accept 2014/15 as a `from_year`, the
+  first row of the NHSCII table (#6).
+
 ## Deprecated
 
 - `objective = "both"` in `dmd_dose_optimise()` and `dmd_dose_cost()` is

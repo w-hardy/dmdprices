@@ -8,16 +8,19 @@
 }
 \description{
 Internal annual percentage rates used by \code{\link[=nhscii]{nhscii()}} and \code{\link[=inflate_nhscii]{inflate_nhscii()}}.
-Values currently cover financial years 2015/16 to 2023/24.
+Values currently cover financial years 2014/15 to 2024/25.
 }
 \details{
-Source: Jones KC et al. (2025). Unit Costs of Health and Social Care 2024
+Source: Jones KC et al. (2026). Unit Costs of Health and Social Care 2025
 Manual. PSSRU (University of Kent) & Centre for Health Economics (University
-of York). (\doi{10.22024/UniKent/01.02.109563}).
+of York). \doi{10.22024/UniKent/01.02.115569}.
 Licensed under CC BY-NC-SA 4.0.
 
-Per the PSSRU manual, the 2023/24 values are provisional. This is standard
-for each annual publication, and later manuals may revise values when
-additional data become available.
+Per the PSSRU manual, the most recent year's values (currently 2024/25) are
+provisional. This is standard for each annual publication: the latest year
+is provisional and is typically revised in the following year's manual, after
+which it remains stable. Accordingly, the 2023/24 figures published as
+provisional in the previous manual have been revised here using the 2025
+manual.
 }
 \keyword{internal}
