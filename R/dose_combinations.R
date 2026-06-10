@@ -160,7 +160,9 @@
     # tie-break so target-level ties can be resolved consistently later.
     cand_max_cost <- max_cost[prev_idxs] + price_for_max[valid]
     cand_max_items <- max_items[prev_idxs] + 1
-    best_m <- which.max(cand_max_cost)
+    # Maximise cost, breaking equal-cost ties in favour of more items so the
+    # within-cell choice matches the tie-break documented above.
+    best_m <- order(-cand_max_cost, -cand_max_items)[1L]
     if (
       cand_max_cost[best_m] > max_cost[t + 1L] ||
         (
