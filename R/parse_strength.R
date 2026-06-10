@@ -210,6 +210,88 @@
   )
 }
 
+# Strength token within one ingredient segment: `<amt><unit>` optionally
+# followed by a `/<den_amt><den_unit>` concentration denominator.
+.segment_strength_regex <- paste0(
+  "(?i)(\\d+(?:\\.\\d+)?)\\s*(",
+  .mass_unit_alt,
+  ")(?:\\s*/\\s*(\\d+(?:\\.\\d+)?)?\\s*(ml|litres?|l|doses?|actuations?|g))?"
+)
+
+# Returns a strength row for a multi-ingredient product that lists each
+# ingredient with its own concentration, separated by spaced slashes, e.g.
+# "Fluticasone propionate 100micrograms/dose / Salmeterol 12.75micrograms/dose
+# dry powder inhaler". Returns NULL if `name` is not of this form.
+#
+# This differs from .parse_combination_one(), which handles same-denominator
+# mass runs joined by bare slashes (e.g. co-codamol "8mg/500mg").
+.parse_concentration_combination_one <- function(name) {
+  segments <- strsplit(name, "\\s+/\\s+", perl = TRUE)[[1]]
+  if (length(segments) < 2L) {
+    return(NULL)
+  }
+
+  comps <- list()
+  den_unit <- NA_character_
+  den_amt <- NA_real_
+  drug_stem <- NA_character_
+  tail <- NA_character_
+
+  for (k in seq_along(segments)) {
+    seg <- segments[k]
+    pos <- regexpr(.segment_strength_regex, seg, perl = TRUE)
+    if (pos == -1L) {
+      next
+    }
+    m <- regmatches(seg, regexec(.segment_strength_regex, seg, perl = TRUE))[[1]]
+    amt <- suppressWarnings(as.numeric(m[2]))
+    unit <- tolower(m[3])
+    can <- .canonicalise_unit(amt, unit)
+    comps[[length(comps) + 1L]] <- tibble::tibble(
+      value = amt,
+      unit = unit,
+      canonical_value = can$value,
+      canonical_unit = can$unit
+    )
+
+    # Capture the (shared) per-dose / per-volume denominator from the first
+    # segment that carries one.
+    if (is.na(den_unit) && !is.na(m[5]) && nzchar(m[5])) {
+      den_unit <- tolower(m[5])
+      den_amt <- if (is.na(m[4]) || !nzchar(m[4])) 1 else as.numeric(m[4])
+    }
+
+    if (k == 1L) {
+      drug_stem <- trimws(substr(seg, 1L, pos - 1L))
+    }
+    after <- trimws(substr(seg, pos + attr(pos, "match.length"), nchar(seg)))
+    if (nzchar(after)) {
+      tail <- after
+    }
+  }
+
+  if (length(comps) < 2L) {
+    return(NULL)
+  }
+
+  .strength_row(
+    drug_stem = if (is.na(drug_stem) || !nzchar(drug_stem)) {
+      NA_character_
+    } else {
+      drug_stem
+    },
+    strength_value = NA_real_,
+    strength_unit = NA_character_,
+    denominator_value = den_amt,
+    denominator_unit = den_unit,
+    tail = tail,
+    strength_canonical = NA_real_,
+    strength_unit_canon = NA_character_,
+    is_combination = TRUE,
+    components = dplyr::bind_rows(comps)
+  )
+}
+
 .parse_strength_one <- function(name) {
   if (is.na(name) || !nzchar(name)) {
     return(.strength_row(
@@ -227,6 +309,11 @@
   comb <- .parse_combination_one(name)
   if (!is.null(comb)) {
     return(comb)
+  }
+
+  conc_comb <- .parse_concentration_combination_one(name)
+  if (!is.null(conc_comb)) {
+    return(conc_comb)
   }
 
   m <- regmatches(name, regexec(.strength_regex, name, perl = TRUE))[[1]]

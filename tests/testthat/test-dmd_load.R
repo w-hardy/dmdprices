@@ -18,7 +18,7 @@ test_that(".build_master resolves pack units via the UoM lookup fallback", {
     vmpp = tibble::tibble(
       VPPID = c("P1", "P2"), NM = c("Syringe pack", "Liquid pack"),
       INVALID = NA_character_, VPID = c("V1", "V2"), QTYVAL = c("1", "100"),
-      QTY_UOMCD = c("3318611000001103", "258773002")  # syringe code, then ml
+      QTY_UOMCD = c("9990001", "258773002")  # uncurated code, then ml (curated)
     ),
     dt_info = tibble::tibble(
       VPPID = character(), PAY_CATCD = character(),
@@ -36,14 +36,14 @@ test_that(".build_master resolves pack units via the UoM lookup fallback", {
     lkp_dt_cat = tibble::tibble(CD = character(), DESC = character()),
     lkp_pr_basis = tibble::tibble(CD = "B1", DESC = "NHS Indicative Price"),
     lkp_uom = tibble::tibble(
-      CD = c("3318611000001103", "258773002"),
+      CD = c("9990001", "258773002"),
       CDDT = NA_character_, CDPREV = NA_character_,
-      DESC = c("pre-filled syringe", "millilitre")
+      DESC = c("widget container", "millilitre")
     )
   )
   m <- dmdprices:::.build_master(raw)
-  # Unmapped syringe code resolves via the UoM lookup DESC.
-  expect_equal(m$unit[m$vmp_snomed_code == "V1"], "pre-filled syringe")
+  # Code absent from .uom_labels resolves via the UoM lookup DESC.
+  expect_equal(m$unit[m$vmp_snomed_code == "V1"], "widget container")
   # A code curated in .uom_labels keeps its short canonical label ("ml"),
   # NOT the lookup's "millilitre" — preserving the dose-optimiser unit logic.
   expect_equal(m$unit[m$vmp_snomed_code == "V2"], "ml")

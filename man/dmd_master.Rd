@@ -5,7 +5,7 @@
 \alias{dmd_master}
 \title{NHS dm+d medicine pricing master table}
 \format{
-A tibble with 118,196 rows and 12 columns. One row per AMPP
+A tibble with 118,196 rows and 13 columns. One row per AMPP
 (branded pack). A single generic VMP/VMPP appears on multiple rows when
 multiple manufacturers supply the same pack size.
 
@@ -37,6 +37,9 @@ the full branded product name including manufacturer and pack
 description, e.g.
 \code{"Metformin 500mg tablets (A A H Pharmaceuticals Ltd) 28 tablet"}.}
 \item{ampp_snomed_code}{\code{character}. SNOMED CT identifier for the AMPP.}
+\item{is_combination}{\code{logical}. \code{TRUE} when the VMP has two or more
+distinct active ingredients (derived from the dm+d Virtual Product
+Ingredient data); see \link{dmd_ingredients}.}
 }
 }
 \source{

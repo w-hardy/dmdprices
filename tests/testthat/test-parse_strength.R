@@ -109,6 +109,36 @@ test_that("combination liquids capture the shared volume denominator", {
   expect_equal(res$tail, "oral suspension")
 })
 
+test_that("combination inhalers ('.../dose / Name .../dose') parse all ingredients", {
+  res <- dmd_parse_strength(
+    "Fluticasone propionate 100micrograms/dose / Salmeterol 12.75micrograms/dose dry powder inhaler"
+  )
+  expect_true(res$is_combination)
+  expect_equal(res$n_components, 2L)
+  expect_equal(res$denominator_unit, "dose")
+  expect_equal(res$drug_stem, "Fluticasone propionate")
+  expect_equal(res$tail, "dry powder inhaler")
+  comp <- res$components[[1]]
+  expect_equal(comp$value, c(100, 12.75))
+  expect_equal(comp$canonical_value, c(0.1, 0.01275))
+})
+
+test_that("three-way combination inhalers parse all ingredients", {
+  res <- dmd_parse_strength(
+    "Generic Trimbow 172micrograms/dose / 5micrograms/dose / 9micrograms/dose pressurised inhalation"
+  )
+  expect_true(res$is_combination)
+  expect_equal(res$n_components, 3L)
+  expect_equal(res$components[[1]]$value, c(172, 5, 9))
+})
+
+test_that("single-ingredient inhalers stay concentrations, not combinations", {
+  res <- dmd_parse_strength("Salbutamol 100micrograms/dose inhaler CFC free")
+  expect_false(res$is_combination)
+  expect_equal(res$denominator_unit, "dose")
+  expect_equal(res$strength_unit_canon, "mg/dose")
+})
+
 test_that("mass-per-volume concentrations are not treated as combinations", {
   res <- dmd_parse_strength(c(
     "Morphine 10mg/5ml oral solution",

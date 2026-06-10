@@ -19,7 +19,7 @@
 #' # [1] "Week 15 2026 (06 April 2026)"
 #' ```
 #'
-#' @format A tibble with 118,196 rows and 12 columns. One row per AMPP
+#' @format A tibble with 118,196 rows and 13 columns. One row per AMPP
 #'   (branded pack). A single generic VMP/VMPP appears on multiple rows when
 #'   multiple manufacturers supply the same pack size.
 #'
@@ -51,6 +51,9 @@
 #'     description, e.g.
 #'     `"Metformin 500mg tablets (A A H Pharmaceuticals Ltd) 28 tablet"`.}
 #'   \item{ampp_snomed_code}{`character`. SNOMED CT identifier for the AMPP.}
+#'   \item{is_combination}{`logical`. `TRUE` when the VMP has two or more
+#'     distinct active ingredients (derived from the dm+d Virtual Product
+#'     Ingredient data); see [dmd_ingredients].}
 #' }
 #'
 #' @source

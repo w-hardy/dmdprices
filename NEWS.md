@@ -10,6 +10,10 @@
   `f_ingredient.csv` (was `f_ingredient_IngredientType.csv`), and
   `f_lookup_UoMHistoryInfoType.csv` (was `f_lookup_UnitOfMeasureType.csv`, now
   4-column schema without `INVALID`).
+- Bundled `dmd_master` now shows readable pack units for doses
+  (inhalers/vaccines → `"dose"`), grams (`"g"`), and pre-filled syringes
+  instead of raw SNOMED unit codes. The `dmd_master` documentation now also
+  lists the `is_combination` column added with the ingredient data.
 
 ## Added
 
@@ -17,7 +21,8 @@
   multi-ingredient products (e.g. co-codamol `"8mg/500mg"`) and returns each
   ingredient's strength in a new `components` list-column with `is_combination`
   / `n_components` flags, instead of misreading the mass/mass strength as a
-  concentration.
+  concentration. This also covers combination inhalers and similar products
+  written as `"X micrograms/dose / Name Y micrograms/dose"`.
 - `dmd_load()` now reads the dm+d Virtual Product Ingredient (VPI) extract when
   present, exposing a `$ingredients` table of per-ingredient strengths and an
   `is_combination` flag on `$master`. A new bundled [dmd_ingredients] dataset
@@ -64,6 +69,11 @@
 
 ## Fixed
 
+- Inhaler (and other per-dose) costing: the `"dose"` pack-unit code is now
+  recognised, so a single inhaler is treated as its full actuation count
+  (e.g. 200 doses) rather than one actuation priced as a whole pack. Previously
+  a 20 mg salbutamol request returned 200 "items" at the whole-inhaler price;
+  it now returns one inhaler.
 - Cheapest dose optimisation now breaks cost ties by preferring the **lowest
   over-delivery**. Previously it could return an over-delivering combination
   (e.g. 2 × 32 mg = 64 mg for a 40 mg target) when an exact-dose combination of
