@@ -30,6 +30,8 @@ navbar:
       menu:
         - text: dm+d Price Lookup
           href: articles/apps.html#dmd-price-lookup
+        - text: dm+d Dose Optimiser
+          href: articles/apps.html#dmd-dose-optimiser
         - text: NHS CII Cost Adjuster
           href: articles/apps.html#nhs-cii-cost-adjuster
 
@@ -39,6 +41,13 @@ reference:
     contents:
       - dmd_price_lookup
       - dmd_load
+  - title: "Dose optimisation"
+    desc: "Find combinations of AMPPs that deliver a target dose"
+    contents:
+      - dmd_dose_optimise
+      - dmd_dose_cost
+      - dmd_dose_cost_range
+      - dmd_parse_strength
   - title: "Inflation adjustment"
     desc: "Adjust costs using NHS Cost Inflation Index (NHS CII)"
     contents:
@@ -49,10 +58,12 @@ reference:
     contents:
       - run_dmd_price_lookup
       - run_inflate_nhscii
+      - run_dmd_dose_optimise
   - title: "Data"
     desc: "Bundled dataset"
     contents:
       - dmd_master
+      - dmd_master_info
   - title: "Package"
     contents:
       - dmdprices-package
@@ -73,9 +84,14 @@ articles:
       - advanced_matching
       - data_sources_updates
       - troubleshooting
+  - title: "Dose optimisation"
+    contents:
+      - dose_optimisation
 
 news:
   releases:
+    - text: "Version 0.4.0"
+      href: news/index.html
     - text: "Version 0.3.0"
       href: news/index.html
     - text: "Version 0.2.0"

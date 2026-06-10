@@ -22,6 +22,31 @@ run_dmd_price_lookup <- function() {
   shiny::runApp(app_dir, display.mode = "normal")
 }
 
+#' Launch the dm+d dose optimiser Shiny app
+#'
+#' Opens an interactive browser-based interface for finding the cheapest or
+#' minimum-item pack combination that delivers a specified dose, using
+#' [dmd_dose_optimise()].
+#'
+#' @return Starts the Shiny app (does not return a value).
+#'
+#' @examples
+#' if (interactive()) {
+#'   run_dmd_dose_optimise()
+#' }
+#'
+#' @export
+run_dmd_dose_optimise <- function() {
+  app_dir <- system.file("shiny", "dmd_dose_optimise", package = "dmdprices")
+  if (app_dir == "") {
+    stop(
+      "Could not find the app directory. Try re-installing dmdprices.",
+      call. = FALSE
+    )
+  }
+  shiny::runApp(app_dir, display.mode = "normal")
+}
+
 #' Launch the NHS CII cost adjuster Shiny app
 #'
 #' Opens an interactive browser-based interface for inflating or deflating

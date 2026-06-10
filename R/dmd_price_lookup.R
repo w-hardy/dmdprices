@@ -12,8 +12,10 @@
 #' @param db     A `<dmd_db>` object from [dmd_load()], or a tibble with the
 #'   same columns as [dmd_master]. Defaults to the bundled [dmd_master] dataset.
 #' @param method One of:
-#'   * `"partial"` *(default)* — case-insensitive substring match using a
-#'     regular expression. Suitable for general searching, e.g. `"metformin"`.
+#'   * `"partial"` *(default)* — case-insensitive **literal** substring match.
+#'     The query is matched as written, so punctuation such as `"[I-131]"` is
+#'     treated literally rather than as a regular expression. Suitable for
+#'     general searching, e.g. `"metformin"`.
 #'   * `"exact"` — case-insensitive exact match against the full VMP name.
 #'   * `"fuzzy"` — approximate string matching (optimal string alignment
 #'     distance via [stringdist::stringdist()]). Tolerates typos. Tune
@@ -92,7 +94,9 @@ dmd_price_lookup <- function(
 
     partial = dplyr::filter(
       master,
-      stringr::str_detect(.data$medicine, stringr::regex(q, ignore_case = TRUE))
+      # Literal (fixed) substring match — query text is matched as written, so
+      # regex metacharacters (e.g. the "[" in "[I-131]") are not interpreted.
+      stringr::str_detect(.data$medicine, stringr::fixed(q, ignore_case = TRUE))
     ),
 
     fuzzy = {

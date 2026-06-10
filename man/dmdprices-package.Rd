@@ -12,12 +12,19 @@ costs for inflation:
 \details{
 \itemize{
 \item \code{\link[=dmd_price_lookup]{dmd_price_lookup()}} — search the bundled dm+d dataset by medicine name.
+\item \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}} — find dose-delivering AMPP combinations by cost or
+item count.
+\item \code{\link[=dmd_dose_cost]{dmd_dose_cost()}} — vectorised dose costing for use in data pipelines.
+\item \code{\link[=dmd_dose_cost_range]{dmd_dose_cost_range()}} — vectorised cheapest / most-expensive dose costs.
+\item \code{\link[=dmd_parse_strength]{dmd_parse_strength()}} — parse strengths out of VMP names.
 \item \code{\link[=dmd_load]{dmd_load()}} — load a more recent dm+d release from a local
 \code{dmdDataLoader} CSV directory.
+\item \code{\link[=dmd_master_info]{dmd_master_info()}} — inspect bundled or loaded dm+d dataset metadata.
 \item \code{\link[=nhscii]{nhscii()}} — compute NHS Cost Inflation Index factors between financial
 years.
 \item \code{\link[=inflate_nhscii]{inflate_nhscii()}} — adjust costs using NHS CII rates.
 \item \code{\link[=run_dmd_price_lookup]{run_dmd_price_lookup()}} — launch the price lookup Shiny app locally.
+\item \code{\link[=run_dmd_dose_optimise]{run_dmd_dose_optimise()}} — launch the dose optimiser Shiny app locally.
 \item \code{\link[=run_inflate_nhscii]{run_inflate_nhscii()}} — launch the cost adjuster Shiny app locally.
 }
 \subsection{Typical workflow}{
@@ -48,6 +55,11 @@ research or clinical decision-making. Use at your own risk.
 }
 \author{
 \strong{Maintainer}: Will Hardy \email{w.hardy@bangor.ac.uk}
+
+Authors:
+\itemize{
+  \item Will Hardy \email{w.hardy@bangor.ac.uk}
+}
 
 }
 \keyword{internal}

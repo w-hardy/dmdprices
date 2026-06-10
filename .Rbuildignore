@@ -11,3 +11,9 @@
 ^doc$
 ^Meta$
 ^inst/shiny/.*/rsconnect$
+^inst/shiny/.*/\.posit$
+^inst/shiny/.*/renv$
+^inst/shiny/.*/renv\.lock$
+^inst/shiny/.*/\.Rbuildignore$
+^.*\.Rproj$
+^\.Rproj\.user$

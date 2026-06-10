@@ -19,6 +19,10 @@ inst/doc/
 
 # Shiny app deployment metadata
 inst/shiny/*/rsconnect/
+inst/shiny/*/.posit/
+inst/shiny/*/renv/
+inst/shiny/*/renv.lock
+inst/shiny/*/.Rbuildignore
 
 # testthat snapshots (keep if you want reproducible snaps)
 # tests/testthat/_snaps/

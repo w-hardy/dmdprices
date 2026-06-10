@@ -5,7 +5,7 @@
 \alias{dmd_master}
 \title{NHS dm+d medicine pricing master table}
 \format{
-A tibble with 118,196 rows and 12 columns. One row per AMPP
+A tibble with 118,196 rows and 13 columns. One row per AMPP
 (branded pack). A single generic VMP/VMPP appears on multiple rows when
 multiple manufacturers supply the same pack size.
 
@@ -37,11 +37,14 @@ the full branded product name including manufacturer and pack
 description, e.g.
 \code{"Metformin 500mg tablets (A A H Pharmaceuticals Ltd) 28 tablet"}.}
 \item{ampp_snomed_code}{\code{character}. SNOMED CT identifier for the AMPP.}
+\item{is_combination}{\code{logical}. \code{TRUE} when the VMP has two or more
+distinct active ingredients (derived from the dm+d Virtual Product
+Ingredient data); see \link{dmd_ingredients}.}
 }
 }
 \source{
-NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release
-(14 August 2025). Published by the NHS Business Services Authority (NHSBSA).
+NHS Dictionary of Medicines and Devices (dm+d), Week 15 2026 release
+(06 April 2026). Published by the NHS Business Services Authority (NHSBSA).
 
 © Crown copyright. Contains public sector information licensed under the
 \strong{Open Government Licence v3.0}.\cr
@@ -55,7 +58,7 @@ dmd_master
 }
 \description{
 A joined pricing table built from the NHS Dictionary of Medicines and
-Devices (dm+d), release \strong{Week 34 2025 (14 August 2025)}. The table
+Devices (dm+d), release \strong{Week 15 2026 (06 April 2026)}. The table
 combines Virtual Medicinal Products (VMPs), Virtual Medicinal Product Packs
 (VMPPs), Actual Medicinal Product Packs (AMPPs), Drug Tariff reimbursement
 prices, and NHS Indicative Prices into a single flat tibble.
@@ -70,10 +73,10 @@ Use \code{\link[=dmd_price_lookup]{dmd_price_lookup()}} to query this dataset by
 Release metadata is stored as attributes and can be inspected with:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{attr(dmd_master, "dmd_release_label")
-# [1] "Week 34 2025 (14 August 2025)"
+# [1] "Week 15 2026 (06 April 2026)"
 }\if{html}{\out{</div>}}
 }
 \seealso{
-\code{\link[=dmd_price_lookup]{dmd_price_lookup()}}, \code{\link[=dmd_load]{dmd_load()}}
+\code{\link[=dmd_price_lookup]{dmd_price_lookup()}}, \code{\link[=dmd_load]{dmd_load()}}, \link{dmd_ingredients}
 }
 \keyword{datasets}

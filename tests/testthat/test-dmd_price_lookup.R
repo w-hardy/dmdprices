@@ -39,6 +39,35 @@ test_that("partial match returns correct rows", {
   expect_true(all(grepl("metformin", res$medicine, ignore.case = TRUE)))
 })
 
+test_that("partial match treats regex metacharacters literally", {
+  db_rx <- structure(
+    list(
+      master = tibble::tibble(
+        medicine = c(
+          "Sodium iodide [I-131] 5.5GBq capsules",
+          "Metformin 500mg tablets"
+        ),
+        pack_size = c(1, 28), unit = c("capsule", "tablet"),
+        vmp_snomed_code = c("V1", "V2"),
+        vmpp_snomed_code = c("VP1", "VP2"),
+        drug_tariff_category = rep("Part VIIIA Category C", 2),
+        basic_price = c(50000L, 58L),
+        nhs_indicative_price = c(50000L, 63L),
+        price_basis = rep("NHS Indicative Price", 2),
+        price_date = rep("2025-08-08", 2),
+        ampp_name = c("Sodium iodide [I-131] 1 capsule", "Metformin 28 tablet"),
+        ampp_snomed_code = c("A1", "A2")
+      ),
+      loaded_at = Sys.time()
+    ),
+    class = "dmd_db"
+  )
+  # A query containing "[" used to error with U_REGEX_INVALID_RANGE.
+  res <- expect_no_error(dmd_price_lookup("[I-131]", db = db_rx))
+  expect_equal(nrow(res), 1L)
+  expect_true(grepl("Sodium iodide", res$medicine))
+})
+
 test_that("exact match is case-insensitive", {
   res <- dmd_price_lookup("metformin 500mg tablets", db = db, method = "exact")
   expect_equal(nrow(res), 2)

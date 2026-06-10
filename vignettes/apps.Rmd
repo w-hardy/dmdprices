@@ -11,9 +11,10 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-Two Shiny apps are available for interactive use without writing any R code.
-You can access them online (hosted on Posit Connect Cloud) or run them locally
-if you have `dmdprices` installed.
+Three Shiny apps are available for interactive use without writing any R code.
+All three apps can be accessed online (hosted on Posit Connect Cloud), and all
+three can be run locally if you have `dmdprices`
+installed.
 
 ---
 
@@ -39,6 +40,35 @@ dmdprices::run_dmd_price_lookup()
   title="dm+d Price Lookup">
   <p>Your browser does not support iframes.
      <a href="https://019cde7b-7001-18b6-6a22-e3d469fcef42.share.connect.posit.cloud/">
+       Open the app directly.
+     </a>
+  </p>
+</iframe>
+
+---
+
+## dm+d Dose Optimiser {#dmd-dose-optimiser}
+
+Find dose-delivering AMPP combinations by cheapest, minimum-items, or
+most-expensive objective.
+
+**Run locally:**
+
+```r
+dmdprices::run_dmd_dose_optimise()
+```
+
+**Online (hosted):**
+
+<iframe
+  src="https://019dbf51-8e43-5467-544c-7b8d1542ac46.share.connect.posit.cloud/"
+  width="100%"
+  height="650"
+  frameborder="0"
+  allow="fullscreen"
+  title="dm+d Dose Optimiser">
+  <p>Your browser does not support iframes.
+     <a href="https://019dbf51-8e43-5467-544c-7b8d1542ac46.share.connect.posit.cloud/">
        Open the app directly.
      </a>
   </p>
@@ -77,7 +107,7 @@ dmdprices::run_inflate_nhscii()
 
 ## Deploying your own instance
 
-Both apps are included in the package under `inst/shiny/` and can be
+All three apps are included in the package under `inst/shiny/` and can be
 deployed to any Shiny-compatible host:
 
 ```r
@@ -86,6 +116,12 @@ rsconnect::deployApp(
   appDir    = system.file("shiny", "dmd_price_lookup", package = "dmdprices"),
   appName   = "dmd-price-lookup",
   appTitle  = "dm+d Price Lookup"
+)
+
+rsconnect::deployApp(
+  appDir    = system.file("shiny", "dmd_dose_optimise", package = "dmdprices"),
+  appName   = "dmd-dose-optimise",
+  appTitle  = "dm+d Dose Optimiser"
 )
 
 rsconnect::deployApp(
@@ -99,7 +135,7 @@ rsconnect::deployApp(
 
 ## Data attribution
 
-**dm+d Price Lookup** uses the NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release, published by the NHS Business Services Authority (NHSBSA). © Crown copyright. Licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+**dm+d Price Lookup** and **dm+d Dose Optimiser** use the NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release, published by the NHS Business Services Authority (NHSBSA). © Crown copyright. Licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
 
 **NHS CII Cost Adjuster** uses inflation rates from Jones et al. (2025), *Unit Costs of Health and Social Care 2024 Manual*, published by the Personal Social Services Research Unit (University of Kent) & Centre for Health Economics (University of York). <https://doi.org/10.22024/UniKent/01.02.109563>
 
@@ -109,4 +145,4 @@ Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4
 
 ## Reporting issues
 
-If you encounter a problem with either app or the underlying package functions, please open an issue on the [GitHub issues tracker](https://github.com/w-hardy/dmdprices/issues).
+If you encounter a problem with any app or the underlying package functions, please open an issue on the [GitHub issues tracker](https://github.com/w-hardy/dmdprices/issues).

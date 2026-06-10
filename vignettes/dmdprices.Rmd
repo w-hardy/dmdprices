@@ -19,12 +19,14 @@ library(dmdprices)
 
 `dmdprices` provides price lookups against the NHS Dictionary of Medicines and Devices (dm+d). A bundled dataset (Week 34 2025) is included so no setup is needed for immediate use.
 
-There are two main functions:
+The main functions are:
 
 | Function | Purpose |
 |---|---|
 | `dmd_price_lookup()` | Search for medicines by name and return pricing |
 | `dmd_load()` | Load a more recent dm+d release from a local directory |
+| `dmd_dose_optimise()` | Find the cheapest / minimum-item combination that delivers a clinical dose |
+| `dmd_parse_strength()` | Parse the strength out of a VMP name |
 
 ---
 
