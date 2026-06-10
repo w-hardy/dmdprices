@@ -12,11 +12,18 @@ Defaults to \code{getOption("dmdprices.path")}, allowing you to set a
 project-wide default via \code{options(dmdprices.path = "~/dmdDataLoader")}.}
 }
 \value{
-A \verb{<dmd_db>} object: a list with two elements:
+A \verb{<dmd_db>} object: a list with the elements:
 \itemize{
 \item \verb{$master}  — a \link[tibble:tibble]{tibble} with one row per AMPP (branded
 pack), containing Drug Tariff and NHS Indicative Price columns that mirror
-the Drug Tariff Part VIIIA CSV format.
+the Drug Tariff Part VIIIA CSV format. When ingredient data is available
+it also carries an \code{is_combination} logical column.
+\item \verb{$ingredients} — a \link[tibble:tibble]{tibble} of per-ingredient strengths
+(one row per VMP/ingredient) built from the dm+d Virtual Product
+Ingredient (VPI) extract, or \code{NULL} if that extract was not present.
+Columns: \code{vmp_snomed_code}, \code{ingredient_snomed_code}, \code{ingredient_name},
+\code{strength_value}, \code{strength_unit}, \code{denominator_value},
+\code{denominator_unit}, \code{strength_canonical}, \code{strength_unit_canon}.
 \item \verb{$loaded_at} — a \code{POSIXct} timestamp recording when the data was loaded.
 }
 }

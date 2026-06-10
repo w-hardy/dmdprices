@@ -20,8 +20,10 @@ same columns as \link{dmd_master}. Defaults to the bundled \link{dmd_master} dat
 
 \item{method}{One of:
 \itemize{
-\item \code{"partial"} \emph{(default)} — case-insensitive substring match using a
-regular expression. Suitable for general searching, e.g. \code{"metformin"}.
+\item \code{"partial"} \emph{(default)} — case-insensitive \strong{literal} substring match.
+The query is matched as written, so punctuation such as \code{"[I-131]"} is
+treated literally rather than as a regular expression. Suitable for
+general searching, e.g. \code{"metformin"}.
 \item \code{"exact"} — case-insensitive exact match against the full VMP name.
 \item \code{"fuzzy"} — approximate string matching (optimal string alignment
 distance via \code{\link[stringdist:stringdist]{stringdist::stringdist()}}). Tolerates typos. Tune
