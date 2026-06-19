@@ -1,5 +1,28 @@
 # dmdprices (development version)
 
+## Behaviour changes (upgrading from 0.3.0)
+
+No functions were removed or renamed and no argument signatures changed, so
+existing code continues to run. However, the following changes can alter
+**results** and are worth noting when upgrading:
+
+- **NHS CII 2023/24 figures revised.** Following the PSSRU 2025 manual, the
+  provisional 2023/24 rates have been revised (e.g. `pay_and_prices` 2023/24
+  moved from `4.31%` to `2.47%`). Any `nhscii()` / `inflate_nhscii()` call
+  that spans 2023/24 now returns different numbers than 0.3.0. Coverage also
+  now extends back to 2014/15 and forward to 2024/25 (#9, #6).
+- **`dmd_price_lookup(method = "partial")` now matches literally, not as a
+  regular expression.** Queries that previously relied on regex metacharacters
+  (e.g. `"a|b"` as an alternation) will behave differently; plain-text queries
+  are unaffected.
+- **`dmd_price_lookup()` now also searches branded pack names (`ampp_name`).**
+  The same query can return more rows than before (e.g. `"Buvidal"` now
+  resolves to its packs). Generic-name queries return at least what they did
+  previously.
+- **Bundled `dmd_master` refreshed** from Week 34 2025 to Week 15 2026, so
+  default price lookups reflect the newer release (different prices/availability)
+  and the dataset gains an `is_combination` column.
+
 ## Data
 
 - Bundled `dmd_master` and `dmd_ingredients` datasets updated to **dm+d Week 15
