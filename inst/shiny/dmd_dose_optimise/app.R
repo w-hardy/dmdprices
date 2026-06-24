@@ -164,6 +164,8 @@ ui <- fluidPage(
 
       DTOutput("results_table"),
 
+      uiOutput("rounding_note"),
+
       # Detail panel — shown only when a row is selected
       uiOutput("combination_panel")
     )
@@ -284,7 +286,21 @@ server <- function(input, output, session) {
       formatRound(columns = "Cost (pence)", digits = 1)
   })
 
-  # ── Combination detail panel (selected row) ────────────────────────────────
+  output$rounding_note <- renderUI({
+    res <- results()
+    if (is.null(res) || !is.data.frame(res) || nrow(res) == 0) return(NULL)
+    tags$p(
+      class = "text-muted mt-1 small",
+      tags$em(
+        "Note: 'Dose delivered', 'Over-delivery' and 'Cost (pence)' are rounded for display ",
+        "(2 d.p., 2 d.p., and 1 d.p. respectively). Full-precision values are preserved in ",
+        "CSV/Excel exports and in the underlying R object returned by ",
+        tags$code("dmd_dose_optimise()"), "."
+      )
+    )
+  })
+
+  # ── Combination detail panel (selected row) ────────────────────────────────────────────
   output$combination_panel <- renderUI({
     res <- results()
     req(is.data.frame(res), nrow(res) > 0)

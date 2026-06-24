@@ -86,6 +86,11 @@ existing code continues to run. However, the following changes can alter
 
 ## Changed
 
+- The dose optimiser Shiny app now shows a note below the results table
+  explaining that "Dose delivered", "Over-delivery", and "Cost (pence)" are
+  rounded for display only (2 d.p., 2 d.p., and 1 d.p. respectively), and that
+  full-precision values are preserved in CSV/Excel exports and in the R object
+  returned by `dmd_dose_optimise()`.
 - All three Shiny apps now surface package warnings **and** errors to the user
   as Bootstrap alert callout boxes, rather than silently swallowing them or
   printing only to the console. For example, the dose optimiser shows
