@@ -17,6 +17,46 @@ fmt_combination <- function(comb) {
   paste(lines, collapse = "<br>")
 }
 
+# ── condition capture → Bootstrap callouts ───────────────────────────────────
+# Run `expr`, capturing cli/base warnings and errors so they can be surfaced in
+# the UI. Returns list(value, messages); messages is a list of list(type, text).
+capture_conditions <- function(expr) {
+  msgs <- list()
+  add <- function(type, text) {
+    msgs[[length(msgs) + 1L]] <<- list(type = type, text = text)
+  }
+  value <- withCallingHandlers(
+    tryCatch(
+      expr,
+      error = function(e) {
+        add("danger", conditionMessage(e))
+        NULL
+      }
+    ),
+    warning = function(w) {
+      add("warning", conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  list(value = value, messages = msgs)
+}
+
+# Render captured conditions as Bootstrap alert callout boxes.
+render_callouts <- function(messages) {
+  if (length(messages) == 0) {
+    return(NULL)
+  }
+  lapply(messages, function(m) {
+    label <- if (m$type == "danger") "⛔ Error" else "⚠️ Warning"
+    tags$div(
+      class = paste0("alert alert-", m$type, " mt-2"),
+      role = "alert",
+      tags$strong(paste0(label, ": ")),
+      tags$span(style = "white-space: pre-wrap;", m$text)
+    )
+  })
+}
+
 warning_banner <- tags$div(
   class = "alert alert-warning alert-dismissible fade show mt-2",
   role  = "alert",
@@ -118,6 +158,8 @@ ui <- fluidPage(
     mainPanel(
       width = 9,
 
+      uiOutput("messages"),
+
       uiOutput("result_header"),
 
       DTOutput("results_table"),
@@ -132,7 +174,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
-  results <- eventReactive(input$go, {
+  optimised <- eventReactive(input$go, {
     req(
       nchar(trimws(input$query)) > 0,
       !is.na(input$dose),
@@ -146,7 +188,7 @@ server <- function(input, output, session) {
 
     prep_filter <- if (nzchar(trimws(input$preparation))) trimws(input$preparation) else NULL
 
-    tryCatch(
+    capture_conditions(
       dmd_dose_optimise(
         query          = trimws(input$query),
         dose           = input$dose,
@@ -158,24 +200,20 @@ server <- function(input, output, session) {
         preparation    = prep_filter,
         can_split      = input$can_split,
         can_split_vials = input$can_split_vials
-      ),
-      error = function(e) {
-        list(error = conditionMessage(e))
-      }
+      )
     )
+  })
+
+  results <- reactive(optimised()$value)
+
+  output$messages <- renderUI({
+    render_callouts(optimised()$messages)
   })
 
   # ── Header ─────────────────────────────────────────────────────────────────
   output$result_header <- renderUI({
     res <- results()
     if (is.null(res)) return(NULL)
-
-    if (is.list(res) && !is.data.frame(res) && !is.null(res$error)) {
-      return(tags$p(
-        class = "text-danger mt-2",
-        tags$b("Error: "), res$error
-      ))
-    }
 
     if (nrow(res) == 0) {
       return(tags$p(

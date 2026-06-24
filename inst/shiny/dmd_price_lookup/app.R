@@ -2,6 +2,46 @@ library(shiny)
 library(dmdprices)
 library(DT)
 
+# ── condition capture → Bootstrap callouts ───────────────────────────────────
+# Run `expr`, capturing cli/base warnings and errors so they can be surfaced in
+# the UI. Returns list(value, messages); messages is a list of list(type, text).
+capture_conditions <- function(expr) {
+  msgs <- list()
+  add <- function(type, text) {
+    msgs[[length(msgs) + 1L]] <<- list(type = type, text = text)
+  }
+  value <- withCallingHandlers(
+    tryCatch(
+      expr,
+      error = function(e) {
+        add("danger", conditionMessage(e))
+        NULL
+      }
+    ),
+    warning = function(w) {
+      add("warning", conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  list(value = value, messages = msgs)
+}
+
+# Render captured conditions as Bootstrap alert callout boxes.
+render_callouts <- function(messages) {
+  if (length(messages) == 0) {
+    return(NULL)
+  }
+  lapply(messages, function(m) {
+    label <- if (m$type == "danger") "⛔ Error" else "⚠️ Warning"
+    tags$div(
+      class = paste0("alert alert-", m$type, " mt-2"),
+      role = "alert",
+      tags$strong(paste0(label, ": ")),
+      tags$span(style = "white-space: pre-wrap;", m$text)
+    )
+  })
+}
+
 ui <- fluidPage(
   theme = bslib::bs_theme(version = 5),
   titlePanel("dm+d Medicine Price Lookup"),
@@ -42,7 +82,7 @@ ui <- fluidPage(
       hr(),
       helpText(
         tags$b("Data:"),
-        "NHS dm+d Week 34 2025 (14 August 2025).",
+        "NHS dm+d Week 15 2026 (06 April 2026).",
         "Prices are NHS Indicative or Drug Tariff Basic Prices (pence).",
         tags$br(),
         "© Crown copyright. NHS Business Services Authority (NHSBSA).",
@@ -61,6 +101,7 @@ ui <- fluidPage(
     ),
     mainPanel(
       width = 9,
+      uiOutput("messages"),
       uiOutput("result_header"),
       DTOutput("results_table")
     )
@@ -68,26 +109,28 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  results <- eventReactive(input$search, {
+  search <- eventReactive(input$search, {
     req(nchar(trimws(input$query)) > 0)
 
-    tryCatch(
+    capture_conditions(
       dmd_price_lookup(
         query = trimws(input$query),
         method = input$method,
         active_only = input$active_only
-      ),
-      error = function(e) NULL
+      )
     )
+  })
+
+  results <- reactive(search()$value)
+
+  output$messages <- renderUI({
+    render_callouts(search()$messages)
   })
 
   output$result_header <- renderUI({
     res <- results()
     if (is.null(res)) {
-      tags$p(
-        class = "text-danger mt-2",
-        "Search returned an error. Check your query."
-      )
+      NULL
     } else if (nrow(res) == 0) {
       tags$p(
         class = "text-muted mt-2",

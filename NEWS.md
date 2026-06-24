@@ -86,6 +86,12 @@ existing code continues to run. However, the following changes can alter
 
 ## Changed
 
+- All three Shiny apps now surface package warnings **and** errors to the user
+  as Bootstrap alert callout boxes, rather than silently swallowing them or
+  printing only to the console. For example, the dose optimiser shows
+  `cli::cli_warn()` notices (compound products skipped, ambiguous ingredient,
+  non-mass units) above the results, and invalid input shows the underlying
+  error message. The dm+d price-lookup app footer now also reads Week 15 2026.
 - `dmd_price_lookup()` now also searches the branded pack name (`ampp_name`),
   not just the generic `medicine` name, so a query for a brand (e.g.
   `"Buvidal"`) returns its packs while generic queries continue to work as
