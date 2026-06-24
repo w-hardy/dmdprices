@@ -224,18 +224,14 @@ working-tree path such as <code>appDir = "inst/shiny/..."</code>).</p>
 install that branch before redeploying:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"w-hardy/dmdprices@develop"</span><span class="op">)</span></span></code></pre></div>
-<p>(or pin <code>Remotes: w-hardy/dmdprices@develop</code> in the app
-<code>DESCRIPTION</code> for a git-backed deploy — but don’t merge that
-pin into <code>main</code>).</p>
-<p><strong>Git-backed (manifest) publishing.</strong> Only
-<code>dmd_dose_optimise</code> ships a <code>manifest.json</code>. If
-you publish that app from git via its manifest, regenerate it after
-updating the package so the locked dependency versions are current, then
-commit the result:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">rsconnect</span><span class="fu">::</span><span class="fu">writeManifest</span><span class="op">(</span></span>
-<span>  appDir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"shiny"</span>, <span class="st">"dmd_dose_optimise"</span>, package <span class="op">=</span> <span class="st">"dmdprices"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<p><strong>Dependencies.</strong> The apps do not ship a pinned
+<code>manifest.json</code> or <code>renv.lock</code>.
+<code>rsconnect::deployApp()</code> detects each app’s R package
+dependencies at deploy time and Posit Connect Cloud installs them,
+resolving versions against the platform’s current R. This avoids
+freezing package versions to an R release that the platform may later
+upgrade past (which can force failing source builds of pinned
+dependencies).</p>
 <p>After redeploying, confirm each app’s footer shows the expected dm+d
 release and PSSRU manual, that a brand search
 (e.g. <code>"Buvidal"</code>) returns results, and that the NHS CII
