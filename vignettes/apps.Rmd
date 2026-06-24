@@ -131,6 +131,59 @@ rsconnect::deployApp(
 )
 ```
 
+## Updating an existing deployment
+
+The apps do **not** bundle their own copy of the data. Each `app.R` calls
+`library(dmdprices)`, and the app `DESCRIPTION` files declare
+`Remotes: w-hardy/dmdprices`, so the prices, NHS CII rates, and app behaviour
+all come from the installed `dmdprices` package. **To refresh a live app to a
+newer release of the package, you redeploy it** — there is no separate data
+upload step.
+
+```r
+# 1. Install the version you want the app to serve (default branch = main)
+remotes::install_github("w-hardy/dmdprices")
+
+# 2. Redeploy with the SAME appName to update the existing app in place
+#    (the share URL does not change). forceUpdate avoids the overwrite prompt.
+rsconnect::deployApp(
+  appDir      = system.file("shiny", "dmd_price_lookup", package = "dmdprices"),
+  appName     = "dmd-price-lookup",
+  appTitle    = "dm+d Price Lookup",
+  forceUpdate = TRUE
+)
+# ...repeat for "dmd-dose-optimise" and "inflate-nhscii".
+```
+
+`system.file()` resolves to your *locally installed* `dmdprices`, so run step 1
+first (or pass a working-tree path such as `appDir = "inst/shiny/..."`).
+
+**Previewing unreleased changes.** `Remotes: w-hardy/dmdprices` installs from the
+default branch (`main`). To preview work that is still on a feature branch,
+install that branch before redeploying:
+
+```r
+remotes::install_github("w-hardy/dmdprices@develop")
+```
+
+(or pin `Remotes: w-hardy/dmdprices@develop` in the app `DESCRIPTION` for a
+git-backed deploy — but don't merge that pin into `main`).
+
+**Git-backed (manifest) publishing.** Only `dmd_dose_optimise` ships a
+`manifest.json`. If you publish that app from git via its manifest, regenerate
+it after updating the package so the locked dependency versions are current,
+then commit the result:
+
+```r
+rsconnect::writeManifest(
+  appDir = system.file("shiny", "dmd_dose_optimise", package = "dmdprices")
+)
+```
+
+After redeploying, confirm each app's footer shows the expected dm+d release and
+PSSRU manual, that a brand search (e.g. `"Buvidal"`) returns results, and that
+the NHS CII adjuster offers the latest financial year.
+
 ---
 
 ## Data attribution
