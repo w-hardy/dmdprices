@@ -24,6 +24,9 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # Don't let the project .Rprofile activate renv in CI; use the runner's
+      # library set up by setup-r-dependencies instead.
+      RENV_CONFIG_AUTOLOADER_ENABLED: false
 
     steps:
       - uses: actions/checkout@v4
