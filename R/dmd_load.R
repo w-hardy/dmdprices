@@ -181,7 +181,7 @@ format.dmd_db <- function(x, ...) {
 #' @return A list of class `"dmd_db_info"` with the following elements:
 #'   \describe{
 #'     \item{`release_label`}{Character. dm+d release label
-#'       (e.g. `"Week 34 2025 (14 August 2025)"`). `NA` for user-loaded
+#'       (e.g. `"Week 15 2026 (06 April 2026)"`). `NA` for user-loaded
 #'       databases (use `loaded_at` instead).}
 #'     \item{`loaded_at`}{`POSIXct` timestamp recording when [dmd_load()] was
 #'       called. `NA` for the bundled `dmd_master`.}

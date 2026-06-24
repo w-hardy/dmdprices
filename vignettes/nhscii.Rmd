@@ -134,15 +134,15 @@ data.frame(
 
 The NHS CII rates are derived from:
 
-Jones KC, Weatherly H, Birch S, Castelli A, Chalkley M, Dargan A, Findlay D,
-Gao M, Hinde S, Markham S, Smith D, Teo H (2025). *Unit Costs of Health and
-Social Care 2024 Manual*. Technical report. Personal Social Services Research
+Jones KC, Weatherly H, Barker A, Birch S, Castelli A, Dargan A, Findlay D,
+Hinde S, Markham S, Smith D, Teo H (2026). *Unit Costs of Health and
+Social Care 2025 Manual*. Technical report. Personal Social Services Research
 Unit (University of Kent) & Centre for Health Economics (University of York),
-Kent, UK. <https://doi.org/10.22024/UniKent/01.02.109563>
+Kent, UK. <https://doi.org/10.22024/UniKent/01.02.115569>
 
 Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
-Current coverage: 2015/16 to 2023/24
+Current coverage: 2014/15 to 2024/25
 
 ### A note on 2023/24 figures
 
