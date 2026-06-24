@@ -3,15 +3,17 @@
 ## Overview
 
 `dmdprices` provides price lookups against the NHS Dictionary of
-Medicines and Devices (dm+d). A bundled dataset (Week 34 2025) is
+Medicines and Devices (dm+d). A bundled dataset (Week 15 2026) is
 included so no setup is needed for immediate use.
 
-There are two main functions:
+The main functions are:
 
-| Function                                                                                  | Purpose                                                |
-|-------------------------------------------------------------------------------------------|--------------------------------------------------------|
-| [`dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/dmd_price_lookup.md) | Search for medicines by name and return pricing        |
-| [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)                 | Load a more recent dm+d release from a local directory |
+| Function | Purpose |
+|----|----|
+| [`dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/dmd_price_lookup.md) | Search for medicines by name and return pricing |
+| [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md) | Load a more recent dm+d release from a local directory |
+| [`dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md) | Find the cheapest / minimum-item combination that delivers a clinical dose |
+| [`dmd_parse_strength()`](https://w-hardy.github.io/dmdprices/reference/dmd_parse_strength.md) | Parse the strength out of a VMP name |
 
 ------------------------------------------------------------------------
 
@@ -23,8 +25,9 @@ Returns all rows where the medicine name contains the query string
 (case-insensitive):
 
 ``` r
+
 dmd_price_lookup("metformin")
-#> # A tibble: 271 × 12
+#> # A tibble: 224 × 13
 #>    medicine                     pack_size unit  vmp_snomed_code vmpp_snomed_code
 #>    <chr>                            <dbl> <chr> <chr>           <chr>           
 #>  1 Alogliptin 12.5mg / Metform…        56 tabl… 23637211000001… 236325110000011…
@@ -36,11 +39,11 @@ dmd_price_lookup("metformin")
 #>  7 Dapagliflozin 5mg / Metform…        56 tabl… 24054611000001… 240184110000011…
 #>  8 Dapagliflozin 5mg / Metform…        56 tabl… 24054711000001… 240180110000011…
 #>  9 Empagliflozin 12.5mg / Metf…        56 tabl… 30318111000001… 301756110000011…
-#> 10 Empagliflozin 12.5mg / Metf…        60 tabl… 30318111000001… 378531110000011…
-#> # ℹ 261 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> 10 Empagliflozin 12.5mg / Metf…        56 tabl… 30318211000001… 301747110000011…
+#> # ℹ 214 more rows
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 ### Exact match
@@ -48,8 +51,9 @@ dmd_price_lookup("metformin")
 Case-insensitive match against the full VMP name:
 
 ``` r
+
 dmd_price_lookup("Metformin 500mg tablets", method = "exact")
-#> # A tibble: 49 × 12
+#> # A tibble: 37 × 13
 #>    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code
 #>    <chr>                       <dbl> <chr>  <chr>             <chr>           
 #>  1 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
@@ -62,10 +66,10 @@ dmd_price_lookup("Metformin 500mg tablets", method = "exact")
 #>  8 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #>  9 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #> 10 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
-#> # ℹ 39 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> # ℹ 27 more rows
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 ### Fuzzy match
@@ -74,8 +78,9 @@ Tolerates typos using optimal string alignment distance. Tune
 sensitivity with `max_dist` (default `3`):
 
 ``` r
+
 dmd_price_lookup("metfromin 500mg tablets", method = "fuzzy", max_dist = 4)
-#> # A tibble: 82 × 12
+#> # A tibble: 62 × 13
 #>    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code
 #>    <chr>                       <dbl> <chr>  <chr>             <chr>           
 #>  1 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
@@ -88,10 +93,10 @@ dmd_price_lookup("metfromin 500mg tablets", method = "fuzzy", max_dist = 4)
 #>  8 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #>  9 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #> 10 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
-#> # ℹ 72 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> # ℹ 52 more rows
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 ### Including products without prices
@@ -100,8 +105,9 @@ By default, rows where both `basic_price` and `nhs_indicative_price` are
 `NA` are dropped. Set `active_only = FALSE` to keep them:
 
 ``` r
+
 dmd_price_lookup("metformin", active_only = FALSE)
-#> # A tibble: 287 × 12
+#> # A tibble: 287 × 13
 #>    medicine                     pack_size unit  vmp_snomed_code vmpp_snomed_code
 #>    <chr>                            <dbl> <chr> <chr>           <chr>           
 #>  1 Alogliptin 12.5mg / Metform…        56 tabl… 23637211000001… 236325110000011…
@@ -115,16 +121,17 @@ dmd_price_lookup("metformin", active_only = FALSE)
 #>  9 Empagliflozin 12.5mg / Metf…        56 tabl… 30318111000001… 301756110000011…
 #> 10 Empagliflozin 12.5mg / Metf…        60 tabl… 30318111000001… 378531110000011…
 #> # ℹ 277 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 ### Checking the bundled release
 
 ``` r
+
 attr(dmd_master, "dmd_release_label")
-#> [1] "Week 34 2025 (14 August 2025)"
+#> [1] "Week 15 2026 (06 April 2026)"
 ```
 
 ------------------------------------------------------------------------
@@ -138,6 +145,7 @@ and pass the result to
 [`dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/dmd_price_lookup.md):
 
 ``` r
+
 db <- dmd_load("path/to/dmdDataLoader")
 dmd_price_lookup("metformin", db = db)
 ```
@@ -146,6 +154,7 @@ You can set a project-wide default path in your `.Rprofile` to avoid
 repeating it each session:
 
 ``` r
+
 options(dmdprices.path = "~/dmdDataLoader")
 # Then simply:
 db <- dmd_load()
@@ -178,7 +187,7 @@ convention. One row is returned per branded pack (AMPP).
 ## Data attribution
 
 The bundled `dmd_master` dataset is derived from the **NHS Dictionary of
-Medicines and Devices (dm+d)**, Week 34 2025 (14 August 2025), published
+Medicines and Devices (dm+d)**, Week 15 2026 (06 April 2026), published
 by the **NHS Business Services Authority (NHSBSA)**.
 
 © Crown copyright. Licensed under the [Open Government Licence

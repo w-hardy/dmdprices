@@ -21,12 +21,23 @@ dmd_load(path = getOption("dmdprices.path"))
 
 ## Value
 
-A `<dmd_db>` object: a list with two elements:
+A `<dmd_db>` object: a list with the elements:
 
 - `$master` — a
   [tibble](https://tibble.tidyverse.org/reference/tibble.html) with one
   row per AMPP (branded pack), containing Drug Tariff and NHS Indicative
-  Price columns that mirror the Drug Tariff Part VIIIA CSV format.
+  Price columns that mirror the Drug Tariff Part VIIIA CSV format. When
+  ingredient data is available it also carries an `is_combination`
+  logical column.
+
+- `$ingredients` — a
+  [tibble](https://tibble.tidyverse.org/reference/tibble.html) of
+  per-ingredient strengths (one row per VMP/ingredient) built from the
+  dm+d Virtual Product Ingredient (VPI) extract, or `NULL` if that
+  extract was not present. Columns: `vmp_snomed_code`,
+  `ingredient_snomed_code`, `ingredient_name`, `strength_value`,
+  `strength_unit`, `denominator_value`, `denominator_unit`,
+  `strength_canonical`, `strength_unit_canon`.
 
 - `$loaded_at` — a `POSIXct` timestamp recording when the data was
   loaded.

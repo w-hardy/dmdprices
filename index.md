@@ -18,6 +18,7 @@ decision-making. Use at your own risk.
 ## Installation
 
 ``` r
+
 devtools::install_github("w-hardy/dmdprices")
 ```
 
@@ -26,6 +27,7 @@ devtools::install_github("w-hardy/dmdprices")
 ## Quick start
 
 ``` r
+
 library(dmdprices)
 
 # Search medicine prices — uses bundled data, no setup needed
@@ -52,6 +54,7 @@ No R required — use the hosted apps directly:
 Or run locally:
 
 ``` r
+
 run_dmd_price_lookup()
 run_inflate_nhscii()
 ```
@@ -60,16 +63,16 @@ run_inflate_nhscii()
 
 ## Learn more
 
-| Topic                     | Article                                                                                            |
-|---------------------------|----------------------------------------------------------------------------------------------------|
-| Getting started           | [Introduction to dmdprices](https://w-hardy.github.io/dmdprices/articles/dmdprices.md)             |
-| Interactive apps          | [Apps](https://w-hardy.github.io/dmdprices/articles/apps.md)                                       |
-| NHS Cost Inflation Index  | [NHS CII adjustment](https://w-hardy.github.io/dmdprices/articles/nhscii.md)                       |
+| Topic | Article |
+|----|----|
+| Getting started | [Introduction to dmdprices](https://w-hardy.github.io/dmdprices/articles/dmdprices.md) |
+| Interactive apps | [Apps](https://w-hardy.github.io/dmdprices/articles/apps.md) |
+| NHS Cost Inflation Index | [NHS CII adjustment](https://w-hardy.github.io/dmdprices/articles/nhscii.md) |
 | Cost analysis in practice | [Cost analysis workflows](https://w-hardy.github.io/dmdprices/articles/cost_analysis_workflows.md) |
-| Drug Tariff matching      | [Drug Tariff matching](https://w-hardy.github.io/dmdprices/articles/drug_tariff_matching.md)       |
-| Advanced matching         | [Advanced matching techniques](https://w-hardy.github.io/dmdprices/articles/advanced_matching.md)  |
-| Data sources & updates    | [Data sources & updates](https://w-hardy.github.io/dmdprices/articles/data_sources_updates.md)     |
-| Troubleshooting           | [Troubleshooting](https://w-hardy.github.io/dmdprices/articles/troubleshooting.md)                 |
+| Drug Tariff matching | [Drug Tariff matching](https://w-hardy.github.io/dmdprices/articles/drug_tariff_matching.md) |
+| Advanced matching | [Advanced matching techniques](https://w-hardy.github.io/dmdprices/articles/advanced_matching.md) |
+| Data sources & updates | [Data sources & updates](https://w-hardy.github.io/dmdprices/articles/data_sources_updates.md) |
+| Troubleshooting | [Troubleshooting](https://w-hardy.github.io/dmdprices/articles/troubleshooting.md) |
 
 ------------------------------------------------------------------------
 

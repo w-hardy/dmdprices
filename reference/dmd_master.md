@@ -1,7 +1,7 @@
 # NHS dm+d medicine pricing master table
 
 A joined pricing table built from the NHS Dictionary of Medicines and
-Devices (dm+d), release **Week 34 2025 (14 August 2025)**. The table
+Devices (dm+d), release **Week 15 2026 (06 April 2026)**. The table
 combines Virtual Medicinal Products (VMPs), Virtual Medicinal Product
 Packs (VMPPs), Actual Medicinal Product Packs (AMPPs), Drug Tariff
 reimbursement prices, and NHS Indicative Prices into a single flat
@@ -15,7 +15,7 @@ dmd_master
 
 ## Format
 
-A tibble with 118,196 rows and 12 columns. One row per AMPP (branded
+A tibble with 118,196 rows and 13 columns. One row per AMPP (branded
 pack). A single generic VMP/VMPP appears on multiple rows when multiple
 manufacturers supply the same pack size.
 
@@ -80,10 +80,17 @@ manufacturers supply the same pack size.
 
   `character`. SNOMED CT identifier for the AMPP.
 
+- is_combination:
+
+  `logical`. `TRUE` when the VMP has two or more distinct active
+  ingredients (derived from the dm+d Virtual Product Ingredient data);
+  see
+  [dmd_ingredients](https://w-hardy.github.io/dmdprices/reference/dmd_ingredients.md).
+
 ## Source
 
-NHS Dictionary of Medicines and Devices (dm+d), Week 34 2025 release (14
-August 2025). Published by the NHS Business Services Authority (NHSBSA).
+NHS Dictionary of Medicines and Devices (dm+d), Week 15 2026 release (06
+April 2026). Published by the NHS Business Services Authority (NHSBSA).
 
 © Crown copyright. Contains public sector information licensed under the
 **Open Government Licence v3.0**.  
@@ -105,9 +112,10 @@ to query this dataset by medicine name.
 Release metadata is stored as attributes and can be inspected with:
 
     attr(dmd_master, "dmd_release_label")
-    # [1] "Week 34 2025 (14 August 2025)"
+    # [1] "Week 15 2026 (06 April 2026)"
 
 ## See also
 
 [`dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/dmd_price_lookup.md),
-[`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)
+[`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md),
+[dmd_ingredients](https://w-hardy.github.io/dmdprices/reference/dmd_ingredients.md)

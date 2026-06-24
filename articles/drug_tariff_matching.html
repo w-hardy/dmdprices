@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Working with Drug Tariff and NHS Indicative Prices • dmdprices</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Working with Drug Tariff and NHS Indicative Prices">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-apps" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Apps</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-apps">
 <li><a class="dropdown-item" href="../articles/apps.html#dmd-price-lookup">dm+d Price Lookup</a></li>
+    <li><a class="dropdown-item" href="../articles/apps.html#dmd-dose-optimiser">dm+d Dose Optimiser</a></li>
     <li><a class="dropdown-item" href="../articles/apps.html#nhs-cii-cost-adjuster">NHS CII Cost Adjuster</a></li>
   </ul>
 </li>
@@ -50,6 +51,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.2.0</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -119,7 +121,7 @@ both sources:</p>
 <span><span class="co">#&gt;   medicine          pack_size unit  basic_price nhs_indicative_price price_basis</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Risdiplam 5mg ta…        28 tabl…          <span style="color: #BB0000;">NA</span>              1<span style="text-decoration: underline;">843</span>300 NHS Indica…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Generic Comirnat…        10 3317…          <span style="color: #BB0000;">NA</span>                    0 No Price A…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Generic Comirnat…        10 dose           <span style="color: #BB0000;">NA</span>                   <span style="color: #BB0000;">NA</span> No Price A…</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Generic Kilkof o…       200 ml             <span style="color: #BB0000;">NA</span>                  206 NHS Indica…</span></span></code></pre></div>
 <p><strong>Column meanings:</strong></p>
 <table class="table">
@@ -203,13 +205,13 @@ both sources:</p>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">medicine</span>, <span class="va">basic_price</span>, <span class="va">nhs_indicative_price</span>, <span class="va">pct_difference</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 4</span></span></span>
-<span><span class="co">#&gt;   medicine                       basic_price nhs_indicative_price pct_difference</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Sodium chloride 5% eye drops …           0                 <span style="text-decoration: underline;">2</span>520            <span style="color: #BB0000;">Inf</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Sodium chloride 5% eye drops …           0                 <span style="text-decoration: underline;">2</span>400            <span style="color: #BB0000;">Inf</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Sodium chloride 5% eye drops …           0                 <span style="text-decoration: underline;">1</span>598            <span style="color: #BB0000;">Inf</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Sodium chloride 5% eye drops …           0                 <span style="text-decoration: underline;">2</span>300            <span style="color: #BB0000;">Inf</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> Sodium chloride 5% eye drops …           0                  729            <span style="color: #BB0000;">Inf</span></span></span></code></pre></div>
+<span><span class="co">#&gt;   medicine                   basic_price nhs_indicative_price pct_difference</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                            <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Bicalutamide 150mg tablets         222                <span style="text-decoration: underline;">24</span>000         <span style="text-decoration: underline;">10</span>711.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Bicalutamide 150mg tablets         222                <span style="text-decoration: underline;">24</span>000         <span style="text-decoration: underline;">10</span>711.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Donepezil 10mg tablets             106                <span style="text-decoration: underline;">10</span>066          <span style="text-decoration: underline;">9</span>396.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Bicalutamide 150mg tablets         222                <span style="text-decoration: underline;">19</span>200          <span style="text-decoration: underline;">8</span>549.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> Olanzapine 20mg tablets            192                <span style="text-decoration: underline;">16</span>207          <span style="text-decoration: underline;">8</span>341.</span></span></code></pre></div>
 <p>This is <strong>normal</strong>: the Drug Tariff is typically more
 aggressive on cost control for high-volume, low-cost items.</p>
 </div>
@@ -224,14 +226,14 @@ aggressive on cost control for high-volume, low-cost items.</p>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">basic_price</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">nhs_indicative_price</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">tariff_only</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 143</span></span>
+<span><span class="co">#&gt; [1] 6486</span></span>
 <span></span>
 <span><span class="co"># Medicines with NHS Indicative but no Drug Tariff (often specialty drugs)</span></span>
 <span><span class="va">indicative_only</span> <span class="op">&lt;-</span> <span class="va">dmd_master</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">basic_price</span><span class="op">)</span>, <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">nhs_indicative_price</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">indicative_only</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 84559</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 73115</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="centrally-funded-products">Centrally-funded products<a class="anchor" aria-label="anchor" href="#centrally-funded-products"></a>
 </h3>
@@ -243,7 +245,7 @@ price:</p>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">basic_price</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">nhs_indicative_price</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">no_price</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 13900</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 25357</span></span></code></pre></div>
 <p>These include:</p>
 <ul>
 <li>Vaccines (centrally procured)</li>
@@ -268,7 +270,7 @@ estimate, or flag these records.</p>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">your_medicines</span>, <span class="va">dmd_price_lookup</span>, method <span class="op">=</span> <span class="st">"exact"</span><span class="op">)</span></span>
 <span><span class="va">results</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 49 × 12</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 37 × 13</span></span></span>
 <span><span class="co">#&gt;    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
@@ -281,13 +283,13 @@ estimate, or flag these records.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 39 more rows</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 27 more rows</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 8 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   nhs_indicative_price &lt;int&gt;, price_basis &lt;chr&gt;, price_date &lt;chr&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;, is_combination &lt;lgl&gt;</span></span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; [[2]]</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 18 × 12</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 17 × 13</span></span></span>
 <span><span class="co">#&gt;    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code </span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Lisinopril 10mg tablets        28 tablet 42376111000001109 1067211000001107 </span></span>
@@ -307,10 +309,9 @@ estimate, or flag these records.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">15</span> Lisinopril 10mg tablets        28 tablet 42376111000001109 1067211000001107 </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">16</span> Lisinopril 10mg tablets       500 tablet 42376111000001109 36938011000001104</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">17</span> Lisinopril 10mg tablets       500 tablet 42376111000001109 36938011000001104</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">18</span> Lisinopril 10mg tablets       500 tablet 42376111000001109 36938011000001104</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 8 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   nhs_indicative_price &lt;int&gt;, price_basis &lt;chr&gt;, price_date &lt;chr&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;, is_combination &lt;lgl&gt;</span></span></span></code></pre></div>
 <div class="section level3">
 <h3 id="fuzzy-matching-for-typosvariations">Fuzzy matching for typos/variations<a class="anchor" aria-label="anchor" href="#fuzzy-matching-for-typosvariations"></a>
 </h3>
@@ -318,7 +319,7 @@ estimate, or flag these records.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Your source data might have minor spelling variations</span></span>
 <span><span class="fu"><a href="../reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"metformin 500 mg tablets"</span>, method <span class="op">=</span> <span class="st">"fuzzy"</span>, max_dist <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 82 × 12</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 62 × 13</span></span></span>
 <span><span class="co">#&gt;    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
@@ -331,10 +332,10 @@ estimate, or flag these records.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 72 more rows</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 52 more rows</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 8 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   nhs_indicative_price &lt;int&gt;, price_basis &lt;chr&gt;, price_date &lt;chr&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;, is_combination &lt;lgl&gt;</span></span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -386,10 +387,10 @@ estimate, or flag these records.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 2</span></span></span>
 <span><span class="co">#&gt;   pricing_status      n</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Both sources    <span style="text-decoration: underline;">19</span>594</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Indicative only <span style="text-decoration: underline;">84</span>559</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> No price        <span style="text-decoration: underline;">13</span>900</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Tariff only       143</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Both sources    <span style="text-decoration: underline;">13</span>238</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Indicative only <span style="text-decoration: underline;">73</span>115</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> No price        <span style="text-decoration: underline;">25</span>357</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Tariff only      <span style="text-decoration: underline;">6</span>486</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="document-your-price-source-choice">2. Document your price source choice<a class="anchor" aria-label="anchor" href="#document-your-price-source-choice"></a>
@@ -412,9 +413,9 @@ estimate, or flag these records.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 2</span></span></span>
 <span><span class="co">#&gt;   price_source       n</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Drug Tariff    <span style="text-decoration: underline;">19</span>737</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Missing        <span style="text-decoration: underline;">13</span>900</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> NHS Indicative <span style="text-decoration: underline;">84</span>559</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Drug Tariff    <span style="text-decoration: underline;">19</span>724</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Missing        <span style="text-decoration: underline;">25</span>357</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> NHS Indicative <span style="text-decoration: underline;">73</span>115</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="note-the-currency-and-units">3. Note the currency and units<a class="anchor" aria-label="anchor" href="#note-the-currency-and-units"></a>
@@ -431,7 +432,7 @@ Always convert for reporting:</p>
 <span><span class="co">#&gt;   medicine                                              price_pence price_pounds</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                                       <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Risdiplam 5mg tablets                                     1<span style="text-decoration: underline;">843</span>300     <span style="text-decoration: underline;">18</span>433   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Generic Comirnaty LP.8.1 adults and adolescents from…           0         0   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Generic Comirnaty LP.8.1 adults and adolescents from…          <span style="color: #BB0000;">NA</span>        <span style="color: #BB0000;">NA</span>   </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Generic Kilkof oral solution                                  206         2.06</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -446,10 +447,10 @@ Always convert for reporting:</p>
 <span></span>
 <span><span class="va">analysis_timestamp</span></span>
 <span><span class="co">#&gt; $dmd_release</span></span>
-<span><span class="co">#&gt; [1] "Week 34 2025 (14 August 2025)"</span></span>
+<span><span class="co">#&gt; [1] "Week 15 2026 (06 April 2026)"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $analysis_date</span></span>
-<span><span class="co">#&gt; [1] "2026-03-11"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "2026-06-24"</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">

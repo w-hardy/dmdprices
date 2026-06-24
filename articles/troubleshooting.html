@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Troubleshooting • dmdprices</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Troubleshooting">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-apps" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Apps</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-apps">
 <li><a class="dropdown-item" href="../articles/apps.html#dmd-price-lookup">dm+d Price Lookup</a></li>
+    <li><a class="dropdown-item" href="../articles/apps.html#dmd-dose-optimiser">dm+d Dose Optimiser</a></li>
     <li><a class="dropdown-item" href="../articles/apps.html#nhs-cii-cost-adjuster">NHS CII Cost Adjuster</a></li>
   </ul>
 </li>
@@ -50,6 +51,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.2.0</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -121,12 +123,12 @@
 <span><span class="co"># Method 2: Partial (forgiving)</span></span>
 <span><span class="va">partial</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"aspirin 75mg"</span>, method <span class="op">=</span> <span class="st">"partial"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">partial</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 54</span></span>
+<span><span class="co">#&gt; [1] 43</span></span>
 <span></span>
 <span><span class="co"># Method 3: Fuzzy (typo-tolerant)</span></span>
 <span><span class="va">fuzzy</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"aspirin 75mg tablets"</span>, method <span class="op">=</span> <span class="st">"fuzzy"</span>, max_dist <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">fuzzy</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 19</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 17</span></span></code></pre></div>
 <p><strong>Step 2: Check the exact dm+d name</strong></p>
 <p>dm+d names follow a strict format:
 <code>Medicine Strength Unit</code></p>
@@ -135,20 +137,19 @@
 <span><span class="fu"><a href="../reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"aspirin"</span>, method <span class="op">=</span> <span class="st">"partial"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">medicine</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 35 × 1</span></span></span>
-<span><span class="co">#&gt;    medicine                         </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                            </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Aspirin 100mg/5ml oral solution  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> Aspirin 100mg/5ml oral suspension</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> Aspirin 150mg suppositories      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> Aspirin 15mg/5ml oral solution   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> Aspirin 15mg/5ml oral suspension </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> Aspirin 225mg/5ml oral solution  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> Aspirin 225mg/5ml oral suspension</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Aspirin 25mg capsules            </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Aspirin 25mg/5ml oral solution   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Aspirin 25mg/5ml oral suspension </span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 25 more rows</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 1</span></span></span>
+<span><span class="co">#&gt;    medicine                                       </span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Aspirin 150mg suppositories                    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> Aspirin 300mg dispersible tablets              </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> Aspirin 300mg gastro-resistant tablets         </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> Aspirin 300mg orodispersible tablets sugar free</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> Aspirin 300mg suppositories                    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> Aspirin 300mg tablets                          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> Aspirin 325mg / Caffeine 15mg tablets          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Aspirin 75mg dispersible tablets               </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Aspirin 75mg gastro-resistant tablets          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Aspirin 75mg tablets</span></span></code></pre></div>
 <p><strong>Step 3: Verify strength and unit</strong></p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># You might be using non-standard strength notation</span></span>
@@ -231,7 +232,7 @@ reasons:</p>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">basic_price</span><span class="op">)</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">nhs_indicative_price</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">no_price</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 13900</span></span>
+<span><span class="co">#&gt; [1] 25357</span></span>
 <span></span>
 <span><span class="co"># These are typically centrally procured or specialty medicines</span></span>
 <span><span class="va">sample_no_price</span> <span class="op">&lt;-</span> <span class="va">no_price</span> <span class="op">|&gt;</span></span>
@@ -240,13 +241,13 @@ reasons:</p>
 <span></span>
 <span><span class="va">sample_no_price</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 1</span></span></span>
-<span><span class="co">#&gt;   medicine                                                                  </span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                                                     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Generic Kilkof oral solution                                              </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Mirikizumab 200mg/2ml solution for injection pre-filled disposable devices</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Ciprofloxacin 200mg/100ml infusion polyethylene bottles                   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Ciprofloxacin 400mg/200ml infusion polyethylene bottles                   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> Moxifloxacin 400mg/250ml infusion polyethylene bottles</span></span></code></pre></div>
+<span><span class="co">#&gt;   medicine                                                                      </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                                                         </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Generic Comirnaty LP.8.1 adults and adolescents from 12 years COVID-19 mRNA V…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Generic Kilkof oral solution                                                  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Generic Fortisip PlantBased 2kcal liquid                                      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Generic Comirnaty LP.8.1 Children 6 months - 4 years COVID-19 mRNA Vaccine 3m…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> Generic Comirnaty LP.8.1 Children 6 months - 4 years COVID-19 mRNA Vaccine 3m…</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="common-reasons-for-missing-prices">Common reasons for missing prices<a class="anchor" aria-label="anchor" href="#common-reasons-for-missing-prices"></a>
@@ -298,8 +299,6 @@ reasons:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Option 1: Use NHS Indicative instead of Drug Tariff</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"medicine"</span>, active_only <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: No medicines found matching <span style="color: #0000BB;">"medicine"</span> with method =</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">"partial"</span>.</span></span>
 <span></span>
 <span><span class="co"># Try to use NHS Indicative</span></span>
 <span><span class="va">price</span> <span class="op">&lt;-</span> <span class="va">result</span><span class="op">$</span><span class="va">nhs_indicative_price</span></span>
@@ -333,10 +332,10 @@ reasons:</p>
 <span><span class="va">analysis</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">price_status</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
-<span><span class="co">#&gt;   price_status      n</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Available    <span style="text-decoration: underline;">104</span>296</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Missing       <span style="text-decoration: underline;">13</span>900</span></span></code></pre></div>
+<span><span class="co">#&gt;   price_status     n</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Available    <span style="text-decoration: underline;">92</span>839</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Missing      <span style="text-decoration: underline;">25</span>357</span></span></code></pre></div>
 <hr>
 </div>
 </div>
@@ -355,7 +354,7 @@ reasons:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Check when the bundled data was released</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">dmd_master</span>, <span class="st">"dmd_release_label"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Week 34 2025 (14 August 2025)"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "Week 15 2026 (06 April 2026)"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="solutions-2">Solutions<a class="anchor" aria-label="anchor" href="#solutions-2"></a>
@@ -507,7 +506,7 @@ distance). Higher values are too permissive.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Shows when this data was released</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">dmd_master</span>, <span class="st">"dmd_release_label"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Week 34 2025 (14 August 2025)"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "Week 15 2026 (06 April 2026)"</span></span></code></pre></div>
 <p><strong>Check NHSBSA TRUD:</strong></p>
 <pre><code>https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6</code></pre>
 <p>(Updated every Thursday)</p>
@@ -600,10 +599,10 @@ updated figures.</p>
 <span><span class="co"># Include in your report</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">analysis_metadata</span><span class="op">)</span></span>
 <span><span class="co">#&gt; List of 5</span></span>
-<span><span class="co">#&gt;  $ analysis_date: Date[1:1], format: "2026-03-11"</span></span>
+<span><span class="co">#&gt;  $ analysis_date: Date[1:1], format: "2026-06-24"</span></span>
 <span><span class="co">#&gt;  $ dmd          :List of 2</span></span>
 <span><span class="co">#&gt;   ..$ source : chr "NHS dm+d (bundled)"</span></span>
-<span><span class="co">#&gt;   ..$ release: chr "Week 34 2025 (14 August 2025)"</span></span>
+<span><span class="co">#&gt;   ..$ release: chr "Week 15 2026 (06 April 2026)"</span></span>
 <span><span class="co">#&gt;  $ prices       :List of 2</span></span>
 <span><span class="co">#&gt;   ..$ source  : chr "Drug Tariff + NHS Indicative"</span></span>
 <span><span class="co">#&gt;   ..$ priority: chr "Drug Tariff, fallback to Indicative"</span></span>
@@ -613,7 +612,7 @@ updated figures.</p>
 <span><span class="co">#&gt;   ..$ coverage: chr "2015/16 to 2023/24"</span></span>
 <span><span class="co">#&gt;  $ package      :List of 2</span></span>
 <span><span class="co">#&gt;   ..$ name   : chr "dmdprices"</span></span>
-<span><span class="co">#&gt;   ..$ version: chr "0.3.0"</span></span></code></pre></div>
+<span><span class="co">#&gt;   ..$ version: chr "0.5.0"</span></span></code></pre></div>
 <p><strong>Sample text for your methodology:</strong></p>
 <blockquote>
 <p>Medicine prices were obtained from the NHS dm+d (Week 34 2025) via

@@ -8,9 +8,24 @@ adjusting costs for inflation:
 - [`dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/dmd_price_lookup.md)
   — search the bundled dm+d dataset by medicine name.
 
+- [`dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md)
+  — find dose-delivering AMPP combinations by cost or item count.
+
+- [`dmd_dose_cost()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_cost.md)
+  — vectorised dose costing for use in data pipelines.
+
+- [`dmd_dose_cost_range()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_cost_range.md)
+  — vectorised cheapest / most-expensive dose costs.
+
+- [`dmd_parse_strength()`](https://w-hardy.github.io/dmdprices/reference/dmd_parse_strength.md)
+  — parse strengths out of VMP names.
+
 - [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)
   — load a more recent dm+d release from a local `dmdDataLoader` CSV
   directory.
+
+- [`dmd_master_info()`](https://w-hardy.github.io/dmdprices/reference/dmd_master_info.md)
+  — inspect bundled or loaded dm+d dataset metadata.
 
 - [`nhscii()`](https://w-hardy.github.io/dmdprices/reference/nhscii.md)
   — compute NHS Cost Inflation Index factors between financial years.
@@ -20,6 +35,9 @@ adjusting costs for inflation:
 
 - [`run_dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/run_dmd_price_lookup.md)
   — launch the price lookup Shiny app locally.
+
+- [`run_dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/run_dmd_dose_optimise.md)
+  — launch the dose optimiser Shiny app locally.
 
 - [`run_inflate_nhscii()`](https://w-hardy.github.io/dmdprices/reference/run_inflate_nhscii.md)
   — launch the cost adjuster Shiny app locally.
@@ -51,3 +69,7 @@ research or clinical decision-making. Use at your own risk.
 ## Author
 
 **Maintainer**: Will Hardy <w.hardy@bangor.ac.uk>
+
+Authors:
+
+- Will Hardy <w.hardy@bangor.ac.uk>

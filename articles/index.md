@@ -23,3 +23,8 @@
 - [Data Sources and
   Updates](https://w-hardy.github.io/dmdprices/articles/data_sources_updates.md):
 - [Troubleshooting](https://w-hardy.github.io/dmdprices/articles/troubleshooting.md):
+
+### Dose optimisation
+
+- [Dose
+  optimisation](https://w-hardy.github.io/dmdprices/articles/dose_optimisation.md):

@@ -1,4 +1,4 @@
-pandoc: 3.1.11
+pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
@@ -7,10 +7,11 @@ articles:
   cost_analysis_workflows: cost_analysis_workflows.html
   data_sources_updates: data_sources_updates.html
   dmdprices: dmdprices.html
+  dose_optimisation: dose_optimisation.html
   drug_tariff_matching: drug_tariff_matching.html
   nhscii: nhscii.html
   troubleshooting: troubleshooting.html
-last_built: 2026-03-11T20:24Z
+last_built: 2026-06-24T12:32Z
 urls:
   reference: https://w-hardy.github.io/dmdprices/reference
   article: https://w-hardy.github.io/dmdprices/articles

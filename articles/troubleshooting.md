@@ -3,6 +3,7 @@
 ## Common problems and solutions
 
 ``` r
+
 library(dmdprices)
 library(dplyr)
 #> 
@@ -23,6 +24,7 @@ library(stringr)
 ### Symptom
 
 ``` r
+
 dmd_price_lookup("aspirin")
 # Returns 0 rows, or wrong medicine
 ```
@@ -32,6 +34,7 @@ dmd_price_lookup("aspirin")
 **Step 1: Try different match methods**
 
 ``` r
+
 # Method 1: Exact (strict)
 exact <- dmd_price_lookup("aspirin 75mg tablets", method = "exact")
 nrow(exact)
@@ -40,12 +43,12 @@ nrow(exact)
 # Method 2: Partial (forgiving)
 partial <- dmd_price_lookup("aspirin 75mg", method = "partial")
 nrow(partial)
-#> [1] 54
+#> [1] 43
 
 # Method 3: Fuzzy (typo-tolerant)
 fuzzy <- dmd_price_lookup("aspirin 75mg tablets", method = "fuzzy", max_dist = 3)
 nrow(fuzzy)
-#> [1] 19
+#> [1] 17
 ```
 
 **Step 2: Check the exact dm+d name**
@@ -53,29 +56,30 @@ nrow(fuzzy)
 dm+d names follow a strict format: `Medicine Strength Unit`
 
 ``` r
+
 # Search for similar names
 dmd_price_lookup("aspirin", method = "partial") |>
   select(medicine) |>
   distinct()
-#> # A tibble: 35 × 1
-#>    medicine                         
-#>    <chr>                            
-#>  1 Aspirin 100mg/5ml oral solution  
-#>  2 Aspirin 100mg/5ml oral suspension
-#>  3 Aspirin 150mg suppositories      
-#>  4 Aspirin 15mg/5ml oral solution   
-#>  5 Aspirin 15mg/5ml oral suspension 
-#>  6 Aspirin 225mg/5ml oral solution  
-#>  7 Aspirin 225mg/5ml oral suspension
-#>  8 Aspirin 25mg capsules            
-#>  9 Aspirin 25mg/5ml oral solution   
-#> 10 Aspirin 25mg/5ml oral suspension 
-#> # ℹ 25 more rows
+#> # A tibble: 10 × 1
+#>    medicine                                       
+#>    <chr>                                          
+#>  1 Aspirin 150mg suppositories                    
+#>  2 Aspirin 300mg dispersible tablets              
+#>  3 Aspirin 300mg gastro-resistant tablets         
+#>  4 Aspirin 300mg orodispersible tablets sugar free
+#>  5 Aspirin 300mg suppositories                    
+#>  6 Aspirin 300mg tablets                          
+#>  7 Aspirin 325mg / Caffeine 15mg tablets          
+#>  8 Aspirin 75mg dispersible tablets               
+#>  9 Aspirin 75mg gastro-resistant tablets          
+#> 10 Aspirin 75mg tablets
 ```
 
 **Step 3: Verify strength and unit**
 
 ``` r
+
 # You might be using non-standard strength notation
 # Try with different formats:
 # - "75mg" vs "75 mg"
@@ -131,6 +135,7 @@ working
 ### Symptom
 
 ``` r
+
 result <- dmd_price_lookup("vaccine")
 result$basic_price  # All NA
 ```
@@ -141,12 +146,13 @@ Many medicines have no Drug Tariff or NHS Indicative prices. Common
 reasons:
 
 ``` r
+
 # Check which medicines have NO price at all
 no_price <- dmd_master |>
   filter(is.na(basic_price) & is.na(nhs_indicative_price))
 
 nrow(no_price)
-#> [1] 13900
+#> [1] 25357
 
 # These are typically centrally procured or specialty medicines
 sample_no_price <- no_price |>
@@ -155,34 +161,33 @@ sample_no_price <- no_price |>
 
 sample_no_price
 #> # A tibble: 5 × 1
-#>   medicine                                                                  
-#>   <chr>                                                                     
-#> 1 Generic Kilkof oral solution                                              
-#> 2 Mirikizumab 200mg/2ml solution for injection pre-filled disposable devices
-#> 3 Ciprofloxacin 200mg/100ml infusion polyethylene bottles                   
-#> 4 Ciprofloxacin 400mg/200ml infusion polyethylene bottles                   
-#> 5 Moxifloxacin 400mg/250ml infusion polyethylene bottles
+#>   medicine                                                                      
+#>   <chr>                                                                         
+#> 1 Generic Comirnaty LP.8.1 adults and adolescents from 12 years COVID-19 mRNA V…
+#> 2 Generic Kilkof oral solution                                                  
+#> 3 Generic Fortisip PlantBased 2kcal liquid                                      
+#> 4 Generic Comirnaty LP.8.1 Children 6 months - 4 years COVID-19 mRNA Vaccine 3m…
+#> 5 Generic Comirnaty LP.8.1 Children 6 months - 4 years COVID-19 mRNA Vaccine 3m…
 ```
 
 ### Common reasons for missing prices
 
-| Reason                           | Examples                       | Solution                      |
-|----------------------------------|--------------------------------|-------------------------------|
-| **Centrally procured**           | Vaccines, infusions, biologics | Contact NHS procurement       |
-| **Specialty/rare disease**       | Some cancer drugs              | Price via NICE/special scheme |
-| **Confidential price agreement** | Some biosimilars               | Contact supplier              |
-| **Recently added**               | Brand new medicine             | Check back next month         |
-| **About to be delisted**         | Obsolete/replaced              | Use therapeutic equivalent    |
+| Reason | Examples | Solution |
+|----|----|----|
+| **Centrally procured** | Vaccines, infusions, biologics | Contact NHS procurement |
+| **Specialty/rare disease** | Some cancer drugs | Price via NICE/special scheme |
+| **Confidential price agreement** | Some biosimilars | Contact supplier |
+| **Recently added** | Brand new medicine | Check back next month |
+| **About to be delisted** | Obsolete/replaced | Use therapeutic equivalent |
 
 ### Solutions
 
 **If you need a price:**
 
 ``` r
+
 # Option 1: Use NHS Indicative instead of Drug Tariff
 result <- dmd_price_lookup("medicine", active_only = FALSE)
-#> Warning: No medicines found matching "medicine" with method =
-#> "partial".
 
 # Try to use NHS Indicative
 price <- result$nhs_indicative_price
@@ -201,6 +206,7 @@ missing_price_medicines <- c("vaccine", "specialty_biologic")
 **For analysis:**
 
 ``` r
+
 # Decide upfront how to handle missing prices
 analysis <- dmd_master |>
   mutate(
@@ -219,10 +225,10 @@ analysis <- dmd_master |>
 analysis |>
   count(price_status)
 #> # A tibble: 2 × 2
-#>   price_status      n
-#>   <chr>         <int>
-#> 1 Available    104296
-#> 2 Missing       13900
+#>   price_status     n
+#>   <chr>        <int>
+#> 1 Available    92839
+#> 2 Missing      25357
 ```
 
 ------------------------------------------------------------------------
@@ -238,9 +244,10 @@ Drug Tariff says £1.50, but dmdprices shows £1.45
 Prices update monthly; the bundled data is ~2-4 weeks old.
 
 ``` r
+
 # Check when the bundled data was released
 attr(dmd_master, "dmd_release_label")
-#> [1] "Week 34 2025 (14 August 2025)"
+#> [1] "Week 15 2026 (06 April 2026)"
 ```
 
 ### Solutions
@@ -282,6 +289,7 @@ accumulates.
 **Option 1: Pre-filter before searching**
 
 ``` r
+
 # Instead of searching for each medicine individually,
 # get all matches once and filter
 all_statins <- dmd_price_lookup("statin", method = "partial")
@@ -292,6 +300,7 @@ atorvastatin_20mg <- all_statins |>
 **Option 2: Use batch processing**
 
 ``` r
+
 medicines <- c("medicine1", "medicine2", ..., "medicine1000")
 
 # Vectorized (faster than loop)
@@ -302,6 +311,7 @@ results_df <- bind_rows(results)
 **Option 3: Cache results**
 
 ``` r
+
 # Save lookup results to avoid re-searching
 if (!file.exists("medicine_cache.rds")) {
   medicine_cache <- lapply(
@@ -322,6 +332,7 @@ if (!file.exists("medicine_cache.rds")) {
 ### Symptom
 
 ``` r
+
 # Searching for common medicine gives unrelated results
 dmd_price_lookup("atorvastatin", method = "fuzzy", max_dist = 5)
 ```
@@ -336,6 +347,7 @@ Higher values are too permissive.
 **Use stricter `max_dist`:**
 
 ``` r
+
 # Too permissive (max_dist = 5)
 loose <- dmd_price_lookup("atorvastatin", method = "fuzzy", max_dist = 5)
 #> Warning: No medicines found matching "atorvastatin" with method
@@ -372,9 +384,10 @@ You’re unsure whether you have the latest medicine data.
 **Check the bundled release date:**
 
 ``` r
+
 # Shows when this data was released
 attr(dmd_master, "dmd_release_label")
-#> [1] "Week 34 2025 (14 August 2025)"
+#> [1] "Week 15 2026 (06 April 2026)"
 ```
 
 **Check NHSBSA TRUD:**
@@ -386,6 +399,7 @@ attr(dmd_master, "dmd_release_label")
 **If more than 3 weeks old, reload:**
 
 ``` r
+
 # If you have the dmdDataLoader CSV files
 new_dm_d <- dmd_load("~/path/to/dmdDataLoader")
 
@@ -399,6 +413,7 @@ new_dm_d <- dmd_load("~/path/to/dmdDataLoader")
 ### Symptom
 
 ``` r
+
 nhscii("2025/26", "2026/27")  # Error: from_year not in available range
 ```
 
@@ -412,6 +427,7 @@ NHS CII rates are only available for specific financial years (currently
 **Check available years:**
 
 ``` r
+
 # Valid range
 nhscii("2015/16", "2015/16")  # Returns 1 (valid)
 #> [1] 1
@@ -428,6 +444,7 @@ The 2024/25 rates are not yet included. Check the latest PSSRU manual at
 **For future years, use estimates:**
 
 ``` r
+
 # Use latest available rate as proxy
 latest_rate <- nhscii("2022/23", "2023/24", output_type = "percent")
 
@@ -447,6 +464,7 @@ nhscii("2023/24", "2023/24") * (1 + projected_2024_25_rate / 100)
 Create a reproducibility statement:
 
 ``` r
+
 # Capture metadata
 analysis_metadata <- list(
   analysis_date = Sys.Date(),
@@ -476,10 +494,10 @@ analysis_metadata <- list(
 # Include in your report
 str(analysis_metadata)
 #> List of 5
-#>  $ analysis_date: Date[1:1], format: "2026-03-11"
+#>  $ analysis_date: Date[1:1], format: "2026-06-24"
 #>  $ dmd          :List of 2
 #>   ..$ source : chr "NHS dm+d (bundled)"
-#>   ..$ release: chr "Week 34 2025 (14 August 2025)"
+#>   ..$ release: chr "Week 15 2026 (06 April 2026)"
 #>  $ prices       :List of 2
 #>   ..$ source  : chr "Drug Tariff + NHS Indicative"
 #>   ..$ priority: chr "Drug Tariff, fallback to Indicative"
@@ -489,7 +507,7 @@ str(analysis_metadata)
 #>   ..$ coverage: chr "2015/16 to 2023/24"
 #>  $ package      :List of 2
 #>   ..$ name   : chr "dmdprices"
-#>   ..$ version: chr "0.3.0"
+#>   ..$ version: chr "0.5.0"
 ```
 
 **Sample text for your methodology:**
@@ -529,6 +547,7 @@ dmdprices version: `packageVersion("dmdprices")`
 **In R:**
 
 ``` r
+
 ?dmd_price_lookup     # Function help
 ?nhscii               # NHS CII help
 

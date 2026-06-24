@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Cost Analysis Workflows • dmdprices</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Cost Analysis Workflows">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-apps" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Apps</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-apps">
 <li><a class="dropdown-item" href="../articles/apps.html#dmd-price-lookup">dm+d Price Lookup</a></li>
+    <li><a class="dropdown-item" href="../articles/apps.html#dmd-dose-optimiser">dm+d Dose Optimiser</a></li>
     <li><a class="dropdown-item" href="../articles/apps.html#nhs-cii-cost-adjuster">NHS CII Cost Adjuster</a></li>
   </ul>
 </li>
@@ -50,6 +51,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.2.0</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -110,7 +112,7 @@ tablets</strong> across multiple years in your pharmacy budget.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">metformin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dmd_price_lookup.html">dmd_price_lookup</a></span><span class="op">(</span><span class="st">"metformin 500mg tablets"</span>, method <span class="op">=</span> <span class="st">"exact"</span><span class="op">)</span></span>
 <span><span class="va">metformin</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 49 × 12</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 37 × 13</span></span></span>
 <span><span class="co">#&gt;    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
@@ -123,10 +125,10 @@ tablets</strong> across multiple years in your pharmacy budget.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 39 more rows</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 27 more rows</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 8 more variables: drug_tariff_category &lt;chr&gt;, basic_price &lt;int&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   nhs_indicative_price &lt;int&gt;, price_basis &lt;chr&gt;, price_date &lt;chr&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;">#   ampp_name &lt;chr&gt;, ampp_snomed_code &lt;chr&gt;, is_combination &lt;lgl&gt;</span></span></span></code></pre></div>
 <p>Extract the price:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">current_price_pence</span> <span class="op">&lt;-</span> <span class="va">metformin</span><span class="op">$</span><span class="va">basic_price</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
@@ -141,9 +143,9 @@ tablets</strong> across multiple years in your pharmacy budget.</p>
 <p>You want to know what this medicine would have cost in previous years
 (in comparable prices):</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Current year is 2023/24</span></span>
+<code class="sourceCode R"><span><span class="co"># Current year is 2024/25</span></span>
 <span><span class="co"># Deflate to earlier years</span></span>
-<span><span class="va">years</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2019/20"</span>, <span class="st">"2020/21"</span>, <span class="st">"2021/22"</span>, <span class="st">"2022/23"</span>, <span class="st">"2023/24"</span><span class="op">)</span></span>
+<span><span class="va">years</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2019/20"</span>, <span class="st">"2020/21"</span>, <span class="st">"2021/22"</span>, <span class="st">"2022/23"</span>, <span class="st">"2023/24"</span>, <span class="st">"2024/25"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">historical_costs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  year <span class="op">=</span> <span class="va">years</span>,</span>
@@ -152,7 +154,7 @@ tablets</strong> across multiple years in your pharmacy budget.</p>
 <span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">years</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">deflation_factor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span></span>
-<span>    from_year <span class="op">=</span> <span class="st">"2023/24"</span>,</span>
+<span>    from_year <span class="op">=</span> <span class="st">"2024/25"</span>,</span>
 <span>    to_year <span class="op">=</span> <span class="va">years</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,</span>
 <span>    index <span class="op">=</span> <span class="st">"prices"</span></span>
 <span>  <span class="op">)</span></span>
@@ -167,11 +169,12 @@ tablets</strong> across multiple years in your pharmacy budget.</p>
 <span></span>
 <span><span class="va">historical_costs</span></span>
 <span><span class="co">#&gt;      year deflated_price_pounds deflated_price_pence</span></span>
-<span><span class="co">#&gt; 1 2019/20             0.5101127             51.01127</span></span>
-<span><span class="co">#&gt; 2 2020/21             0.5143976             51.43976</span></span>
-<span><span class="co">#&gt; 3 2021/22             0.5232453             52.32453</span></span>
-<span><span class="co">#&gt; 4 2022/23             0.5606573             56.06573</span></span>
-<span><span class="co">#&gt; 5 2023/24             0.5800000             58.00000</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 2019/20             0.5021960             50.21960</span></span>
+<span><span class="co">#&gt; 2 2020/21             0.5064145             50.64145</span></span>
+<span><span class="co">#&gt; 3 2021/22             0.5151248             51.51248</span></span>
+<span><span class="co">#&gt; 4 2022/23             0.5519563             55.19563</span></span>
+<span><span class="co">#&gt; 5 2023/24             0.5684045             56.84045</span></span>
+<span><span class="co">#&gt; 6 2024/25             0.5800000             58.00000</span></span></code></pre></div>
 <p><strong>Interpretation:</strong> This shows what metformin would have
 cost in each year if prices had moved with the NHS CII “prices”
 index.</p>
@@ -179,12 +182,13 @@ index.</p>
 <div class="section level3">
 <h3 id="step-3-project-future-costs">Step 3: Project future costs<a class="anchor" aria-label="anchor" href="#step-3-project-future-costs"></a>
 </h3>
-<p>Now inflate across the available data and estimate future years. Note
-that 2024/25 and 2025/26 rates will be published in the PSSRU 2025
-manual; for now we use the 2023/24 rate as a baseline:</p>
+<p>Now inflate across the available data. The NHS CII now covers up to
+2024/25 (the latest, provisional, year from the PSSRU 2025 manual). For
+years beyond the published data, such as 2025/26, you still need to
+apply your own estimate:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Available historical years</span></span>
-<span><span class="va">historical_years</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2020/21"</span>, <span class="st">"2021/22"</span>, <span class="st">"2022/23"</span>, <span class="st">"2023/24"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Available historical years (now including 2024/25)</span></span>
+<span><span class="va">historical_years</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2020/21"</span>, <span class="st">"2021/22"</span>, <span class="st">"2022/23"</span>, <span class="st">"2023/24"</span>, <span class="st">"2024/25"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">historical_projection</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  year <span class="op">=</span> <span class="va">historical_years</span>,</span>
@@ -193,7 +197,7 @@ manual; for now we use the 2023/24 rate as a baseline:</p>
 <span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">historical_projection</span><span class="op">$</span><span class="va">year</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">inflation_factor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span></span>
-<span>    from_year <span class="op">=</span> <span class="st">"2023/24"</span>,</span>
+<span>    from_year <span class="op">=</span> <span class="st">"2024/25"</span>,</span>
 <span>    to_year <span class="op">=</span> <span class="va">historical_projection</span><span class="op">$</span><span class="va">year</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,</span>
 <span>    index <span class="op">=</span> <span class="st">"prices"</span></span>
 <span>  <span class="op">)</span></span>
@@ -202,28 +206,24 @@ manual; for now we use the 2023/24 rate as a baseline:</p>
 <span></span>
 <span><span class="va">historical_projection</span></span>
 <span><span class="co">#&gt;      year projected_price_pounds</span></span>
-<span><span class="co">#&gt; 1 2020/21              0.5143976</span></span>
-<span><span class="co">#&gt; 2 2021/22              0.5232453</span></span>
-<span><span class="co">#&gt; 3 2022/23              0.5606573</span></span>
-<span><span class="co">#&gt; 4 2023/24              0.5800000</span></span>
+<span><span class="co">#&gt; 1 2020/21              0.5064145</span></span>
+<span><span class="co">#&gt; 2 2021/22              0.5151248</span></span>
+<span><span class="co">#&gt; 3 2022/23              0.5519563</span></span>
+<span><span class="co">#&gt; 4 2023/24              0.5684045</span></span>
+<span><span class="co">#&gt; 5 2024/25              0.5800000</span></span>
 <span></span>
-<span><span class="co"># For future projections, you would apply estimated inflation factors</span></span>
-<span><span class="co"># once 2024/25 and 2025/26 NHS CII rates are published</span></span>
-<span><span class="va">inflation_estimate_2024_25</span> <span class="op">&lt;-</span> <span class="fl">1.04</span>  <span class="co"># Estimated at 4% based on recent trends</span></span>
+<span><span class="co"># For years beyond the published data you must supply your own estimate.</span></span>
+<span><span class="co"># 2025/26 NHS CII rates are not yet published:</span></span>
 <span><span class="va">inflation_estimate_2025_26</span> <span class="op">&lt;-</span> <span class="fl">1.03</span>  <span class="co"># Estimated at 3%</span></span>
 <span></span>
 <span><span class="va">future_projection</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2024/25"</span>, <span class="st">"2025/26"</span><span class="op">)</span>,</span>
-<span>  projected_price_pounds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="va">current_price_pounds</span> <span class="op">*</span> <span class="va">inflation_estimate_2024_25</span>,</span>
-<span>    <span class="va">current_price_pounds</span> <span class="op">*</span> <span class="va">inflation_estimate_2024_25</span> <span class="op">*</span> <span class="va">inflation_estimate_2025_26</span></span>
-<span>  <span class="op">)</span></span>
+<span>  year <span class="op">=</span> <span class="st">"2025/26"</span>,</span>
+<span>  projected_price_pounds <span class="op">=</span> <span class="va">current_price_pounds</span> <span class="op">*</span> <span class="va">inflation_estimate_2025_26</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">future_projection</span></span>
 <span><span class="co">#&gt;      year projected_price_pounds</span></span>
-<span><span class="co">#&gt; 1 2024/25               0.603200</span></span>
-<span><span class="co">#&gt; 2 2025/26               0.621296</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 2025/26                 0.5974</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -292,31 +292,29 @@ multiple medicines.</p>
 <h3 id="project-costs-to-202425">Project costs to 2024/25<a class="anchor" aria-label="anchor" href="#project-costs-to-202425"></a>
 </h3>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">inflation_factor_2024_25</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="co"># 2024/25 NHS CII rates are now available (provisional) in the PSSRU 2025 manual</span></span>
+<span><span class="va">inflation_factor_2024_25</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span></span>
 <span>  from_year <span class="op">=</span> <span class="st">"2023/24"</span>,</span>
-<span>  to_year <span class="op">=</span> <span class="st">"2023/24"</span>,  <span class="co"># We don't have 2024/25 yet; for demo use current year</span></span>
+<span>  to_year <span class="op">=</span> <span class="st">"2024/25"</span>,</span>
 <span>  index <span class="op">=</span> <span class="st">"pay_and_prices"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># For projection purposes (assuming modest inflation)</span></span>
-<span><span class="va">inflation_estimate_2024_25</span> <span class="op">&lt;-</span> <span class="fl">1.04</span>  <span class="co"># 4% placeholder</span></span>
-<span></span>
 <span><span class="va">current_formulary</span> <span class="op">&lt;-</span> <span class="va">current_formulary</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    annual_cost_2024_25 <span class="op">=</span> <span class="va">annual_cost_2023_24</span> <span class="op">*</span> <span class="va">inflation_estimate_2024_25</span>,</span>
+<span>    annual_cost_2024_25 <span class="op">=</span> <span class="va">annual_cost_2023_24</span> <span class="op">*</span> <span class="va">inflation_factor_2024_25</span>,</span>
 <span>    cost_increase <span class="op">=</span> <span class="va">annual_cost_2024_25</span> <span class="op">-</span> <span class="va">annual_cost_2023_24</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span><span class="va">current_formulary</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">medicine</span>, <span class="va">annual_cost_2023_24</span>, <span class="va">annual_cost_2024_25</span>, <span class="va">cost_increase</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                    medicine annual_cost_2023_24 annual_cost_2024_25</span></span>
-<span><span class="co">#&gt; 1   Metformin 500mg tablets                3480             3619.20</span></span>
-<span><span class="co">#&gt; 2   Lisinopril 10mg tablets               18396            19131.84</span></span>
-<span><span class="co">#&gt; 3 Atorvastatin 20mg tablets                1650             1716.00</span></span>
+<span><span class="co">#&gt; 1   Metformin 500mg tablets                3480            3619.896</span></span>
+<span><span class="co">#&gt; 2   Lisinopril 10mg tablets               18396           19135.519</span></span>
+<span><span class="co">#&gt; 3 Atorvastatin 20mg tablets                1650            1716.330</span></span>
 <span><span class="co">#&gt;   cost_increase</span></span>
-<span><span class="co">#&gt; 1        139.20</span></span>
-<span><span class="co">#&gt; 2        735.84</span></span>
-<span><span class="co">#&gt; 3         66.00</span></span></code></pre></div>
+<span><span class="co">#&gt; 1      139.8960</span></span>
+<span><span class="co">#&gt; 2      739.5192</span></span>
+<span><span class="co">#&gt; 3       66.3300</span></span></code></pre></div>
 <p><strong>Summary:</strong></p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">current_formulary</span> <span class="op">|&gt;</span></span>
@@ -327,7 +325,7 @@ multiple medicines.</p>
 <span>    pct_increase <span class="op">=</span> <span class="op">(</span><span class="va">total_increase</span> <span class="op">/</span> <span class="va">total_2023_24</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="co">#&gt;   total_2023_24 total_2024_25 total_increase pct_increase</span></span>
-<span><span class="co">#&gt; 1         23526      24467.04         941.04            4</span></span></code></pre></div>
+<span><span class="co">#&gt; 1         23526      24471.75       945.7452         4.02</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -344,28 +342,28 @@ inflation adjustment.</p>
 <span>  qalys <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.50</span>, <span class="fl">0.75</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Inflate costs to 2023/24 (current year)</span></span>
+<span><span class="co"># Inflate costs to 2024/25 (current year)</span></span>
 <span><span class="va">cea_data</span> <span class="op">&lt;-</span> <span class="va">cea_data</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    inflation_factor <span class="op">=</span> <span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span></span>
 <span>      from_year <span class="op">=</span> <span class="st">"2020/21"</span>,</span>
-<span>      to_year <span class="op">=</span> <span class="st">"2023/24"</span>,</span>
+<span>      to_year <span class="op">=</span> <span class="st">"2024/25"</span>,</span>
 <span>      index <span class="op">=</span> <span class="st">"pay_and_prices"</span></span>
 <span>    <span class="op">)</span>,</span>
-<span>    cost_2023_24_pounds <span class="op">=</span> <span class="va">cost_2020_21_pounds</span> <span class="op">*</span> <span class="va">inflation_factor</span>,</span>
+<span>    cost_2024_25_pounds <span class="op">=</span> <span class="va">cost_2020_21_pounds</span> <span class="op">*</span> <span class="va">inflation_factor</span>,</span>
 <span>    cost_per_qaly_2020_21 <span class="op">=</span> <span class="va">cost_2020_21_pounds</span> <span class="op">/</span> <span class="va">qalys</span>,</span>
-<span>    cost_per_qaly_2023_24 <span class="op">=</span> <span class="va">cost_2023_24_pounds</span> <span class="op">/</span> <span class="va">qalys</span></span>
+<span>    cost_per_qaly_2024_25 <span class="op">=</span> <span class="va">cost_2024_25_pounds</span> <span class="op">/</span> <span class="va">qalys</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span><span class="va">cea_data</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
-<span>    <span class="va">medicine</span>, </span>
-<span>    <span class="va">cost_per_qaly_2020_21</span>, </span>
-<span>    <span class="va">cost_per_qaly_2023_24</span></span>
+<span>    <span class="va">medicine</span>,</span>
+<span>    <span class="va">cost_per_qaly_2020_21</span>,</span>
+<span>    <span class="va">cost_per_qaly_2024_25</span></span>
 <span>  <span class="op">)</span></span>
-<span><span class="co">#&gt;     medicine cost_per_qaly_2020_21 cost_per_qaly_2023_24</span></span>
-<span><span class="co">#&gt; 1 Medicine A                 10000              11483.37</span></span>
-<span><span class="co">#&gt; 2 Medicine B                 10000              11483.37</span></span></code></pre></div>
+<span><span class="co">#&gt;     medicine cost_per_qaly_2020_21 cost_per_qaly_2024_25</span></span>
+<span><span class="co">#&gt; 1 Medicine A                 10000              11734.29</span></span>
+<span><span class="co">#&gt; 2 Medicine B                 10000              11734.29</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="scenario-comparing-costs-across-nhs-trusts">Scenario: Comparing costs across NHS trusts<a class="anchor" aria-label="anchor" href="#scenario-comparing-costs-across-nhs-trusts"></a>
@@ -397,8 +395,8 @@ to a common year:</p>
 <span><span class="va">trust_data</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">trust</span>, <span class="va">purchase_year</span>, <span class="va">unit_cost_paid</span>, <span class="va">normalized_unit_cost_2023_24</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     trust purchase_year unit_cost_paid normalized_unit_cost_2023_24</span></span>
-<span><span class="co">#&gt; 1 Trust A       2021/22      0.1500000                    0.1662700</span></span>
-<span><span class="co">#&gt; 2 Trust B       2022/23      0.1500000                    0.1551750</span></span>
+<span><span class="co">#&gt; 1 Trust A       2021/22      0.1500000                    0.1655146</span></span>
+<span><span class="co">#&gt; 2 Trust B       2022/23      0.1500000                    0.1544700</span></span>
 <span><span class="co">#&gt; 3 Trust C       2023/24      0.1466667                    0.1466667</span></span></code></pre></div>
 <p><strong>Insight:</strong> Unit cost increased from £0.15 to £0.22,
 but after normalizing all to 2023/24 prices, we see Trust A paid
@@ -426,8 +424,8 @@ changes or negotiation differences.</p>
 <span><span class="co">#&gt;  $ price_source   : chr "NHS dm+d bundled data"</span></span>
 <span><span class="co">#&gt;  $ price_year     : chr "2023/24"</span></span>
 <span><span class="co">#&gt;  $ inflation_index: chr "pay_and_prices"</span></span>
-<span><span class="co">#&gt;  $ dmd_release    : chr "Week 34 2025 (14 August 2025)"</span></span>
-<span><span class="co">#&gt;  $ analysis_date  : Date[1:1], format: "2026-03-11"</span></span></code></pre></div>
+<span><span class="co">#&gt;  $ dmd_release    : chr "Week 15 2026 (06 April 2026)"</span></span>
+<span><span class="co">#&gt;  $ analysis_date  : Date[1:1], format: "2026-06-24"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="handle-lookup-failures-gracefully">2. Handle lookup failures gracefully<a class="anchor" aria-label="anchor" href="#handle-lookup-failures-gracefully"></a>
@@ -484,7 +482,7 @@ changes or negotiation differences.</p>
 <span>    <span class="co"># Derived calculations</span></span>
 <span>    monthly_cost_pounds <span class="op">=</span> <span class="op">(</span><span class="va">current_monthly_packs</span> <span class="op">*</span> <span class="va">price_pence</span><span class="op">)</span> <span class="op">/</span> <span class="fl">100</span>,</span>
 <span>    annual_cost_2023_24 <span class="op">=</span> <span class="va">monthly_cost_pounds</span> <span class="op">*</span> <span class="fl">12</span>,</span>
-<span>    <span class="co"># Once 2024/25 rates are available, you can use:</span></span>
+<span>    <span class="co"># 2024/25 rates are now available (provisional), e.g.:</span></span>
 <span>    <span class="co"># inflated_2024_25 = annual_cost_2023_24 * nhscii("2023/24", "2024/25")</span></span>
 <span>    .after <span class="op">=</span> <span class="va">price_pence</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>

@@ -18,6 +18,7 @@ decision-making. Use at your own risk.
 ## Installation
 
 ``` r
+
 devtools::install_github("w-hardy/dmdprices")
 ```
 
@@ -26,6 +27,7 @@ devtools::install_github("w-hardy/dmdprices")
 ## Quick start
 
 ``` r
+
 library(dmdprices)
 
 # Search medicine prices — uses bundled data, no setup needed
@@ -52,6 +54,7 @@ No R required — use the hosted apps directly:
 Or run locally:
 
 ``` r
+
 run_dmd_price_lookup()
 run_inflate_nhscii()
 ```
@@ -60,16 +63,16 @@ run_inflate_nhscii()
 
 ## Learn more
 
-| Topic                     | Article                                                                                            |
-|---------------------------|----------------------------------------------------------------------------------------------------|
-| Getting started           | [Introduction to dmdprices](https://w-hardy.github.io/dmdprices/articles/dmdprices.md)             |
-| Interactive apps          | [Apps](https://w-hardy.github.io/dmdprices/articles/apps.md)                                       |
-| NHS Cost Inflation Index  | [NHS CII adjustment](https://w-hardy.github.io/dmdprices/articles/nhscii.md)                       |
+| Topic | Article |
+|----|----|
+| Getting started | [Introduction to dmdprices](https://w-hardy.github.io/dmdprices/articles/dmdprices.md) |
+| Interactive apps | [Apps](https://w-hardy.github.io/dmdprices/articles/apps.md) |
+| NHS Cost Inflation Index | [NHS CII adjustment](https://w-hardy.github.io/dmdprices/articles/nhscii.md) |
 | Cost analysis in practice | [Cost analysis workflows](https://w-hardy.github.io/dmdprices/articles/cost_analysis_workflows.md) |
-| Drug Tariff matching      | [Drug Tariff matching](https://w-hardy.github.io/dmdprices/articles/drug_tariff_matching.md)       |
-| Advanced matching         | [Advanced matching techniques](https://w-hardy.github.io/dmdprices/articles/advanced_matching.md)  |
-| Data sources & updates    | [Data sources & updates](https://w-hardy.github.io/dmdprices/articles/data_sources_updates.md)     |
-| Troubleshooting           | [Troubleshooting](https://w-hardy.github.io/dmdprices/articles/troubleshooting.md)                 |
+| Drug Tariff matching | [Drug Tariff matching](https://w-hardy.github.io/dmdprices/articles/drug_tariff_matching.md) |
+| Advanced matching | [Advanced matching techniques](https://w-hardy.github.io/dmdprices/articles/advanced_matching.md) |
+| Data sources & updates | [Data sources & updates](https://w-hardy.github.io/dmdprices/articles/data_sources_updates.md) |
+| Troubleshooting | [Troubleshooting](https://w-hardy.github.io/dmdprices/articles/troubleshooting.md) |
 
 ------------------------------------------------------------------------
 
@@ -100,6 +103,19 @@ Query medicine prices from the dm+d
 - [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)
   : Load a dm+d database from a dmdDataLoader output directory
 
+## Dose optimisation
+
+Find combinations of AMPPs that deliver a target dose
+
+- [`dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md)
+  : Find dose combinations for a clinical dose
+- [`dmd_dose_cost()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_cost.md)
+  : Vectorised dose cost lookup
+- [`dmd_dose_cost_range()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_cost_range.md)
+  : Vectorised dose cost range lookup
+- [`dmd_parse_strength()`](https://w-hardy.github.io/dmdprices/reference/dmd_parse_strength.md)
+  : Parse a dm+d VMP name into drug stem, strength, and remainder
+
 ## Inflation adjustment
 
 Adjust costs using NHS Cost Inflation Index (NHS CII)
@@ -117,13 +133,19 @@ Launch interactive apps locally
   : Launch the dm+d price lookup Shiny app
 - [`run_inflate_nhscii()`](https://w-hardy.github.io/dmdprices/reference/run_inflate_nhscii.md)
   : Launch the NHS CII cost adjuster Shiny app
+- [`run_dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/run_dmd_dose_optimise.md)
+  : Launch the dm+d dose optimiser Shiny app
 
 ## Data
 
-Bundled dataset
+Bundled datasets
 
 - [`dmd_master`](https://w-hardy.github.io/dmdprices/reference/dmd_master.md)
   : NHS dm+d medicine pricing master table
+- [`dmd_ingredients`](https://w-hardy.github.io/dmdprices/reference/dmd_ingredients.md)
+  : NHS dm+d per-ingredient strengths
+- [`dmd_master_info()`](https://w-hardy.github.io/dmdprices/reference/dmd_master_info.md)
+  : Report metadata about a dm+d dataset
 
 ## Package
 
@@ -156,3 +178,8 @@ Bundled dataset
 - [Data Sources and
   Updates](https://w-hardy.github.io/dmdprices/articles/data_sources_updates.md):
 - [Troubleshooting](https://w-hardy.github.io/dmdprices/articles/troubleshooting.md):
+
+### Dose optimisation
+
+- [Dose
+  optimisation](https://w-hardy.github.io/dmdprices/articles/dose_optimisation.md):

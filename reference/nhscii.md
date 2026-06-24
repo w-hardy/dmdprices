@@ -46,22 +46,23 @@ A numeric scalar:
 
 ## Details
 
-Data source: Jones KC et al. (2025). Unit Costs of Health and Social
-Care 2024 Manual. PSSRU (University of Kent) & Centre for Health
+Data source: Jones KC et al. (2026). Unit Costs of Health and Social
+Care 2025 Manual. PSSRU (University of Kent) & Centre for Health
 Economics (University of York).
-([doi:10.22024/UniKent/01.02.109563](https://doi.org/10.22024/UniKent/01.02.109563)
-). Licensed under CC BY-NC-SA 4.0.
+[doi:10.22024/UniKent/01.02.115569](https://doi.org/10.22024/UniKent/01.02.115569)
+. Licensed under CC BY-NC-SA 4.0.
 
-The 2023/24 figures are provisional and may be revised in later PSSRU
-releases as additional data become available.
+The most recent year's figures (currently 2024/25) are provisional and
+may be revised in the next PSSRU release as additional data become
+available.
 
 ## Examples
 
 ``` r
-nhscii("2019/20", "2023/24")
-#> [1] 1.17693
-nhscii(2020, 2024) # same as "2019/20" -> "2023/24"
-#> [1] 1.17693
-nhscii("2021/22", "2023/24", index = "pay", output_type = "percent")
-#> [1] 12.55494
+nhscii("2019/20", "2024/25")
+#> [1] 1.202648
+nhscii(2020, 2025) # same as "2019/20" -> "2024/25"
+#> [1] 1.202648
+nhscii("2021/22", "2024/25", index = "pay", output_type = "percent")
+#> [1] 15.35984
 ```

@@ -7,6 +7,7 @@ vignette explains where the data comes from, how often it updates, and
 how to stay current.
 
 ``` r
+
 library(dmdprices)
 ```
 
@@ -36,11 +37,12 @@ maintained by the NHSBSA.
 **In dmdprices:**
 
 ``` r
+
 # The bundled dataset
 data(dmd_master)
 
 attr(dmd_master, "dmd_release_label")
-#> [1] "Week 34 2025 (14 August 2025)"
+#> [1] "Week 15 2026 (06 April 2026)"
 
 nrow(dmd_master)
 #> [1] 118196
@@ -129,9 +131,10 @@ University of Kent
 [`nhscii()`](https://w-hardy.github.io/dmdprices/reference/nhscii.md)
 
 ``` r
+
 # Example: current rates available
 nhscii("2015/16", "2023/24", index = "prices")
-#> [1] 1.209727
+#> [1] 1.204231
 ```
 
 **Note:** 2023/24 figures are provisional per the 2025 PSSRU manual.
@@ -163,9 +166,10 @@ Later releases may revise these values.
 ### dm+d release
 
 ``` r
+
 # Check bundled data release
 attr(dmd_master, "dmd_release_label")
-#> [1] "Week 34 2025 (14 August 2025)"
+#> [1] "Week 15 2026 (06 April 2026)"
 
 # Check when it was packaged
 attr(dmd_master, "package_date")
@@ -175,6 +179,7 @@ attr(dmd_master, "package_date")
 ### When did you last download fresh data?
 
 ``` r
+
 # If you've loaded a fresh dm+d via dmd_load()
 # Metadata is attached to the returned object
 # db <- dmd_load("path/to/dmdDataLoader")
@@ -184,6 +189,7 @@ attr(dmd_master, "package_date")
 ### NHS CII coverage
 
 ``` r
+
 # The rates currently available
 # (from the .nhscii_rates internal object)
 # Coverage: 2015/16 to 2023/24
@@ -198,6 +204,7 @@ nhscii("2015/16", "2015/16")  # Should return 1
 ### Document your data in every analysis
 
 ``` r
+
 # Create a data audit section in your report
 data_audit <- list(
   analysis_date = Sys.Date(),
@@ -217,10 +224,10 @@ data_audit <- list(
 
 str(data_audit)
 #> List of 3
-#>  $ analysis_date   : Date[1:1], format: "2026-03-11"
+#>  $ analysis_date   : Date[1:1], format: "2026-06-24"
 #>  $ dmd_source      :List of 3
 #>   ..$ source         : chr "dmdprices bundled dataset"
-#>   ..$ release        : chr "Week 34 2025 (14 August 2025)"
+#>   ..$ release        : chr "Week 15 2026 (06 April 2026)"
 #>   ..$ medicines_total: int 118196
 #>  $ inflation_source:List of 3
 #>   ..$ source  : chr "PSSRU Unit Costs of Health and Social Care"
@@ -231,6 +238,7 @@ str(data_audit)
 ### Save metadata with your results
 
 ``` r
+
 # Include in your output file
 metadata <- data.frame(
   item = c(
@@ -248,11 +256,11 @@ metadata <- data.frame(
 )
 
 metadata
-#>              item                         value
-#> 1   Analysis date                    2026-03-11
-#> 2    dm+d release Week 34 2025 (14 August 2025)
-#> 3   NHS CII index                pay_and_prices
-#> 4 Package version                         0.3.0
+#>              item                        value
+#> 1   Analysis date                   2026-06-24
+#> 2    dm+d release Week 15 2026 (06 April 2026)
+#> 3   NHS CII index               pay_and_prices
+#> 4 Package version                        0.5.0
 ```
 
 ## Update workflow example
@@ -260,6 +268,7 @@ metadata
 If you’re doing regular analyses, here’s a recommended workflow:
 
 ``` r
+
 # 1. Once per quarter: refresh dm+d
 my_dm_d <- dmd_load("~/dmdDataLoader")  # Download fresh release
 saveRDS(my_dm_d, "data/dm_d_current.rds")
@@ -336,6 +345,94 @@ Licensed under [Creative Commons Attribution-NonCommercial-ShareAlike
 **Citation:**
 
     Jones KC, Weatherly H, Birch S, Castelli A, Chalkley M, Dargan A, Findlay D, Gao M, Hinde S, Markham S, Smith D, Teo H (2025). Unit Costs of Health and Social Care 2024 Manual. Technical report. Personal Social Services Research Unit (University of Kent) & Centre for Health Economics (University of York), Kent, UK. https://doi.org/10.22024/UniKent/01.02.109563
+
+## Maintaining the bundled data (for package maintainers)
+
+End users never need this — the package ships with a ready-to-use
+dataset. This section is for maintainers refreshing the bundled
+`dmd_master` and `dmd_ingredients` datasets to a newer dm+d release.
+
+### Rebuilding
+
+The datasets are rebuilt from a local dmdDataLoader CSV export of a dm+d
+release by `data-raw/dmd_master.R`:
+
+1.  Download a dm+d release and produce the dmdDataLoader `csv/` export.
+
+2.  Edit the release metadata (`dmd_release_week/year/date`) and
+    `dmd_loader_path` at the top of `data-raw/dmd_master.R`.
+
+3.  From the package root, run:
+
+    ``` r
+
+    source("data-raw/dmd_master.R")
+    ```
+
+    This rebuilds and saves **both** `data/dmd_master.rda` and
+    `data/dmd_ingredients.rda`.
+
+4.  Update the release label/date in `R/data.R` (the `dmd_master` /
+    `dmd_ingredients` roxygen) and in `DESCRIPTION`, then run
+    `devtools::document()`.
+
+5.  Run `devtools::test()` and `devtools::check()`.
+
+The script reads these CSV files: `f_vmp_VmpType.csv`,
+`f_vmpp_VmppType.csv`, `f_vmpp_DtInfoType.csv`, `f_ampp_AmppType.csv`,
+`f_ampp_PriceInfoType.csv`, `f_lookup_DtPayCatInfoType.csv`,
+`f_lookup_PriceBasisInfoType.csv`, plus the optional ingredient files
+`f_vmp_VpiType.csv`, `f_ingredient.csv`, and
+`f_lookup_UoMHistoryInfoType.csv` (which add the `$ingredients` table,
+the `is_combination` flag, and unit labels). **dm+d occasionally renames
+these files between releases.** If the loader errors with “Expected file
+not found”, update the filename in both `R/dmd_load.R` and
+`data-raw/dmd_master.R` (the column specs live in `.col_names` in
+`R/utils.R`).
+
+### Verifying a rebuild
+
+Confirm every pack unit resolved to a label rather than a raw SNOMED
+code:
+
+``` r
+
+sum(grepl("^[0-9]+$", dmd_master$unit))   # should be 0
+```
+
+If this is non-zero, the listed codes are missing from the
+unit-of-measure lookup — see UoM mapping below.
+
+### Unit-of-measure (UoM) mapping
+
+In the raw dm+d data, pack units (`dmd_master$unit`) are SNOMED codes.
+`.build_master()` (`R/utils.R`) resolves them to readable labels in two
+layers, in order:
+
+1.  **`.uom_labels`** — a small curated map of the units that matter for
+    *dose costing*. These use short, **canonicalisable** labels (`"mg"`,
+    `"ml"`, `"g"`, `"dose"`, `"unit"`, `"tablet"`, …) that
+    `.canonicalise_unit()` understands, so the optimiser can match a
+    pack’s unit against a product’s concentration denominator — e.g. an
+    inhaler’s `…/dose`, so one inhaler is costed as its full actuation
+    count rather than a single actuation.
+2.  **The dm+d UoM lookup** (`f_lookup_UoMHistoryInfoType.csv`,
+    `CD → DESC`) — a fallback supplying a readable label for every other
+    code (devices, dressings, containers …). These are display-only and
+    need not canonicalise.
+
+To add or change a mapping:
+
+- If the unit affects **dosing** (a concentration pack unit such as
+  `dose`, `actuation`, `ml`, or `g`), add it to `.uom_labels` with a
+  short label that `.canonicalise_unit()` recognises (see `.unit_table`
+  in `R/parse_strength.R`). Curated entries take precedence over the
+  lookup.
+- If the unit is **display-only** (a container or device), nothing is
+  needed — the lookup `DESC` is applied automatically on rebuild.
+
+Both layers run at **build time**, so changes only reach the shipped
+data when `data-raw/dmd_master.R` is re-run.
 
 ## Troubleshooting data issues
 

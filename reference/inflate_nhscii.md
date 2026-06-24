@@ -36,7 +36,7 @@ Numeric vector of costs adjusted to `to_year`.
 
 ``` r
 inflate_nhscii(100, "2019/20", "2023/24")
-#> [1] 117.693
+#> [1] 115.617
 inflate_nhscii(c(100, 250), from_year = 2020, to_year = 2024, index = "prices")
-#> [1] 113.7004 284.2509
+#> [1] 113.1838 282.9595
 ```

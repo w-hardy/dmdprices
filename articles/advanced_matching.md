@@ -9,6 +9,7 @@ function supports three match methods: `"partial"`, `"exact"`, and
 matching scenarios.
 
 ``` r
+
 library(dmdprices)
 library(dplyr)
 #> 
@@ -30,9 +31,10 @@ Matches any medicine name containing all your search terms,
 case-insensitive.
 
 ``` r
+
 # Very forgiving
 dmd_price_lookup("metformin", method = "partial")
-#> # A tibble: 271 × 12
+#> # A tibble: 224 × 13
 #>    medicine                     pack_size unit  vmp_snomed_code vmpp_snomed_code
 #>    <chr>                            <dbl> <chr> <chr>           <chr>           
 #>  1 Alogliptin 12.5mg / Metform…        56 tabl… 23637211000001… 236325110000011…
@@ -44,11 +46,11 @@ dmd_price_lookup("metformin", method = "partial")
 #>  7 Dapagliflozin 5mg / Metform…        56 tabl… 24054611000001… 240184110000011…
 #>  8 Dapagliflozin 5mg / Metform…        56 tabl… 24054711000001… 240180110000011…
 #>  9 Empagliflozin 12.5mg / Metf…        56 tabl… 30318111000001… 301756110000011…
-#> 10 Empagliflozin 12.5mg / Metf…        60 tabl… 30318111000001… 378531110000011…
-#> # ℹ 261 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> 10 Empagliflozin 12.5mg / Metf…        56 tabl… 30318211000001… 301747110000011…
+#> # ℹ 214 more rows
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 **Use when:**
@@ -62,9 +64,10 @@ dmd_price_lookup("metformin", method = "partial")
 Requires the full VMP (Virtual Medicinal Product) name.
 
 ``` r
+
 # Strict—must match the canonical dm+d name exactly
 dmd_price_lookup("Metformin 500mg tablets", method = "exact")
-#> # A tibble: 49 × 12
+#> # A tibble: 37 × 13
 #>    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code
 #>    <chr>                       <dbl> <chr>  <chr>             <chr>           
 #>  1 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
@@ -77,10 +80,10 @@ dmd_price_lookup("Metformin 500mg tablets", method = "exact")
 #>  8 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #>  9 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #> 10 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
-#> # ℹ 39 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> # ℹ 27 more rows
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 **Use when:**
@@ -94,9 +97,10 @@ dmd_price_lookup("Metformin 500mg tablets", method = "exact")
 Uses Levenshtein distance to tolerate typos and minor variations.
 
 ``` r
+
 # Tolerates ~2-3 character differences
 dmd_price_lookup("metformin 500 mg tabets", method = "fuzzy", max_dist = 3)
-#> # A tibble: 49 × 12
+#> # A tibble: 37 × 13
 #>    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code
 #>    <chr>                       <dbl> <chr>  <chr>             <chr>           
 #>  1 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
@@ -109,10 +113,10 @@ dmd_price_lookup("metformin 500 mg tabets", method = "fuzzy", max_dist = 3)
 #>  8 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #>  9 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #> 10 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
-#> # ℹ 39 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> # ℹ 27 more rows
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 **Parameters:**
@@ -126,6 +130,7 @@ dmd_price_lookup("metformin 500 mg tabets", method = "fuzzy", max_dist = 3)
 You have a list of branded products but need generic (VMP) prices.
 
 ``` r
+
 # Branded product name from prescriptions
 branded_medicines <- c(
   "Glucophage (Metformin 500mg tablets)",
@@ -159,6 +164,7 @@ vmp_names
 You have internal supplier codes and need to match to dm+d.
 
 ``` r
+
 # Internal mapping table
 supplier_codes <- data.frame(
   supplier_code = c("SUPP001", "SUPP002", "SUPP003"),
@@ -200,6 +206,7 @@ supplier_codes
 Processing many medicines and tracking which matched poorly.
 
 ``` r
+
 # Large medicine list (simulated)
 medicine_list <- c(
   "Metformin 500mg tablets",
@@ -260,6 +267,7 @@ batch_results
 **Quality report:**
 
 ``` r
+
 batch_results |>
   summarise(
     total_medicines = n(),
@@ -276,6 +284,7 @@ batch_results |>
 A medicine exists in multiple strengths; you need the right one.
 
 ``` r
+
 # Partial search returns all strengths
 all_atorvastatin <- dmd_price_lookup("atorvastatin", method = "partial")
 
@@ -296,6 +305,7 @@ all_atorvastatin |>
 **Filter to the strength you want:**
 
 ``` r
+
 # You specifically want 20mg tablets
 target <- all_atorvastatin |>
   filter(
@@ -305,7 +315,7 @@ target <- all_atorvastatin |>
 
 target |>
   select(medicine, basic_price)
-#> # A tibble: 29 × 2
+#> # A tibble: 27 × 2
 #>    medicine                                      basic_price
 #>    <chr>                                               <int>
 #>  1 Atorvastatin 20mg chewable tablets sugar free        2640
@@ -318,7 +328,7 @@ target |>
 #>  8 Atorvastatin 20mg tablets                              62
 #>  9 Atorvastatin 20mg tablets                              62
 #> 10 Atorvastatin 20mg tablets                              62
-#> # ℹ 19 more rows
+#> # ℹ 17 more rows
 ```
 
 ## Advanced scenario 5: Tracking price changes
@@ -326,6 +336,7 @@ target |>
 Look up the same medicine over time with version control.
 
 ``` r
+
 # Suppose you've recorded metformin prices monthly
 # (This is simulated; in reality you'd load old dm+d versions)
 price_history <- data.frame(
@@ -356,6 +367,7 @@ price_history
 **Calculate month-on-month change:**
 
 ``` r
+
 price_history <- price_history |>
   mutate(
     previous_price = lag(price_pence),
@@ -380,6 +392,7 @@ price_history |>
 For critical systems, allow fuzzy matches but flag for review.
 
 ``` r
+
 # Function: fuzzy match with confidence scoring
 fuzzy_match_scored <- function(medicine_name, db = dmd_master, max_dist = 2) {
   result <- dmd_price_lookup(medicine_name, method = "fuzzy", max_dist = max_dist, db = db)
@@ -436,6 +449,7 @@ matches
 **Filter for review:**
 
 ``` r
+
 matches |>
   filter(requires_review | !matched) |>
   select(input, matched, reason)
@@ -450,6 +464,7 @@ matches |>
 Use partial search but filter results intelligently.
 
 ``` r
+
 # You want all ibuprofen products, but not creams/gels
 all_ibuprofen <- dmd_price_lookup("ibuprofen", method = "partial")
 
@@ -463,20 +478,20 @@ oral_ibuprofen <- all_ibuprofen |>
 oral_ibuprofen |>
   select(medicine, pack_size, unit, basic_price) |>
   arrange(medicine)
-#> # A tibble: 177 × 4
+#> # A tibble: 144 × 4
 #>    medicine                                          pack_size unit  basic_price
 #>    <chr>                                                 <dbl> <chr>       <int>
 #>  1 Ibuprofen 100mg chewable capsules                        12 caps…         385
-#>  2 Ibuprofen 200mg / Codeine 12.8mg tablets                 16 tabl…          NA
-#>  3 Ibuprofen 200mg / Codeine 12.8mg tablets                 24 tabl…         634
+#>  2 Ibuprofen 200mg / Codeine 12.8mg tablets                 24 tabl…         634
+#>  3 Ibuprofen 200mg / Codeine 12.8mg tablets                 32 tabl…         806
 #>  4 Ibuprofen 200mg / Codeine 12.8mg tablets                 32 tabl…         806
-#>  5 Ibuprofen 200mg / Codeine 12.8mg tablets                 32 tabl…         806
-#>  6 Ibuprofen 200mg / Phenylephrine 5mg tablets              16 tabl…          NA
-#>  7 Ibuprofen 200mg / Pseudoephedrine hydrochloride …        12 tabl…         339
-#>  8 Ibuprofen 200mg / Pseudoephedrine hydrochloride …        24 tabl…         521
-#>  9 Ibuprofen 200mg capsules                                 10 caps…          NA
+#>  5 Ibuprofen 200mg / Phenylephrine 5mg tablets              16 tabl…          NA
+#>  6 Ibuprofen 200mg / Pseudoephedrine hydrochloride …        12 tabl…         339
+#>  7 Ibuprofen 200mg / Pseudoephedrine hydrochloride …        24 tabl…         521
+#>  8 Ibuprofen 200mg capsules                                 10 caps…          NA
+#>  9 Ibuprofen 200mg capsules                                 12 caps…          NA
 #> 10 Ibuprofen 200mg capsules                                 12 caps…          NA
-#> # ℹ 167 more rows
+#> # ℹ 134 more rows
 ```
 
 ## Best practices for difficult matches
@@ -484,6 +499,7 @@ oral_ibuprofen |>
 ### 1. Always define your matching logic upfront
 
 ``` r
+
 matching_rules <- list(
   method = "fuzzy",           # Use fuzzy for typo tolerance
   max_dist = 2,               # Strict but reasonable
@@ -502,6 +518,7 @@ matching_rules <- list(
 ### 2. Document match quality in your results
 
 ``` r
+
 # Add a "match_quality" column
 quality_results <- batch_results |>
   mutate(
@@ -533,6 +550,7 @@ quality_results
 ### 3. Log unmatched items for investigation
 
 ``` r
+
 unmatched_log <- batch_results |>
   filter(!matched) |>
   mutate(
@@ -548,6 +566,7 @@ write.csv(unmatched_log, "unmatched_medicines_review.csv", row.names = FALSE)
 ### 4. Test on a small sample first
 
 ``` r
+
 # Before processing thousands, validate on 20-30
 test_sample <- head(medicine_list, 10)
 test_results <- lapply(test_sample, dmd_price_lookup, method = "fuzzy")
@@ -557,6 +576,7 @@ test_results <- lapply(test_sample, dmd_price_lookup, method = "fuzzy")
 ## Comparing match methods
 
 ``` r
+
 test_name <- "metformin 500 mg"
 
 # Exact
@@ -586,6 +606,7 @@ cat("Fuzzy:", nrow(fuzzy), "results\n")
 For large batches (1000+ medicines):
 
 ``` r
+
 # Use vectorized operations where possible
 medicines <- c("medicine1", "medicine2", ..., "medicine1000")
 

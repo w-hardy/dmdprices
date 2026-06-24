@@ -15,6 +15,7 @@ and
 to work with NHS CII rates in your analyses.
 
 ``` r
+
 library(dmdprices)
 ```
 
@@ -25,9 +26,10 @@ Use
 compute the inflation adjustment between two financial years:
 
 ``` r
+
 # Inflate from 2019/20 to 2023/24
 nhscii("2019/20", "2023/24")
-#> [1] 1.17693
+#> [1] 1.15617
 ```
 
 A factor of `1.127` means a 12.7% increase over that period.
@@ -38,9 +40,10 @@ For convenience, you can also pass numeric years (interpreted as
 end-years):
 
 ``` r
+
 # 2020 is interpreted as "2019/20", 2024 as "2023/24"
 nhscii(2020, 2024)
-#> [1] 1.17693
+#> [1] 1.15617
 ```
 
 ### Percentage change
@@ -48,8 +51,9 @@ nhscii(2020, 2024)
 To get the percentage change directly:
 
 ``` r
+
 nhscii("2019/20", "2023/24", output_type = "percent")
-#> [1] 17.69304
+#> [1] 15.61697
 ```
 
 ### Different indices
@@ -58,13 +62,14 @@ Three indices are available: `"pay_and_prices"` (default), `"pay"`, and
 `"prices"`.
 
 ``` r
+
 # Pay component only
 nhscii("2021/22", "2023/24", index = "pay")
-#> [1] 1.125549
+#> [1] 1.097515
 
 # Prices component only
 nhscii("2021/22", "2023/24", index = "prices")
-#> [1] 1.108467
+#> [1] 1.103431
 ```
 
 Notice that pay inflation (`7.41%`) was higher than general price
@@ -77,14 +82,16 @@ Use
 to adjust cost values to a different financial year:
 
 ``` r
+
 # A single cost
 inflate_nhscii(1000, "2019/20", "2023/24")
-#> [1] 1176.93
+#> [1] 1156.17
 ```
 
 ### Multiple costs at once
 
 ``` r
+
 costs <- c(150, 500, 2000)
 inflated <- inflate_nhscii(
   costs,
@@ -98,9 +105,9 @@ data.frame(
   inflated_2023_24 = inflated
 )
 #>   original inflated_2023_24
-#> 1      150         176.5396
-#> 2      500         588.4652
-#> 3     2000        2353.8609
+#> 1      150         173.4255
+#> 2      500         578.0849
+#> 3     2000        2312.3394
 ```
 
 ## Real-world example
@@ -109,6 +116,7 @@ Suppose you have unit costs for a health intervention from 2020/21 and
 need to report them in 2023/24 prices:
 
 ``` r
+
 # Unit costs in 2020/21
 unit_cost_2020_21 <- 450
 
@@ -121,13 +129,14 @@ unit_cost_2023_24 <- inflate_nhscii(
 )
 
 unit_cost_2023_24
-#> [1] 516.7516
+#> [1] 507.6362
 ```
 
 If you were comparing across multiple sectors (e.g., staff costs
 vs. service delivery), you might use different indices:
 
 ``` r
+
 staff_cost <- 200
 non_staff_cost <- 250
 
@@ -143,8 +152,8 @@ data.frame(
   inflated = c(staff_inflated, non_staff_inflated)
 )
 #>   component original inflated
-#> 1     Staff      200 232.0208
-#> 2 Non-staff      250 281.8831
+#> 1     Staff      200 226.2418
+#> 2 Non-staff      250 280.6024
 ```
 
 ## Data source and provenance
@@ -175,6 +184,7 @@ Check the latest PSSRU manual for the most current rates.
 To see which financial years are currently supported:
 
 ``` r
+
 # Pay and prices index
 nhscii("2015/16", "2015/16")  # Check earliest available year
 #> [1] 1
@@ -186,9 +196,9 @@ nhscii("2015/16", "2015/16")  # Check earliest available year
 If you try to use an unavailable year, you’ll get a helpful error:
 
 ``` r
+
 nhscii("2014/15", "2023/24")
-#> Error:
-#> ! from_year must be one of: 2015/16, 2016/17, 2017/18, 2018/19, 2019/20, 2020/21, 2021/22, 2022/23, 2023/24
+#> [1] 1.245031
 ```
 
 ## Further reading

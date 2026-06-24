@@ -14,6 +14,7 @@ The `dmdprices` package unifies these sources with the **dm+d**
 from both lists seamlessly.
 
 ``` r
+
 library(dmdprices)
 ```
 
@@ -22,6 +23,7 @@ library(dmdprices)
 The bundled `dmd_master` dataset includes columns from both sources:
 
 ``` r
+
 # Load the bundled data
 data(dmd_master)
 
@@ -36,18 +38,18 @@ dmd_master |>
 #>   medicine          pack_size unit  basic_price nhs_indicative_price price_basis
 #>   <chr>                 <dbl> <chr>       <int>                <int> <chr>      
 #> 1 Risdiplam 5mg ta…        28 tabl…          NA              1843300 NHS Indica…
-#> 2 Generic Comirnat…        10 3317…          NA                    0 No Price A…
+#> 2 Generic Comirnat…        10 dose           NA                   NA No Price A…
 #> 3 Generic Kilkof o…       200 ml             NA                  206 NHS Indica…
 ```
 
 **Column meanings:**
 
-| Column                 | Source         | Meaning                                           |
-|------------------------|----------------|---------------------------------------------------|
-| `basic_price`          | Drug Tariff    | Community pharmacy reimbursement (pence)          |
-| `nhs_indicative_price` | NHS Indicative | Hospital/NHS typical price (pence)                |
-| `price_basis`          | NHS Indicative | Basis of the indicative price (e.g. “DT”, “MIMS”) |
-| `price_date`           | NHS Indicative | Date price was current                            |
+| Column | Source | Meaning |
+|----|----|----|
+| `basic_price` | Drug Tariff | Community pharmacy reimbursement (pence) |
+| `nhs_indicative_price` | NHS Indicative | Hospital/NHS typical price (pence) |
+| `price_basis` | NHS Indicative | Basis of the indicative price (e.g. “DT”, “MIMS”) |
+| `price_date` | NHS Indicative | Date price was current |
 
 ## Key differences between the two lists
 
@@ -70,6 +72,7 @@ dmd_master |>
 ### When prices differ
 
 ``` r
+
 # Find medicines where Drug Tariff < NHS Indicative
 price_discrepancies <- dmd_master |>
   dplyr::filter(!is.na(basic_price), !is.na(nhs_indicative_price)) |>
@@ -84,13 +87,13 @@ price_discrepancies |>
   dplyr::select(medicine, basic_price, nhs_indicative_price, pct_difference) |>
   dplyr::slice(1:5)
 #> # A tibble: 5 × 4
-#>   medicine                       basic_price nhs_indicative_price pct_difference
-#>   <chr>                                <int>                <int>          <dbl>
-#> 1 Sodium chloride 5% eye drops …           0                 2520            Inf
-#> 2 Sodium chloride 5% eye drops …           0                 2400            Inf
-#> 3 Sodium chloride 5% eye drops …           0                 1598            Inf
-#> 4 Sodium chloride 5% eye drops …           0                 2300            Inf
-#> 5 Sodium chloride 5% eye drops …           0                  729            Inf
+#>   medicine                   basic_price nhs_indicative_price pct_difference
+#>   <chr>                            <int>                <int>          <dbl>
+#> 1 Bicalutamide 150mg tablets         222                24000         10711.
+#> 2 Bicalutamide 150mg tablets         222                24000         10711.
+#> 3 Donepezil 10mg tablets             106                10066          9396.
+#> 4 Bicalutamide 150mg tablets         222                19200          8549.
+#> 5 Olanzapine 20mg tablets            192                16207          8341.
 ```
 
 This is **normal**: the Drug Tariff is typically more aggressive on cost
@@ -101,19 +104,20 @@ control for high-volume, low-cost items.
 Not all medicines have prices in both lists:
 
 ``` r
+
 # Medicines with Drug Tariff but no NHS Indicative
 tariff_only <- dmd_master |>
   dplyr::filter(!is.na(basic_price), is.na(nhs_indicative_price))
 
 nrow(tariff_only)
-#> [1] 143
+#> [1] 6486
 
 # Medicines with NHS Indicative but no Drug Tariff (often specialty drugs)
 indicative_only <- dmd_master |>
   dplyr::filter(is.na(basic_price), !is.na(nhs_indicative_price))
 
 nrow(indicative_only)
-#> [1] 84559
+#> [1] 73115
 ```
 
 ### Centrally-funded products
@@ -121,12 +125,13 @@ nrow(indicative_only)
 Some NHS medicines are centrally procured and have no retail price:
 
 ``` r
+
 # These typically appear as missing in both lists
 no_price <- dmd_master |>
   dplyr::filter(is.na(basic_price), is.na(nhs_indicative_price))
 
 nrow(no_price)
-#> [1] 13900
+#> [1] 25357
 ```
 
 These include:
@@ -146,6 +151,7 @@ If you have a **Drug Tariff CSV** from NHS, use
 to reconcile:
 
 ``` r
+
 # Example: you have a list of medicine names from your pharmacy system
 your_medicines <- c("Metformin 500mg tablets", "Lisinopril 10mg tablets")
 
@@ -153,7 +159,7 @@ your_medicines <- c("Metformin 500mg tablets", "Lisinopril 10mg tablets")
 results <- lapply(your_medicines, dmd_price_lookup, method = "exact")
 results
 #> [[1]]
-#> # A tibble: 49 × 12
+#> # A tibble: 37 × 13
 #>    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code
 #>    <chr>                       <dbl> <chr>  <chr>             <chr>           
 #>  1 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
@@ -166,13 +172,13 @@ results
 #>  8 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #>  9 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #> 10 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
-#> # ℹ 39 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> # ℹ 27 more rows
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 #> 
 #> [[2]]
-#> # A tibble: 18 × 12
+#> # A tibble: 17 × 13
 #>    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code 
 #>    <chr>                       <dbl> <chr>  <chr>             <chr>            
 #>  1 Lisinopril 10mg tablets        28 tablet 42376111000001109 1067211000001107 
@@ -192,10 +198,9 @@ results
 #> 15 Lisinopril 10mg tablets        28 tablet 42376111000001109 1067211000001107 
 #> 16 Lisinopril 10mg tablets       500 tablet 42376111000001109 36938011000001104
 #> 17 Lisinopril 10mg tablets       500 tablet 42376111000001109 36938011000001104
-#> 18 Lisinopril 10mg tablets       500 tablet 42376111000001109 36938011000001104
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 ### Fuzzy matching for typos/variations
@@ -203,9 +208,10 @@ results
 If exact matches fail, use fuzzy matching:
 
 ``` r
+
 # Your source data might have minor spelling variations
 dmd_price_lookup("metformin 500 mg tablets", method = "fuzzy", max_dist = 3)
-#> # A tibble: 82 × 12
+#> # A tibble: 62 × 13
 #>    medicine                pack_size unit   vmp_snomed_code   vmpp_snomed_code
 #>    <chr>                       <dbl> <chr>  <chr>             <chr>           
 #>  1 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
@@ -218,10 +224,10 @@ dmd_price_lookup("metformin 500 mg tablets", method = "fuzzy", max_dist = 3)
 #>  8 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #>  9 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
 #> 10 Metformin 500mg tablets        28 tablet 42084911000001109 1320811000001101
-#> # ℹ 72 more rows
-#> # ℹ 7 more variables: drug_tariff_category <chr>, basic_price <int>,
+#> # ℹ 52 more rows
+#> # ℹ 8 more variables: drug_tariff_category <chr>, basic_price <int>,
 #> #   nhs_indicative_price <int>, price_basis <chr>, price_date <chr>,
-#> #   ampp_name <chr>, ampp_snomed_code <chr>
+#> #   ampp_name <chr>, ampp_snomed_code <chr>, is_combination <lgl>
 ```
 
 ## Reconciling external price lists
@@ -229,6 +235,7 @@ dmd_price_lookup("metformin 500 mg tablets", method = "fuzzy", max_dist = 3)
 If you’re importing a Drug Tariff extract:
 
 ``` r
+
 # Simulated Drug Tariff data
 external_tariff <- data.frame(
   medicine_name = c("Paracetamol 500mg tablets", "Ibuprofen 200mg tablets"),
@@ -256,6 +263,7 @@ external_tariff
 ### 1. Always check for missing prices first
 
 ``` r
+
 # Flag records with incomplete pricing
 dmd_master |>
   dplyr::mutate(
@@ -272,15 +280,16 @@ dmd_master |>
 #> # A tibble: 4 × 2
 #>   pricing_status      n
 #>   <chr>           <int>
-#> 1 Both sources    19594
-#> 2 Indicative only 84559
-#> 3 No price        13900
-#> 4 Tariff only       143
+#> 1 Both sources    13238
+#> 2 Indicative only 73115
+#> 3 No price        25357
+#> 4 Tariff only      6486
 ```
 
 ### 2. Document your price source choice
 
 ``` r
+
 # Create a unified price column with priority logic
 analysis_data <- dmd_master |>
   dplyr::mutate(
@@ -298,9 +307,9 @@ analysis_data |>
 #> # A tibble: 3 × 2
 #>   price_source       n
 #>   <chr>          <int>
-#> 1 Drug Tariff    19737
-#> 2 Missing        13900
-#> 3 NHS Indicative 84559
+#> 1 Drug Tariff    19724
+#> 2 Missing        25357
+#> 3 NHS Indicative 73115
 ```
 
 ### 3. Note the currency and units
@@ -308,6 +317,7 @@ analysis_data |>
 Prices in `dmdprices` are in **pence**. Always convert for reporting:
 
 ``` r
+
 # Convert to pounds for reports
 analysis_data |>
   dplyr::mutate(price_pounds = analysis_price_pence / 100) |>
@@ -317,13 +327,14 @@ analysis_data |>
 #>   medicine                                              price_pence price_pounds
 #>   <chr>                                                       <int>        <dbl>
 #> 1 Risdiplam 5mg tablets                                     1843300     18433   
-#> 2 Generic Comirnaty LP.8.1 adults and adolescents from…           0         0   
+#> 2 Generic Comirnaty LP.8.1 adults and adolescents from…          NA        NA   
 #> 3 Generic Kilkof oral solution                                  206         2.06
 ```
 
 ### 4. Keep audit trails
 
 ``` r
+
 # Record which version of dm+d was used
 analysis_timestamp <- list(
   dmd_release = attr(dmd_master, "dmd_release_label"),
@@ -332,10 +343,10 @@ analysis_timestamp <- list(
 
 analysis_timestamp
 #> $dmd_release
-#> [1] "Week 34 2025 (14 August 2025)"
+#> [1] "Week 15 2026 (06 April 2026)"
 #> 
 #> $analysis_date
-#> [1] "2026-03-11"
+#> [1] "2026-06-24"
 ```
 
 ## Further reading

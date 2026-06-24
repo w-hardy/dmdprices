@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Data Sources and Updates • dmdprices</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Data Sources and Updates">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-apps" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Apps</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-apps">
 <li><a class="dropdown-item" href="../articles/apps.html#dmd-price-lookup">dm+d Price Lookup</a></li>
+    <li><a class="dropdown-item" href="../articles/apps.html#dmd-dose-optimiser">dm+d Dose Optimiser</a></li>
     <li><a class="dropdown-item" href="../articles/apps.html#nhs-cii-cost-adjuster">NHS CII Cost Adjuster</a></li>
   </ul>
 </li>
@@ -50,6 +51,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.2.0</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -118,7 +120,7 @@ Update) service</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">dmd_master</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">dmd_master</span>, <span class="st">"dmd_release_label"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Week 34 2025 (14 August 2025)"</span></span>
+<span><span class="co">#&gt; [1] "Week 15 2026 (06 April 2026)"</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dmd_master</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 118196</span></span></code></pre></div>
@@ -195,7 +197,7 @@ for the next year)</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example: current rates available</span></span>
 <span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2015/16"</span>, <span class="st">"2023/24"</span>, index <span class="op">=</span> <span class="st">"prices"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1.209727</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 1.204231</span></span></code></pre></div>
 <p><strong>Note:</strong> 2023/24 figures are provisional per the 2025
 PSSRU manual. Later releases may revise these values.</p>
 </div>
@@ -240,7 +242,7 @@ PSSRU manual. Later releases may revise these values.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Check bundled data release</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">dmd_master</span>, <span class="st">"dmd_release_label"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Week 34 2025 (14 August 2025)"</span></span>
+<span><span class="co">#&gt; [1] "Week 15 2026 (06 April 2026)"</span></span>
 <span></span>
 <span><span class="co"># Check when it was packaged</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">dmd_master</span>, <span class="st">"package_date"</span><span class="op">)</span></span>
@@ -294,10 +296,10 @@ PSSRU manual. Later releases may revise these values.</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">data_audit</span><span class="op">)</span></span>
 <span><span class="co">#&gt; List of 3</span></span>
-<span><span class="co">#&gt;  $ analysis_date   : Date[1:1], format: "2026-03-11"</span></span>
+<span><span class="co">#&gt;  $ analysis_date   : Date[1:1], format: "2026-06-24"</span></span>
 <span><span class="co">#&gt;  $ dmd_source      :List of 3</span></span>
 <span><span class="co">#&gt;   ..$ source         : chr "dmdprices bundled dataset"</span></span>
-<span><span class="co">#&gt;   ..$ release        : chr "Week 34 2025 (14 August 2025)"</span></span>
+<span><span class="co">#&gt;   ..$ release        : chr "Week 15 2026 (06 April 2026)"</span></span>
 <span><span class="co">#&gt;   ..$ medicines_total: int 118196</span></span>
 <span><span class="co">#&gt;  $ inflation_source:List of 3</span></span>
 <span><span class="co">#&gt;   ..$ source  : chr "PSSRU Unit Costs of Health and Social Care"</span></span>
@@ -325,11 +327,11 @@ PSSRU manual. Later releases may revise these values.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">metadata</span></span>
-<span><span class="co">#&gt;              item                         value</span></span>
-<span><span class="co">#&gt; 1   Analysis date                    2026-03-11</span></span>
-<span><span class="co">#&gt; 2    dm+d release Week 34 2025 (14 August 2025)</span></span>
-<span><span class="co">#&gt; 3   NHS CII index                pay_and_prices</span></span>
-<span><span class="co">#&gt; 4 Package version                         0.3.0</span></span></code></pre></div>
+<span><span class="co">#&gt;              item                        value</span></span>
+<span><span class="co">#&gt; 1   Analysis date                   2026-06-24</span></span>
+<span><span class="co">#&gt; 2    dm+d release Week 15 2026 (06 April 2026)</span></span>
+<span><span class="co">#&gt; 3   NHS CII index               pay_and_prices</span></span>
+<span><span class="co">#&gt; 4 Package version                        0.5.0</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -414,6 +416,105 @@ Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC
 BY-NC-SA 4.0)</a>.</p>
 <p><strong>Citation:</strong></p>
 <pre><code>Jones KC, Weatherly H, Birch S, Castelli A, Chalkley M, Dargan A, Findlay D, Gao M, Hinde S, Markham S, Smith D, Teo H (2025). Unit Costs of Health and Social Care 2024 Manual. Technical report. Personal Social Services Research Unit (University of Kent) &amp; Centre for Health Economics (University of York), Kent, UK. https://doi.org/10.22024/UniKent/01.02.109563</code></pre>
+</div>
+</div>
+<div class="section level2">
+<h2 id="maintaining-the-bundled-data-for-package-maintainers">Maintaining the bundled data (for package maintainers)<a class="anchor" aria-label="anchor" href="#maintaining-the-bundled-data-for-package-maintainers"></a>
+</h2>
+<p>End users never need this — the package ships with a ready-to-use
+dataset. This section is for maintainers refreshing the bundled
+<code>dmd_master</code> and <code>dmd_ingredients</code> datasets to a
+newer dm+d release.</p>
+<div class="section level3">
+<h3 id="rebuilding">Rebuilding<a class="anchor" aria-label="anchor" href="#rebuilding"></a>
+</h3>
+<p>The datasets are rebuilt from a local dmdDataLoader CSV export of a
+dm+d release by <code>data-raw/dmd_master.R</code>:</p>
+<ol style="list-style-type: decimal">
+<li><p>Download a dm+d release and produce the dmdDataLoader
+<code>csv/</code> export.</p></li>
+<li><p>Edit the release metadata
+(<code>dmd_release_week/year/date</code>) and
+<code>dmd_loader_path</code> at the top of
+<code>data-raw/dmd_master.R</code>.</p></li>
+<li>
+<p>From the package root, run:</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"data-raw/dmd_master.R"</span><span class="op">)</span></span></code></pre></div>
+<p>This rebuilds and saves <strong>both</strong>
+<code>data/dmd_master.rda</code> and
+<code>data/dmd_ingredients.rda</code>.</p>
+</li>
+<li><p>Update the release label/date in <code>R/data.R</code> (the
+<code>dmd_master</code> / <code>dmd_ingredients</code> roxygen) and in
+<code>DESCRIPTION</code>, then run
+<code>devtools::document()</code>.</p></li>
+<li><p>Run <code>devtools::test()</code> and
+<code>devtools::check()</code>.</p></li>
+</ol>
+<p>The script reads these CSV files: <code>f_vmp_VmpType.csv</code>,
+<code>f_vmpp_VmppType.csv</code>, <code>f_vmpp_DtInfoType.csv</code>,
+<code>f_ampp_AmppType.csv</code>, <code>f_ampp_PriceInfoType.csv</code>,
+<code>f_lookup_DtPayCatInfoType.csv</code>,
+<code>f_lookup_PriceBasisInfoType.csv</code>, plus the optional
+ingredient files <code>f_vmp_VpiType.csv</code>,
+<code>f_ingredient.csv</code>, and
+<code>f_lookup_UoMHistoryInfoType.csv</code> (which add the
+<code>$ingredients</code> table, the <code>is_combination</code> flag,
+and unit labels). <strong>dm+d occasionally renames these files between
+releases.</strong> If the loader errors with “Expected file not found”,
+update the filename in both <code>R/dmd_load.R</code> and
+<code>data-raw/dmd_master.R</code> (the column specs live in
+<code>.col_names</code> in <code>R/utils.R</code>).</p>
+</div>
+<div class="section level3">
+<h3 id="verifying-a-rebuild">Verifying a rebuild<a class="anchor" aria-label="anchor" href="#verifying-a-rebuild"></a>
+</h3>
+<p>Confirm every pack unit resolved to a label rather than a raw SNOMED
+code:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"^[0-9]+$"</span>, <span class="va">dmd_master</span><span class="op">$</span><span class="va">unit</span><span class="op">)</span><span class="op">)</span>   <span class="co"># should be 0</span></span></code></pre></div>
+<p>If this is non-zero, the listed codes are missing from the
+unit-of-measure lookup — see UoM mapping below.</p>
+</div>
+<div class="section level3">
+<h3 id="unit-of-measure-uom-mapping">Unit-of-measure (UoM) mapping<a class="anchor" aria-label="anchor" href="#unit-of-measure-uom-mapping"></a>
+</h3>
+<p>In the raw dm+d data, pack units (<code>dmd_master$unit</code>) are
+SNOMED codes. <code>.build_master()</code> (<code>R/utils.R</code>)
+resolves them to readable labels in two layers, in order:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong><code>.uom_labels</code></strong> — a small curated map of
+the units that matter for <em>dose costing</em>. These use short,
+<strong>canonicalisable</strong> labels (<code>"mg"</code>,
+<code>"ml"</code>, <code>"g"</code>, <code>"dose"</code>,
+<code>"unit"</code>, <code>"tablet"</code>, …) that
+<code>.canonicalise_unit()</code> understands, so the optimiser can
+match a pack’s unit against a product’s concentration denominator —
+e.g. an inhaler’s <code>…/dose</code>, so one inhaler is costed as its
+full actuation count rather than a single actuation.</li>
+<li>
+<strong>The dm+d UoM lookup</strong>
+(<code>f_lookup_UoMHistoryInfoType.csv</code>, <code>CD → DESC</code>) —
+a fallback supplying a readable label for every other code (devices,
+dressings, containers …). These are display-only and need not
+canonicalise.</li>
+</ol>
+<p>To add or change a mapping:</p>
+<ul>
+<li>If the unit affects <strong>dosing</strong> (a concentration pack
+unit such as <code>dose</code>, <code>actuation</code>, <code>ml</code>,
+or <code>g</code>), add it to <code>.uom_labels</code> with a short
+label that <code>.canonicalise_unit()</code> recognises (see
+<code>.unit_table</code> in <code>R/parse_strength.R</code>). Curated
+entries take precedence over the lookup.</li>
+<li>If the unit is <strong>display-only</strong> (a container or
+device), nothing is needed — the lookup <code>DESC</code> is applied
+automatically on rebuild.</li>
+</ul>
+<p>Both layers run at <strong>build time</strong>, so changes only reach
+the shipped data when <code>data-raw/dmd_master.R</code> is re-run.</p>
 </div>
 </div>
 <div class="section level2">
