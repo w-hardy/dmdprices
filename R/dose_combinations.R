@@ -50,33 +50,6 @@
   s
 }
 
-# ── Whole-pack cost for one strength ──────────────────────────────────────────
-
-# Given a list of (items_per_pack, pack_price) AMPPs and a required item
-# count, find the cheapest single-AMPP whole-pack solution and return the
-# chosen AMPP index, packs_to_buy, and total cost. Returns NA fields if none
-# priced.
-.whole_pack_cheapest <- function(ampps, count_needed) {
-  if (count_needed <= 0) {
-    return(list(ampp_row = NA_integer_, packs = 0L, cost = 0))
-  }
-  pack_sizes <- ampps$items_per_pack
-  pack_prices <- ampps$pack_price_pence
-  ok <- !is.na(pack_sizes) & !is.na(pack_prices) & pack_sizes > 0
-  if (!any(ok)) {
-    return(list(ampp_row = NA_integer_, packs = NA_integer_, cost = NA_real_))
-  }
-  idx <- which(ok)
-  packs <- ceiling(count_needed / pack_sizes[idx])
-  costs <- packs * pack_prices[idx]
-  best <- which.min(costs)
-  list(
-    ampp_row = idx[best],
-    packs = as.integer(packs[best]),
-    cost = as.numeric(costs[best])
-  )
-}
-
 # ── Pack-level coin builder ──────────────────────────────────────────────────
 
 # Adds a `pack_dose` column to group_df: the total canonical dose delivered
@@ -512,32 +485,32 @@
     rows <- group_df[group_df$per_item_dose == s, , drop = FALSE]
 
     chosen <- pick_ampp(rows)
-    priced <- rows[!is.na(rows$per_item_price_pence), , drop = FALSE]
     subtotal_prorata <- if (is.na(chosen$per_item_price_pence)) {
       NA_real_
     } else {
       chosen$per_item_price_pence * counts[i]
     }
 
-    wp_rows <- if (nrow(priced) > 0) priced else rows
-    if (is_max) {
-      # Whole-pack: pick most expensive pack for this strength
-      wp <- .whole_pack_most_expensive(wp_rows, counts[i])
-    } else {
-      wp <- .whole_pack_cheapest(wp_rows, counts[i])
-    }
-
-    if (is.na(wp$cost)) {
-      wp_ampp <- rows[1, , drop = FALSE]
+    # Whole-pack figures describe buying *the same* AMPP whole (the one being
+    # split), so identity, per-item price, and pack price in this row all refer
+    # to a single product. Previously the whole-pack price came from a
+    # separately chosen cheapest/dearest-whole-pack AMPP, which produced rows
+    # that labelled one pack with another pack's price (e.g. a 1000-tablet pack
+    # shown with a 28-tablet pack's price).
+    items_per_pack <- chosen$items_per_pack
+    if (
+      is.na(chosen$pack_price_pence) ||
+        is.na(items_per_pack) ||
+        items_per_pack <= 0
+    ) {
       packs_to_buy <- NA_integer_
       subtotal_whole <- NA_real_
     } else {
-      wp_ampp <- wp_rows[wp$ampp_row, , drop = FALSE]
-      packs_to_buy <- wp$packs
-      subtotal_whole <- wp$cost
+      packs_to_buy <- as.integer(ceiling(counts[i] / items_per_pack))
+      subtotal_whole <- as.numeric(packs_to_buy * chosen$pack_price_pence)
     }
 
-    if (isTRUE(chosen$price_fallback) || isTRUE(wp_ampp$price_fallback)) {
+    if (isTRUE(chosen$price_fallback)) {
       price_fallback <- TRUE
     }
 
@@ -553,7 +526,7 @@
       count = counts[i],
       pack_size = chosen$pack_size,
       packs_to_buy = packs_to_buy,
-      pack_price_pence = wp_ampp$pack_price_pence,
+      pack_price_pence = chosen$pack_price_pence,
       per_item_price_pence = chosen$per_item_price_pence,
       subtotal_prorata_pence = subtotal_prorata,
       subtotal_whole_pack_pence = subtotal_whole
@@ -684,29 +657,6 @@
     preparation_label = preparation_label,
     objective = objective,
     group_df = group_df
-  )
-}
-
-
-# ── Whole-pack cost — most expensive single-AMPP whole-pack solution ──────────
-.whole_pack_most_expensive <- function(ampps, count_needed) {
-  if (count_needed <= 0) {
-    return(list(ampp_row = NA_integer_, packs = 0L, cost = 0))
-  }
-  pack_sizes <- ampps$items_per_pack
-  pack_prices <- ampps$pack_price_pence
-  ok <- !is.na(pack_sizes) & !is.na(pack_prices) & pack_sizes > 0
-  if (!any(ok)) {
-    return(list(ampp_row = NA_integer_, packs = NA_integer_, cost = NA_real_))
-  }
-  idx <- which(ok)
-  packs <- ceiling(count_needed / pack_sizes[idx])
-  costs <- packs * pack_prices[idx]
-  best <- which.max(costs)
-  list(
-    ampp_row = idx[best],
-    packs = as.integer(packs[best]),
-    cost = as.numeric(costs[best])
   )
 }
 
@@ -912,8 +862,14 @@
   group_df
 ) {
   over_delivery <- dose_delivered - dose_canonical
-  price_field_used <- unique(group_df$price_field_used)
-  price_field_used <- price_field_used[!is.na(price_field_used)][1]
+  # Report the price field of the AMPPs actually chosen (matched back to the
+  # group by AMPP code), so price_field_used is consistent with the pack prices
+  # shown in each combination row rather than reflecting some other AMPP in the
+  # group.
+  chosen_pf <- group_df$price_field_used[
+    match(combination$ampp_snomed_code, group_df$ampp_snomed_code)
+  ]
+  price_field_used <- chosen_pf[!is.na(chosen_pf)][1]
 
   tibble::tibble(
     medicine_root = medicine_root,

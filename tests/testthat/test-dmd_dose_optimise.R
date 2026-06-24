@@ -1529,3 +1529,115 @@ test_that("dmd_dose_cost_range length matches dose vector length", {
   )
   expect_equal(nrow(res), length(doses))
 })
+
+# ── Conflated-AMPP regression ────────────────────────────────────────────────
+# When the cheapest *per-tablet* pack differs from the cheapest *whole* pack of
+# the same strength, each combination row must still describe ONE AMPP: the
+# reported pack_price_pence (and price_field_used) must belong to the AMPP named
+# in that row, never get borrowed from a different pack.
+
+# Two AMPPs of one 500 mg strength:
+#  - a 1000-tablet pack with no Drug Tariff price but a cheap NHS Indicative
+#    Price (0.975p / tablet) -> cheapest *per tablet*;
+#  - a 28-tablet pack with a Drug Tariff basic price (58p) -> cheapest *whole
+#    pack* for a single tablet, but a dearer per-tablet rate (~2.07p).
+.fake_conflation_db <- function() {
+  master <- tibble::tibble(
+    medicine = c("Testdrug 500mg tablets", "Testdrug 500mg tablets"),
+    pack_size = c(1000, 28),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("1", "1"),
+    vmpp_snomed_code = c("VPP_BIG", "VPP_SMALL"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(NA_integer_, 58L),
+    nhs_indicative_price = c(975L, 86L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c(
+      "Testdrug 500mg (Big Pharma) 1000 tablet",
+      "Testdrug 500mg (Small Pharma) 28 tablet"
+    ),
+    ampp_snomed_code = c("APP_BIG", "APP_SMALL")
+  )
+  structure(list(master = master, loaded_at = Sys.time()), class = "dmd_db")
+}
+
+test_that("combination row is not conflated across two packs of one strength", {
+  db <- .fake_conflation_db()
+  res <- dmd_dose_optimise("Testdrug 500mg tablets", dose = 500, db = db)
+  cheapest <- res[res$objective == "cheapest", ]
+  expect_equal(nrow(cheapest), 1L)
+
+  comb <- cheapest$combination[[1]]
+  expect_equal(nrow(comb), 1L)
+
+  # Cheapest per-tablet source is the 1000-tablet pack.
+  expect_equal(comb$ampp_snomed_code, "APP_BIG")
+  expect_equal(comb$pack_size, 1000)
+
+  # Its pack price must be the 1000-pack's own price (975), NOT the 28-pack's 58.
+  expect_equal(comb$pack_price_pence, 975)
+  expect_false(isTRUE(comb$pack_price_pence == 58))
+
+  # Per-item price agrees with this same pack's price / pack size.
+  expect_equal(
+    comb$per_item_price_pence,
+    comb$pack_price_pence / comb$pack_size
+  )
+
+  # Whole-pack subtotal is packs_to_buy * the SAME pack's price.
+  expect_equal(
+    comb$subtotal_whole_pack_pence,
+    comb$packs_to_buy * comb$pack_price_pence
+  )
+
+  # price_field_used reflects the chosen pack (indicative fallback, since its
+  # basic price is NA) rather than the other pack's basic price.
+  expect_equal(cheapest$price_field_used, "nhs_indicative_price")
+})
+
+test_that("most_expensive objective is also internally consistent per row", {
+  db <- .fake_conflation_db()
+  res <- dmd_dose_optimise(
+    "Testdrug 500mg tablets",
+    dose = 500,
+    db = db,
+    objective = "most_expensive"
+  )
+  comb <- res$combination[[1]]
+  expect_equal(nrow(comb), 1L)
+  # Dearest per-tablet source is the 28-tablet pack (~2.07p vs 0.975p).
+  expect_equal(comb$ampp_snomed_code, "APP_SMALL")
+  expect_equal(comb$pack_price_pence, 58)
+  expect_equal(
+    comb$per_item_price_pence,
+    comb$pack_price_pence / comb$pack_size
+  )
+})
+
+test_that("each combination row's pack price belongs to its own AMPP", {
+  # Invariant guard across the standard fixture and several doses: the
+  # reported pack_price_pence must equal the resolved price (basic, else
+  # indicative) of the AMPP named in the same row, and per-item price must be
+  # that pack's price / pack size.
+  db <- .fake_dose_db()
+  m <- db$master
+  for (d in c(500, 1000, 1500, 2000)) {
+    res <- dmd_dose_optimise("Metformin 500mg tablets", dose = d, db = db)
+    for (k in seq_len(nrow(res))) {
+      comb <- res$combination[[k]]
+      if (nrow(comb) == 0) next
+      idx <- match(comb$ampp_snomed_code, m$ampp_snomed_code)
+      resolved <- ifelse(
+        !is.na(m$basic_price[idx]),
+        m$basic_price[idx],
+        m$nhs_indicative_price[idx]
+      )
+      expect_equal(comb$pack_price_pence, as.numeric(resolved))
+      expect_equal(
+        comb$per_item_price_pence,
+        comb$pack_price_pence / comb$pack_size
+      )
+    }
+  }
+})

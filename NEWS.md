@@ -105,6 +105,14 @@ existing code continues to run. However, the following changes can alter
 
 ## Fixed
 
+- Dose-optimiser combination rows no longer conflate two AMPPs. In the
+  splittable path, the cheapest *per-tablet* pack and the cheapest *whole*
+  pack of a strength can differ; the row previously showed one pack's identity
+  with another pack's `pack_price_pence` / `price_field_used` (e.g. a
+  1000-tablet pack labelled with a 28-tablet pack's price). Each row now
+  describes a single product consistently — `pack_price_pence`,
+  `per_item_price_pence`, the whole-pack subtotal, and `price_field_used` all
+  refer to the AMPP named in that row.
 - Inhaler (and other per-dose) costing: the `"dose"` pack-unit code is now
   recognised, so a single inhaler is treated as its full actuation count
   (e.g. 200 doses) rather than one actuation priced as a whole pack. Previously
