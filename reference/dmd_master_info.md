@@ -30,9 +30,8 @@ A list of class `"dmd_db_info"` with the following elements:
 
 - `release_label`:
 
-  Character. dm+d release label (e.g.
-  `"Week 34 2025 (14 August 2025)"`). `NA` for user-loaded databases
-  (use `loaded_at` instead).
+  Character. dm+d release label (e.g. `"Week 15 2026 (06 April 2026)"`).
+  `NA` for user-loaded databases (use `loaded_at` instead).
 
 - `loaded_at`:
 

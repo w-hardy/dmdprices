@@ -217,8 +217,8 @@ data_audit <- list(
   
   inflation_source = list(
     source = "PSSRU Unit Costs of Health and Social Care",
-    doi = "10.22024/UniKent/01.02.109563",
-    coverage = "2015/16 to 2023/24 (2023/24 provisional)"
+    doi = "10.22024/UniKent/01.02.115569",
+    coverage = "2014/15 to 2024/25 (2024/25 provisional)"
   )
 )
 
@@ -231,8 +231,8 @@ str(data_audit)
 #>   ..$ medicines_total: int 118196
 #>  $ inflation_source:List of 3
 #>   ..$ source  : chr "PSSRU Unit Costs of Health and Social Care"
-#>   ..$ doi     : chr "10.22024/UniKent/01.02.109563"
-#>   ..$ coverage: chr "2015/16 to 2023/24 (2023/24 provisional)"
+#>   ..$ doi     : chr "10.22024/UniKent/01.02.115569"
+#>   ..$ coverage: chr "2014/15 to 2024/25 (2024/25 provisional)"
 ```
 
 ### Save metadata with your results
@@ -344,7 +344,7 @@ Licensed under [Creative Commons Attribution-NonCommercial-ShareAlike
 
 **Citation:**
 
-    Jones KC, Weatherly H, Birch S, Castelli A, Chalkley M, Dargan A, Findlay D, Gao M, Hinde S, Markham S, Smith D, Teo H (2025). Unit Costs of Health and Social Care 2024 Manual. Technical report. Personal Social Services Research Unit (University of Kent) & Centre for Health Economics (University of York), Kent, UK. https://doi.org/10.22024/UniKent/01.02.109563
+    Jones KC, Weatherly H, Barker A, Birch S, Castelli A, Dargan A, Findlay D, Hinde S, Markham S, Smith D, Teo H (2026). Unit Costs of Health and Social Care 2025 Manual. Technical report. Personal Social Services Research Unit (University of Kent) & Centre for Health Economics (University of York), Kent, UK. https://doi.org/10.22024/UniKent/01.02.115569
 
 ## Maintaining the bundled data (for package maintainers)
 

@@ -481,8 +481,8 @@ analysis_metadata <- list(
   
   inflation = list(
     source = "PSSRU Unit Costs",
-    doi = "10.22024/UniKent/01.02.109563",
-    coverage = "2015/16 to 2023/24"
+    doi = "10.22024/UniKent/01.02.115569",
+    coverage = "2014/15 to 2024/25"
   ),
   
   package = list(
@@ -503,8 +503,8 @@ str(analysis_metadata)
 #>   ..$ priority: chr "Drug Tariff, fallback to Indicative"
 #>  $ inflation    :List of 3
 #>   ..$ source  : chr "PSSRU Unit Costs"
-#>   ..$ doi     : chr "10.22024/UniKent/01.02.109563"
-#>   ..$ coverage: chr "2015/16 to 2023/24"
+#>   ..$ doi     : chr "10.22024/UniKent/01.02.115569"
+#>   ..$ coverage: chr "2014/15 to 2024/25"
 #>  $ package      :List of 2
 #>   ..$ name   : chr "dmdprices"
 #>   ..$ version: chr "0.5.0"
@@ -512,12 +512,12 @@ str(analysis_metadata)
 
 **Sample text for your methodology:**
 
-> Medicine prices were obtained from the NHS dm+d (Week 34 2025) via the
+> Medicine prices were obtained from the NHS dm+d (Week 15 2026) via the
 > dmdprices R package. Drug Tariff prices (pence) were used where
 > available; NHS Indicative prices were used as fallback. Historical
-> costs were adjusted to 2023/24 prices using the NHS Cost Inflation
-> Index (Jones et al., 2025, Unit Costs of Health and Social Care 2024
-> Manual, <https://doi.org/10.22024/UniKent/01.02.109563>).
+> costs were adjusted to 2024/25 prices using the NHS Cost Inflation
+> Index (Jones et al., 2026, Unit Costs of Health and Social Care 2025
+> Manual, <https://doi.org/10.22024/UniKent/01.02.115569>).
 
 ------------------------------------------------------------------------
 

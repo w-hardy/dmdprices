@@ -53,6 +53,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="news/index.html">Version 0.5.0</a></li>
     <li><a class="dropdown-item" href="news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="news/index.html">Version 0.3.0</a></li>
     <li><a class="dropdown-item" href="news/index.html">Version 0.2.0</a></li>
@@ -74,7 +75,7 @@
 <div class="page-header"><h1 id="dmdprices">dmdprices<a class="anchor" aria-label="anchor" href="#dmdprices"></a>
 </h1></div>
 <p>An R package for looking up medicine prices from the <a href="https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/dictionary-medicines-and-devices-dmd" class="external-link">NHS dm+d</a> (Dictionary of Medicines and Devices), with tools for inflation adjustment using the NHS Cost Inflation Index (NHS CII).</p>
-<p>A <strong>bundled dataset</strong> (Week 34 2025, 14 August 2025) is included — no setup required for immediate use.</p>
+<p>A <strong>bundled dataset</strong> (Week 15 2026, 06 April 2026) is included — no setup required for immediate use.</p>
 <div class="alert alert-warning" role="alert">
 <p><strong>⚠️ Under development — not validated.</strong> This package is under active development and has not been formally validated. Outputs should be independently verified before use in research or clinical decision-making. Use at your own risk.</p>
 </div>
@@ -107,11 +108,14 @@
 <li>
 <a href="articles/apps.html#dmd-price-lookup"><strong>dm+d Price Lookup</strong></a> — search medicine prices by name with partial, exact, or fuzzy matching</li>
 <li>
+<a href="articles/apps.html#dmd-dose-optimiser"><strong>dm+d Dose Optimiser</strong></a> — find the cheapest / fewest-item AMPP combinations that deliver a target dose</li>
+<li>
 <a href="articles/apps.html#nhs-cii-cost-adjuster"><strong>NHS CII Cost Adjuster</strong></a> — adjust costs between NHS financial years</li>
 </ul>
 <p>Or run locally:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/run_dmd_price_lookup.html">run_dmd_price_lookup</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/run_dmd_dose_optimise.html">run_dmd_dose_optimise</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/run_inflate_nhscii.html">run_inflate_nhscii</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -167,9 +171,9 @@
 <div class="section level2">
 <h2 id="data-attribution">Data attribution<a class="anchor" aria-label="anchor" href="#data-attribution"></a>
 </h2>
-<p>The <code>dmd_master</code> dataset is derived from the <strong>NHS Dictionary of Medicines and Devices (dm+d)</strong>, Week 34 2025 release (14 August 2025), published by the <strong>NHS Business Services Authority (NHSBSA)</strong>.</p>
+<p>The <code>dmd_master</code> dataset is derived from the <strong>NHS Dictionary of Medicines and Devices (dm+d)</strong>, Week 15 2026 release (06 April 2026), published by the <strong>NHS Business Services Authority (NHSBSA)</strong>.</p>
 <p>© Crown copyright. Licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" class="external-link">Open Government Licence v3.0</a>.</p>
-<p>NHS CII rates are from Jones et al. (2025), <a href="https://doi.org/10.22024/UniKent/01.02.109563" class="external-link"><em>Unit Costs of Health and Social Care 2024 Manual</em></a>, published by PSSRU (University of Kent) &amp; Centre for Health Economics (University of York). Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="external-link">CC BY-NC-SA 4.0</a>.</p>
+<p>NHS CII rates are from Jones et al. (2026), <a href="https://doi.org/10.22024/UniKent/01.02.115569" class="external-link"><em>Unit Costs of Health and Social Care 2025 Manual</em></a>, published by PSSRU (University of Kent) &amp; Centre for Health Economics (University of York). Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="external-link">CC BY-NC-SA 4.0</a>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

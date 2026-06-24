@@ -46,12 +46,11 @@ applies to the **bundled dm+d data**.
 The NHS Cost Inflation Index (NHS CII) rates embedded in this package
 (in `R/nhscii.R`) are derived from:
 
-> Jones KC, Weatherly H, Birch S, Castelli A, Chalkley M, Dargan A,
-> Findlay D, Gao M, Hinde S, Markham S, Smith D, Teo H (2025). *Unit
-> Costs of Health and Social Care 2024 Manual*. Personal Social Services
-> Research Unit (University of Kent) & Centre for Health Economics
-> (University of York), Kent, UK.
-> <https://doi.org/10.22024/UniKent/01.02.109563>
+> Jones KC, Weatherly H, Barker A, Birch S, Castelli A, Dargan A,
+> Findlay D, Hinde S, Markham S, Smith D, Teo H (2026). *Unit Costs of
+> Health and Social Care 2025 Manual*. Personal Social Services Research
+> Unit (University of Kent) & Centre for Health Economics (University of
+> York), Kent, UK. <https://doi.org/10.22024/UniKent/01.02.115569>
 
 This work is licensed under **Creative Commons
 Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA
