@@ -22,7 +22,7 @@ dmdprices::run_dmd_price_lookup()
 **Online (hosted):**
 
 Your browser does not support iframes. [Open the app
-directly.](https://019cde7b-7001-18b6-6a22-e3d469fcef42.share.connect.posit.cloud/)
+directly.](https://w-hardy-dmd-price-lookup.share.connect.posit.cloud)
 
 ------------------------------------------------------------------------
 
@@ -41,7 +41,7 @@ dmdprices::run_dmd_dose_optimise()
 **Online (hosted):**
 
 Your browser does not support iframes. [Open the app
-directly.](https://019dbf51-8e43-5467-544c-7b8d1542ac46.share.connect.posit.cloud/)
+directly.](https://w-hardy-dmd-dose-optimise.share.connect.posit.cloud)
 
 ------------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ dmdprices::run_inflate_nhscii()
 **Online (hosted):**
 
 Your browser does not support iframes. [Open the app
-directly.](https://019cde7b-eda1-eda7-ec1c-6ff1fae14a71.share.connect.posit.cloud/)
+directly.](https://w-hardy-inflate-nhscii.share.connect.posit.cloud)
 
 ------------------------------------------------------------------------
 
