@@ -183,19 +183,12 @@ install that branch before redeploying:
 remotes::install_github("w-hardy/dmdprices@develop")
 ```
 
-(or pin `Remotes: w-hardy/dmdprices@develop` in the app `DESCRIPTION` for a
-git-backed deploy — but don't merge that pin into `main`).
-
-**Git-backed (manifest) publishing.** Only `dmd_dose_optimise` ships a
-`manifest.json`. If you publish that app from git via its manifest, regenerate
-it after updating the package so the locked dependency versions are current,
-then commit the result:
-
-```r
-rsconnect::writeManifest(
-  appDir = system.file("shiny", "dmd_dose_optimise", package = "dmdprices")
-)
-```
+**Dependencies.** The apps do not ship a pinned `manifest.json` or `renv.lock`.
+`rsconnect::deployApp()` detects each app's R package dependencies at deploy
+time and Posit Connect Cloud installs them, resolving versions against the
+platform's current R. This avoids freezing package versions to an R release
+that the platform may later upgrade past (which can force failing
+source builds of pinned dependencies).
 
 After redeploying, confirm each app's footer shows the expected dm+d release and
 PSSRU manual, that a brand search (e.g. `"Buvidal"`) returns results, and that

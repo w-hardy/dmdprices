@@ -1,4 +1,5 @@
 Package: inflateNhsciiApp
 Title: NHS CII Cost Adjuster
 Version: 0.0.1
+Imports: shiny, dmdprices, bslib
 Remotes: w-hardy/dmdprices
