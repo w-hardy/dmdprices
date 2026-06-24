@@ -60,9 +60,10 @@ reference:
       - run_inflate_nhscii
       - run_dmd_dose_optimise
   - title: "Data"
-    desc: "Bundled dataset"
+    desc: "Bundled datasets"
     contents:
       - dmd_master
+      - dmd_ingredients
       - dmd_master_info
   - title: "Package"
     contents:
