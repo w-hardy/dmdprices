@@ -3,6 +3,46 @@ library(dmdprices)
 
 fin_years <- names(dmdprices:::.nhscii_rates$pay_and_prices)
 
+# ── condition capture → Bootstrap callouts ───────────────────────────────────
+# Run `expr`, capturing cli/base warnings and errors so they can be surfaced in
+# the UI. Returns list(value, messages); messages is a list of list(type, text).
+capture_conditions <- function(expr) {
+  msgs <- list()
+  add <- function(type, text) {
+    msgs[[length(msgs) + 1L]] <<- list(type = type, text = text)
+  }
+  value <- withCallingHandlers(
+    tryCatch(
+      expr,
+      error = function(e) {
+        add("danger", conditionMessage(e))
+        NULL
+      }
+    ),
+    warning = function(w) {
+      add("warning", conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  list(value = value, messages = msgs)
+}
+
+# Render captured conditions as Bootstrap alert callout boxes.
+render_callouts <- function(messages) {
+  if (length(messages) == 0) {
+    return(NULL)
+  }
+  lapply(messages, function(m) {
+    label <- if (m$type == "danger") "⛔ Error" else "⚠️ Warning"
+    tags$div(
+      class = paste0("alert alert-", m$type, " mt-2"),
+      role = "alert",
+      tags$strong(paste0(label, ": ")),
+      tags$span(style = "white-space: pre-wrap;", m$text)
+    )
+  })
+}
+
 ui <- fluidPage(
   theme = bslib::bs_theme(version = 5),
   titlePanel("NHS Cost Inflation Index — Cost Adjuster"),
@@ -55,10 +95,10 @@ ui <- fluidPage(
       hr(),
       helpText(
         tags$b("Source:"),
-        "Jones et al. (2025).",
+        "Jones et al. (2026).",
         tags$a(
-          "Unit Costs of Health and Social Care 2024 Manual.",
-          href = "https://doi.org/10.22024/UniKent/01.02.109563",
+          "Unit Costs of Health and Social Care 2025 Manual.",
+          href = "https://doi.org/10.22024/UniKent/01.02.115569",
           target = "_blank"
         ),
         "PSSRU (University of Kent) & Centre for Health Economics (University of York).",
@@ -68,7 +108,7 @@ ui <- fluidPage(
           target = "_blank"
         ),
         tags$br(),
-        "2023/24 figures are provisional.",
+        "2024/25 figures are provisional.",
         tags$br(),
         tags$a(
           "Report issues on GitHub.",
@@ -79,8 +119,8 @@ ui <- fluidPage(
     ),
     mainPanel(
       width = 8,
-      uiOutput("result_card"),
-      uiOutput("error_msg")
+      uiOutput("messages"),
+      uiOutput("result_card")
     )
   )
 )
@@ -89,7 +129,7 @@ server <- function(input, output, session) {
   calc <- reactive({
     req(is.numeric(input$cost), is.finite(input$cost), input$cost >= 0)
 
-    tryCatch(
+    capture_conditions(
       list(
         factor = nhscii(input$from_year, input$to_year, input$index, "factor"),
         percent = nhscii(
@@ -104,21 +144,17 @@ server <- function(input, output, session) {
           input$to_year,
           input$index
         )
-      ),
-      error = function(e) list(error = conditionMessage(e))
+      )
     )
   })
 
-  output$error_msg <- renderUI({
-    r <- calc()
-    if (!is.null(r$error)) {
-      tags$p(class = "text-danger mt-3", r$error)
-    }
+  output$messages <- renderUI({
+    render_callouts(calc()$messages)
   })
 
   output$result_card <- renderUI({
-    r <- calc()
-    req(is.null(r$error))
+    r <- calc()$value
+    req(!is.null(r))
 
     direction <- if (r$percent >= 0) "increase" else "decrease"
     pct_text <- sprintf("%.2f%%", abs(r$percent))

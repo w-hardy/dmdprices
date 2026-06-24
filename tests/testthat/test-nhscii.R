@@ -61,3 +61,72 @@ test_that("all three indices are available", {
   expect_equal(nhscii("2020/21", "2021/22", index = "pay"), 1.0307)
   expect_equal(nhscii("2020/21", "2021/22", index = "prices"), 1.0172)
 })
+
+test_that("2014/15 is a valid from_year", {
+  # Same-year returns 1
+  expect_equal(nhscii("2014/15", "2014/15"), 1)
+
+  # One-step from 2014/15 to 2015/16 uses the 2015/16 rate
+  expect_equal(
+    nhscii("2014/15", "2015/16", index = "pay_and_prices"),
+    1.0040,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    nhscii("2014/15", "2015/16", index = "prices"),
+    1.0056,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    nhscii("2014/15", "2015/16", index = "pay"),
+    1.0030,
+    tolerance = 1e-12
+  )
+
+  # Multi-year from 2014/15 is consistent with chained calculation
+  fwd_15_23 <- nhscii("2015/16", "2023/24", index = "pay_and_prices")
+  fwd_14_15 <- nhscii("2014/15", "2015/16", index = "pay_and_prices")
+  fwd_14_23 <- nhscii("2014/15", "2023/24", index = "pay_and_prices")
+  expect_equal(fwd_14_23, fwd_14_15 * fwd_15_23, tolerance = 1e-12)
+})
+
+test_that("2024/25 is available and uses the 2025-manual rates", {
+  # Latest-year one-step factors (2025 PSSRU manual, Table 12.1.1)
+  expect_equal(
+    nhscii("2023/24", "2024/25", index = "pay_and_prices"),
+    1.0402,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    nhscii("2023/24", "2024/25", index = "prices"),
+    1.0204,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    nhscii("2023/24", "2024/25", index = "pay"),
+    1.0511,
+    tolerance = 1e-12
+  )
+
+  # Numeric end-year maps to 2024/25
+  expect_equal(nhscii(2024, 2025), nhscii("2023/24", "2024/25"))
+})
+
+test_that("2023/24 figures were revised by the 2025 manual", {
+  # 2022/23 -> 2023/24 now uses the revised overall rate of 2.47%
+  expect_equal(
+    nhscii("2022/23", "2023/24", index = "pay_and_prices"),
+    1.0247,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    nhscii("2022/23", "2023/24", index = "prices"),
+    1.0298,
+    tolerance = 1e-12
+  )
+  expect_equal(
+    nhscii("2022/23", "2023/24", index = "pay"),
+    1.0218,
+    tolerance = 1e-12
+  )
+})

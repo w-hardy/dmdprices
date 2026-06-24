@@ -52,6 +52,52 @@ attr(dmd_master, "dmd_release_label")
 
 ---
 
+## Dose optimisation
+
+Given a clinical dose (e.g. 900 mg) `dmd_dose_optimise()` returns the cheapest
+and/or minimum-item combination of AMPPs from the dm+d that deliver it. It can
+also return the most expensive achievable combination for upper-bound costing.
+Preparations are segregated automatically so that immediate-release tablets,
+modified-release tablets, oral solutions, and injections are never mixed in a
+single combination.
+
+```r
+# Cheapest and min-items combinations for a 900 mg metformin dose
+dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg")
+
+# Equivalent: pass dose as a self-contained string
+dmd_dose_optimise("metformin", dose = "900 mg")
+dmd_dose_optimise("metformin", dose = "0.9 g")   # same dose, different unit
+
+# Restrict to modified-release tablets
+dmd_dose_optimise(
+  "metformin", dose = 1500, dose_unit = "mg",
+  preparation = "tablet|modified-release|oral"
+)
+
+# Community pharmacy — whole packs must be dispensed
+dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
+
+# Worst-case cost
+dmd_dose_optimise("metformin", dose = "900 mg", objective = "most_expensive")
+```
+
+Each row includes a `combination` list-column of specific branded products:
+
+```r
+res <- dmd_dose_optimise("metformin", dose = "900 mg")
+res$combination[[1]]
+```
+
+See `vignette("dose_optimisation")` for a full walkthrough.
+
+For high-volume costing, use `dmd_dose_cost()` for a numeric vector of doses or
+`dmd_dose_cost_range()` to return cheapest and most-expensive costs together.
+Unsupported compound products with multiple active strengths in one name are
+skipped with a warning rather than optimised against an ambiguous dose.
+
+---
+
 ## Inflation adjustment with NHS CII
 
 Use `nhscii()` and `inflate_nhscii()` to adjust costs for inflation based on NHS Cost Inflation Index rates from the PSSRU Unit Costs of Health and Social Care.
@@ -163,6 +209,24 @@ Published by the **NHS Business Services Authority (NHSBSA)**.
 
 The dm+d is available from the NHSBSA TRUD service:
 <https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6>
+
+---
+
+## Interactive apps
+
+No R required - use the hosted apps directly from the pkgdown apps page:
+
+- [dm+d Price Lookup](https://w-hardy.github.io/dmdprices/articles/apps.html#dmd-price-lookup)
+- [dm+d Dose Optimiser](https://w-hardy.github.io/dmdprices/articles/apps.html#dmd-dose-optimiser)
+- [NHS CII Cost Adjuster](https://w-hardy.github.io/dmdprices/articles/apps.html#nhs-cii-cost-adjuster)
+
+Or run locally:
+
+```r
+run_dmd_price_lookup()
+run_dmd_dose_optimise()
+run_inflate_nhscii()
+```
 
 ---
 

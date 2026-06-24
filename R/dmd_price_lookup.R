@@ -1,23 +1,31 @@
 #' Look up medicine prices from a dm+d database
 #'
 #' Searches a dm+d pricing table for medicines whose names match `query`.
-#' Returns a tibble in the same column format as the NHS Drug Tariff Part VIIIA
-#' CSV, with Drug Tariff and NHS Indicative Price columns appended.
+#' Both the generic VMP name (`medicine`) and the branded pack name
+#' (`ampp_name`) are searched, so a query for either a brand (e.g. `"Buvidal"`)
+#' or its generic (e.g. `"Buprenorphine ... prolonged-release"`) returns the
+#' matching packs. Returns a tibble in the same column format as the NHS Drug
+#' Tariff Part VIIIA CSV, with Drug Tariff and NHS Indicative Price columns
+#' appended.
 #'
-#' By default, the bundled [dmd_master] dataset (Week 34 2025, 14 August 2025)
+#' By default, the bundled [dmd_master] dataset (Week 15 2026, 06 April 2026)
 #' is used, so no setup is needed. Supply `db` to use a more recent release
 #' loaded with [dmd_load()].
 #'
 #' @param query  A character string to search for in medicine names.
 #' @param db     A `<dmd_db>` object from [dmd_load()], or a tibble with the
 #'   same columns as [dmd_master]. Defaults to the bundled [dmd_master] dataset.
-#' @param method One of:
-#'   * `"partial"` *(default)* — case-insensitive substring match using a
-#'     regular expression. Suitable for general searching, e.g. `"metformin"`.
-#'   * `"exact"` — case-insensitive exact match against the full VMP name.
+#' @param method One of (each matches against the generic `medicine` name and
+#'   the branded `ampp_name`):
+#'   * `"partial"` *(default)* — case-insensitive **literal** substring match.
+#'     The query is matched as written, so punctuation such as `"[I-131]"` is
+#'     treated literally rather than as a regular expression. Suitable for
+#'     general searching, e.g. `"metformin"` or `"Buvidal"`.
+#'   * `"exact"` — case-insensitive exact match against the full VMP name or the
+#'     full branded pack name.
 #'   * `"fuzzy"` — approximate string matching (optimal string alignment
-#'     distance via [stringdist::stringdist()]). Tolerates typos. Tune
-#'     sensitivity with `max_dist`.
+#'     distance via [stringdist::stringdist()], taking the closer of the generic
+#'     and brand names). Tolerates typos. Tune sensitivity with `max_dist`.
 #' @param max_dist Maximum edit distance for `method = "fuzzy"` (default `3`).
 #'   Increase for looser matching; decrease for stricter matching.
 #' @param active_only If `TRUE` (default), rows where both `basic_price` and
@@ -45,6 +53,9 @@
 #' @examples
 #' # Uses bundled data — no setup required
 #' dmd_price_lookup("metformin")
+#'
+#' # Brand names work too (matched against the branded pack name)
+#' dmd_price_lookup("Buvidal")
 #'
 #' dmd_price_lookup("Metformin 500mg tablets", method = "exact")
 #'
@@ -83,25 +94,46 @@ dmd_price_lookup <- function(
   method <- match.arg(method)
   q <- stringr::str_squish(query)
 
+  # Brand (AMPP) names are searched alongside the generic VMP `medicine` name,
+  # so a query for either a brand (e.g. "Buvidal") or its generic (e.g.
+  # "Buprenorphine ... prolonged-release") returns the matching packs.
+  brand <- if ("ampp_name" %in% names(master)) {
+    master$ampp_name
+  } else {
+    rep(NA_character_, nrow(master))
+  }
+
   results <- switch(
     method,
     exact = dplyr::filter(
       master,
-      stringr::str_to_upper(.data$medicine) == stringr::str_to_upper(q)
+      stringr::str_to_upper(.data$medicine) == stringr::str_to_upper(q) |
+        stringr::str_to_upper(brand) == stringr::str_to_upper(q)
     ),
 
     partial = dplyr::filter(
       master,
-      stringr::str_detect(.data$medicine, stringr::regex(q, ignore_case = TRUE))
+      # Literal (fixed) substring match against the generic name or the brand
+      # (AMPP) name — query text is matched as written, so regex metacharacters
+      # (e.g. the "[" in "[I-131]") are not interpreted.
+      stringr::str_detect(.data$medicine, stringr::fixed(q, ignore_case = TRUE)) |
+        stringr::str_detect(brand, stringr::fixed(q, ignore_case = TRUE))
     ),
 
     fuzzy = {
-      dists <- stringdist::stringdist(
-        stringr::str_to_lower(q),
+      ql <- stringr::str_to_lower(q)
+      d_med <- stringdist::stringdist(
+        ql,
         stringr::str_to_lower(master$medicine),
         method = "osa"
       )
-      master[dists <= max_dist, ]
+      d_brand <- stringdist::stringdist(
+        ql,
+        stringr::str_to_lower(brand),
+        method = "osa"
+      )
+      dists <- pmin(d_med, d_brand, na.rm = TRUE)
+      master[!is.na(dists) & dists <= max_dist, ]
     }
   )
 

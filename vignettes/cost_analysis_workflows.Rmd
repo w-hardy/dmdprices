@@ -48,9 +48,9 @@ cat("Current price (Drug Tariff):", current_price_pounds, "pounds\n")
 You want to know what this medicine would have cost in previous years (in comparable prices):
 
 ```{r}
-# Current year is 2023/24
+# Current year is 2024/25
 # Deflate to earlier years
-years <- c("2019/20", "2020/21", "2021/22", "2022/23", "2023/24")
+years <- c("2019/20", "2020/21", "2021/22", "2022/23", "2023/24", "2024/25")
 
 historical_costs <- data.frame(
   year = years,
@@ -59,7 +59,7 @@ historical_costs <- data.frame(
 
 for (i in seq_along(years)) {
   deflation_factor <- nhscii(
-    from_year = "2023/24",
+    from_year = "2024/25",
     to_year = years[i],
     index = "prices"
   )
@@ -79,11 +79,11 @@ historical_costs
 
 ### Step 3: Project future costs
 
-Now inflate across the available data and estimate future years. Note that 2024/25 and 2025/26 rates will be published in the PSSRU 2025 manual; for now we use the 2023/24 rate as a baseline:
+Now inflate across the available data. The NHS CII now covers up to 2024/25 (the latest, provisional, year from the PSSRU 2025 manual). For years beyond the published data, such as 2025/26, you still need to apply your own estimate:
 
 ```{r}
-# Available historical years
-historical_years <- c("2020/21", "2021/22", "2022/23", "2023/24")
+# Available historical years (now including 2024/25)
+historical_years <- c("2020/21", "2021/22", "2022/23", "2023/24", "2024/25")
 
 historical_projection <- data.frame(
   year = historical_years,
@@ -92,7 +92,7 @@ historical_projection <- data.frame(
 
 for (i in seq_along(historical_projection$year)) {
   inflation_factor <- nhscii(
-    from_year = "2023/24",
+    from_year = "2024/25",
     to_year = historical_projection$year[i],
     index = "prices"
   )
@@ -101,17 +101,13 @@ for (i in seq_along(historical_projection$year)) {
 
 historical_projection
 
-# For future projections, you would apply estimated inflation factors
-# once 2024/25 and 2025/26 NHS CII rates are published
-inflation_estimate_2024_25 <- 1.04  # Estimated at 4% based on recent trends
+# For years beyond the published data you must supply your own estimate.
+# 2025/26 NHS CII rates are not yet published:
 inflation_estimate_2025_26 <- 1.03  # Estimated at 3%
 
 future_projection <- data.frame(
-  year = c("2024/25", "2025/26"),
-  projected_price_pounds = c(
-    current_price_pounds * inflation_estimate_2024_25,
-    current_price_pounds * inflation_estimate_2024_25 * inflation_estimate_2025_26
-  )
+  year = "2025/26",
+  projected_price_pounds = current_price_pounds * inflation_estimate_2025_26
 )
 
 future_projection
@@ -169,18 +165,16 @@ current_formulary
 ### Project costs to 2024/25
 
 ```{r}
+# 2024/25 NHS CII rates are now available (provisional) in the PSSRU 2025 manual
 inflation_factor_2024_25 <- nhscii(
   from_year = "2023/24",
-  to_year = "2023/24",  # We don't have 2024/25 yet; for demo use current year
+  to_year = "2024/25",
   index = "pay_and_prices"
 )
 
-# For projection purposes (assuming modest inflation)
-inflation_estimate_2024_25 <- 1.04  # 4% placeholder
-
 current_formulary <- current_formulary |>
   mutate(
-    annual_cost_2024_25 = annual_cost_2023_24 * inflation_estimate_2024_25,
+    annual_cost_2024_25 = annual_cost_2023_24 * inflation_factor_2024_25,
     cost_increase = annual_cost_2024_25 - annual_cost_2023_24
   )
 
@@ -212,24 +206,24 @@ cea_data <- data.frame(
   qalys = c(0.50, 0.75)
 )
 
-# Inflate costs to 2023/24 (current year)
+# Inflate costs to 2024/25 (current year)
 cea_data <- cea_data |>
   mutate(
     inflation_factor = nhscii(
       from_year = "2020/21",
-      to_year = "2023/24",
+      to_year = "2024/25",
       index = "pay_and_prices"
     ),
-    cost_2023_24_pounds = cost_2020_21_pounds * inflation_factor,
+    cost_2024_25_pounds = cost_2020_21_pounds * inflation_factor,
     cost_per_qaly_2020_21 = cost_2020_21_pounds / qalys,
-    cost_per_qaly_2023_24 = cost_2023_24_pounds / qalys
+    cost_per_qaly_2024_25 = cost_2024_25_pounds / qalys
   )
 
 cea_data |>
   select(
-    medicine, 
-    cost_per_qaly_2020_21, 
-    cost_per_qaly_2023_24
+    medicine,
+    cost_per_qaly_2020_21,
+    cost_per_qaly_2024_25
   )
 ```
 
@@ -319,7 +313,7 @@ analysis <- current_formulary |>
     # Derived calculations
     monthly_cost_pounds = (current_monthly_packs * price_pence) / 100,
     annual_cost_2023_24 = monthly_cost_pounds * 12,
-    # Once 2024/25 rates are available, you can use:
+    # 2024/25 rates are now available (provisional), e.g.:
     # inflated_2024_25 = annual_cost_2023_24 * nhscii("2023/24", "2024/25")
     .after = price_pence
   )
