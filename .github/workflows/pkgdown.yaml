@@ -10,6 +10,9 @@ jobs:
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      # Don't let the project .Rprofile activate renv in CI; use the runner's
+      # library set up by setup-r-dependencies instead.
+      RENV_CONFIG_AUTOLOADER_ENABLED: false
 
     permissions:
       contents: write
