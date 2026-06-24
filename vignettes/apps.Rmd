@@ -105,6 +105,23 @@ dmdprices::run_inflate_nhscii()
 
 ---
 
+## Warnings and errors
+
+All three apps surface the underlying package's warnings and errors directly in
+the interface as coloured callout boxes shown above the results:
+
+- **Warnings** (yellow) report non-fatal notices from functions such as
+  `dmd_dose_optimise()` — for example when unsupported compound products are
+  skipped, an ingredient name is ambiguous, or a strength is recorded in a
+  non-mass unit. Results are still shown alongside the warning.
+- **Errors** (red) report a failed call — for example an invalid financial year
+  in the NHS CII adjuster or a malformed query — and explain what to change.
+
+The same notices are the `cli` warnings and errors you would see when calling
+the functions directly in R, so the apps and the package behave consistently.
+
+---
+
 ## Deploying your own instance
 
 All three apps are included in the package under `inst/shiny/` and can be
