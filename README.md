@@ -2,7 +2,7 @@
 
 An R package for looking up medicine prices from the [NHS dm+d](https://www.nhsbsa.nhs.uk/pharmacies-gp-practices-and-appliance-contractors/dictionary-medicines-and-devices-dmd) (Dictionary of Medicines and Devices).
 
-A **bundled dataset** (Week 34 2025, 14 August 2025) is included so that no
+A **bundled dataset** (Week 15 2026, 06 April 2026) is included so that no
 setup is required for immediate use. Users can also load a more recent dm+d
 release from their own `dmdDataLoader` CSV output using `dmd_load()`.
 
@@ -47,7 +47,7 @@ Check which release is bundled:
 
 ```r
 attr(dmd_master, "dmd_release_label")
-#> [1] "Week 34 2025 (14 August 2025)"
+#> [1] "Week 15 2026 (06 April 2026)"
 ```
 
 ---
@@ -200,7 +200,7 @@ for all brands of the same VMPP.
 ## Data attribution
 
 The `dmd_master` dataset is derived from the **NHS Dictionary of Medicines and
-Devices (dm+d)**, Week 34 2025 release (14 August 2025).
+Devices (dm+d)**, Week 15 2026 release (06 April 2026).
 
 Published by the **NHS Business Services Authority (NHSBSA)**.
 

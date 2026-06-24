@@ -5,7 +5,7 @@ An R package for looking up medicine prices from the
 (Dictionary of Medicines and Devices), with tools for inflation adjustment
 using the NHS Cost Inflation Index (NHS CII).
 
-A **bundled dataset** (Week 34 2025, 14 August 2025) is included — no setup
+A **bundled dataset** (Week 15 2026, 06 April 2026) is included — no setup
 required for immediate use.
 
 <div class="alert alert-warning" role="alert">
@@ -45,6 +45,8 @@ No R required — use the hosted apps directly:
 
 - [**dm+d Price Lookup**](articles/apps.html#dmd-price-lookup) — search
   medicine prices by name with partial, exact, or fuzzy matching
+- [**dm+d Dose Optimiser**](articles/apps.html#dmd-dose-optimiser) — find the
+  cheapest / fewest-item AMPP combinations that deliver a target dose
 - [**NHS CII Cost Adjuster**](articles/apps.html#nhs-cii-cost-adjuster) —
   adjust costs between NHS financial years
 
@@ -52,6 +54,7 @@ Or run locally:
 
 ```r
 run_dmd_price_lookup()
+run_dmd_dose_optimise()
 run_inflate_nhscii()
 ```
 
@@ -75,12 +78,12 @@ run_inflate_nhscii()
 ## Data attribution
 
 The `dmd_master` dataset is derived from the **NHS Dictionary of Medicines and
-Devices (dm+d)**, Week 34 2025 release (14 August 2025), published by the
+Devices (dm+d)**, Week 15 2026 release (06 April 2026), published by the
 **NHS Business Services Authority (NHSBSA)**.
 
 © Crown copyright. Licensed under the
 [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
 
-NHS CII rates are from Jones et al. (2025), [*Unit Costs of Health and Social Care 2024 Manual*](https://doi.org/10.22024/UniKent/01.02.109563),
+NHS CII rates are from Jones et al. (2026), [*Unit Costs of Health and Social Care 2025 Manual*](https://doi.org/10.22024/UniKent/01.02.115569),
 published by PSSRU (University of Kent) & Centre for Health Economics (University of York).
 Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).

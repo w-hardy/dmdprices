@@ -14,7 +14,7 @@ tibble. Defaults to the bundled \link{dmd_master}.}
 A list of class \code{"dmd_db_info"} with the following elements:
 \describe{
 \item{\code{release_label}}{Character. dm+d release label
-(e.g. \code{"Week 34 2025 (14 August 2025)"}). \code{NA} for user-loaded
+(e.g. \code{"Week 15 2026 (06 April 2026)"}). \code{NA} for user-loaded
 databases (use \code{loaded_at} instead).}
 \item{\code{loaded_at}}{\code{POSIXct} timestamp recording when \code{\link[=dmd_load]{dmd_load()}} was
 called. \code{NA} for the bundled \code{dmd_master}.}
