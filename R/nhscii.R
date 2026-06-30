@@ -17,6 +17,7 @@
 #' manual.
 #'
 #' @keywords internal
+#' @noRd
 .nhscii_rates <- list(
   pay_and_prices = stats::setNames(
     c(NA_real_, 0.40, 2.09, 1.24, 1.60, 2.14, 2.49, 2.58, 7.32, 2.47, 4.02),

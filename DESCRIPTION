@@ -1,7 +1,7 @@
 Package: dmdprices
 Title: Look Up Medicine Prices from the NHS dm+d
 Version: 0.5.0
-Authors@R: person("Will", "Hardy", email = "w.hardy@bangor.ac.uk", role = c("aut", "cre"))
+Authors@R: person("Will", "Hardy", email = "w.hardy@bangor.ac.uk", role = c("aut", "cre", "cph"))
 Description: Provides the bundled NHS dm+d (Dictionary of Medicines and
     Devices) pricing dataset (Week 15 2026) and tools to query Drug Tariff
     and NHS Indicative Prices by medicine name. Also supports loading updated

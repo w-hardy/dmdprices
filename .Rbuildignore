@@ -1,5 +1,6 @@
 ^\.claude$
 ^agents\.md$
+^SKILLS_AUDIT\.md$
 ^renv$
 ^renv\.lock$
 ^\.Rprofile$
