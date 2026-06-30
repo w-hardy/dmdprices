@@ -1,10 +1,10 @@
 # dmdprices (development version)
 
-## Behaviour changes (upgrading from 0.3.0)
+## Behaviour changes
 
-No functions were removed or renamed and no argument signatures changed, so
-existing code continues to run. However, the following changes can alter
-**results** and are worth noting when upgrading:
+When upgrading from the 0.3.0 release: no functions were removed or renamed and
+no argument signatures changed, so existing code continues to run. However, the
+following changes can alter **results** and are worth noting when upgrading:
 
 - **NHS CII 2023/24 figures revised.** Following the PSSRU 2025 manual, the
   provisional 2023/24 rates have been revised (e.g. `pay_and_prices` 2023/24
