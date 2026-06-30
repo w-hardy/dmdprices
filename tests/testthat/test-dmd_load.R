@@ -1,11 +1,10 @@
 test_that("dmd_load() errors informatively on bad path", {
-  expect_error(dmd_load("nonexistent/path"), class = "rlang_error")
+  expect_snapshot(error = TRUE, dmd_load("nonexistent/path"))
 })
 
 test_that("dmd_load() errors when no path supplied and option unset", {
-  withr::with_options(list(dmdprices.path = NULL), {
-    expect_error(dmd_load(), class = "rlang_error")
-  })
+  withr::local_options(dmdprices.path = NULL)
+  expect_snapshot(error = TRUE, dmd_load())
 })
 
 test_that(".build_master resolves pack units via the UoM lookup fallback", {
@@ -63,8 +62,8 @@ test_that("dmd_master_info() returns a dmd_db_info list with expected names", {
 test_that("dmd_master_info() with dmd_db: loaded_at is POSIXct, release_label is NA", {
   db  <- .fake_dose_db()
   info <- dmd_master_info(db)
-  expect_true(inherits(info$loaded_at, "POSIXct"))
-  expect_true(is.na(info$release_label))
+  expect_s3_class(info$loaded_at, "POSIXct")
+  expect_equal(info$release_label, NA_character_)
 })
 
 test_that("dmd_master_info() with dmd_db: counts match fake fixture", {

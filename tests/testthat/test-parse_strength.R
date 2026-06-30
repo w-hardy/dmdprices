@@ -57,8 +57,8 @@ test_that("per-dose concentration parses (inhaler)", {
 
 test_that("unparseable names return NAs", {
   res <- dmd_parse_strength("Gauze dressing sterile")
-  expect_true(is.na(res$strength_value))
-  expect_true(is.na(res$strength_canonical))
+  expect_equal(res$strength_value, NA_real_)
+  expect_equal(res$strength_canonical, NA_real_)
   expect_false(res$is_combination)
   expect_equal(res$n_components, 0L)
 })
@@ -78,11 +78,11 @@ test_that("two-ingredient combinations parse into components, not a ratio", {
     "Co-codamol 8mg/500mg tablets",
     "Co-amilofruse 5mg/40mg tablets"
   ))
-  expect_true(all(res$is_combination))
+  expect_equal(res$is_combination, c(TRUE, TRUE))
   expect_equal(res$n_components, c(2L, 2L))
   # The mass/mass ratio must NOT be treated as a concentration
-  expect_true(all(is.na(res$strength_canonical)))
-  expect_true(all(is.na(res$denominator_unit)))
+  expect_equal(res$strength_canonical, c(NA_real_, NA_real_))
+  expect_equal(res$denominator_unit, c(NA_character_, NA_character_))
   expect_equal(res$drug_stem, c("Co-codamol", "Co-amilofruse"))
 
   cocodamol <- res$components[[1]]
@@ -144,7 +144,7 @@ test_that("mass-per-volume concentrations are not treated as combinations", {
     "Morphine 10mg/5ml oral solution",
     "Heparin 100units/ml solution for injection ampoules"
   ))
-  expect_false(any(res$is_combination))
+  expect_equal(res$is_combination, c(FALSE, FALSE))
   expect_equal(res$strength_canonical, c(2, 100))
   expect_equal(res$strength_unit_canon, c("mg/ml", "unit/ml"))
 })
