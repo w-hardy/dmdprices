@@ -40,6 +40,11 @@ following changes can alter **results** and are worth noting when upgrading:
 
 ## Added
 
+- `as_dmd_db()` — new exported function that builds a `<dmd_db>` from an
+  in-memory data frame, so external Drug-Tariff-shaped data (for example the
+  `drug_tariff_viii_a` table from NICE's COSTmos package) can be used with
+  `dmd_price_lookup()` and `dmd_dose_optimise()`. It fills missing optional
+  columns with `NA`, coerces types, and reports any reduced functionality.
 - **Combination-product handling (#8).** `dmd_parse_strength()` now detects
   multi-ingredient products (e.g. co-codamol `"8mg/500mg"`) and returns each
   ingredient's strength in a new `components` list-column with `is_combination`
