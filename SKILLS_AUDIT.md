@@ -11,7 +11,7 @@ verified with `devtools::test()` and `devtools::check()`.
 ## Status after this branch
 
 ```
-devtools::test()  -> [ FAIL 0 | WARN 0 | SKIP 0 | PASS 331 ]
+devtools::test()  -> [ FAIL 0 | WARN 0 | SKIP 0 | PASS 352 ]
 devtools::check() -> 0 errors | 0 warnings | 1 note
 ```
 
@@ -82,19 +82,33 @@ check (they render against the full 118k-row dataset); run
   rather than a full snapshot: the printed output contains a `×` (U+00D7) glyph
   that serialises to `<U+00D7>` and would not be portable across locales/OSes.
 
+### Coverage gaps closed
+
+- **`dmd_load()` end-to-end.** Previously only its two error branches and the
+  internal `.build_master()` were tested. Added a `local_temp_dmd_dir()` fixture
+  that writes a minimal, valid pipe-delimited `csv/` folder (two products, one a
+  combination) and three tests: the no-VPI happy path (asserts the `<dmd_db>`
+  shape, units, price, and `$ingredients == NULL`), the with-VPI path (asserts
+  `$ingredients` and the `is_combination` flag), and a missing-required-file
+  error. Covers the ingredient-join branch and `.read_dmd`/`.read_dmd_optional`.
+- **`print.dmd_db` / `format.dmd_db`.** Now tested — `format()` by exact string,
+  `print()` by snapshot for both the plain and ingredient-bearing fixtures.
+- **`run_dmd_price_lookup` / `run_dmd_dose_optimise` / `run_inflate_nhscii`.**
+  New `test-apps.R`: success paths mock `shiny::runApp` and assert the resolved
+  app dir; the missing-app branch is snapshot-tested. Required a small refactor —
+  the three duplicated launcher bodies now share an internal `.app_dir()` /
+  `.app_path()` seam (the `.app_path()` wrapper exists specifically so the
+  missing-app branch is mockable: base `system.file()` cannot be mocked under
+  `R CMD check`).
+- **Deterministic fixtures.** `.fake_dose_db()` / `.fake_ingredient_db()` take a
+  `loaded_at` argument defaulting to a fixed timestamp, so the print snapshots
+  above are stable (also resolves the `Sys.time()` fixture note).
+
 ---
 
 ## Recommended (not applied — judgement calls or larger work)
 
-### 1. Coverage gaps
-- `dmd_load()` happy path: only error branches are tested; no test loads a fake
-  CSV folder through the public function and checks the `<dmd_db>` result.
-- `print.dmd_db` / `format.dmd_db`: untested — good `expect_snapshot()` targets.
-- `run_dmd_price_lookup` / `run_dmd_dose_optimise` / `run_inflate_nhscii`:
-  untested; the `system.file() == ""` branch can be snapshot-tested and the
-  launch mocked with `local_mocked_bindings(runApp = …)`.
-
-### 2. `lifecycle` deprecation version (maintainer decision)
+### 1. `lifecycle` deprecation version (maintainer decision)
 The two `deprecate_warn()` calls now use `when = "0.6.0"` but `DESCRIPTION` is
 `Version: 0.5.0` and `NEWS.md` is "(development version)". Pick the next release
 number and make the `when` string, `DESCRIPTION`, and the NEWS header agree.
@@ -103,7 +117,7 @@ Optionally run `usethis::use_lifecycle()` to add the standard badge SVGs /
 `lifecycle::deprecate_warn()` directly, which works but skips the infra). *(The
 malformed `what` argument itself is already fixed — see above.)*
 
-### 3. `dmd_dose_cost_range()` fragile warning de-duplication
+### 2. `dmd_dose_cost_range()` fragile warning de-duplication
 `R/dmd_dose_optimise.R:976` dedupes the "unsupported compound" warning by
 `grepl()`-ing the message text from `.drop_unsupported_compounds()`. Reword that
 message and the dedup silently breaks. Emit it with a custom condition class
@@ -112,16 +126,16 @@ message and the dedup silently breaks. Emit it with a custom condition class
 4× — once per call — which class-based dedup would also let callers suppress
 cleanly.)
 
-### 4. `DESCRIPTION` Description — quote software name
+### 3. `DESCRIPTION` Description — quote software name
 `dmdDataLoader` is a tool name; single-quote it (`'dmdDataLoader'`) per CRAN
 convention. (Title, length, opening phrase, and acronyms are all fine.)
 
-### 5. `helper.R` fixture
-`.fake_dose_db()` is well-built but sets `loaded_at = Sys.time()`
-(non-deterministic) — use a fixed timestamp if any whole-`<dmd_db>` snapshot is
-added later. `.codeine_db()` lives in a test file rather than `helper.R`.
+### 4. `helper.R` fixture tidy-up (minor)
+`.codeine_db()` is defined in `test-dmd_dose_optimise.R` rather than alongside
+the other constructors in `helper.R` — a small consistency nit. (The
+`Sys.time()` non-determinism is now fixed — see "Deterministic fixtures".)
 
-### 6. `cran-comments.md` / README CRAN line — only if CRAN submission is planned
+### 5. `cran-comments.md` / README CRAN line — only if CRAN submission is planned
 The package is currently GitHub-only. Before a CRAN submission add
 `cran-comments.md` (`usethis::use_cran_comments()`) with a "Method References"
 note (the PSSRU manual is already cited via `\doi{}`) and add an

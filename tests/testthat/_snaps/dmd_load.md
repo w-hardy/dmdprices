@@ -16,3 +16,22 @@
       ! No path supplied.
       i Provide `path` or set `options(dmdprices.path = \"...\")`
 
+# print.dmd_db summarises the pricing hierarchy
+
+    Code
+      print(.fake_dose_db())
+    Message
+      v dm+d database loaded at 2025-08-08 09:00
+      * 12 VMPs | 12 VMPPs | 12 AMPPs
+      * 11 Drug Tariff prices | 12 NHS Indicative Prices
+
+# print.dmd_db reports ingredient/combination counts when present
+
+    Code
+      print(.fake_ingredient_db())
+    Message
+      v dm+d database loaded at 2025-08-08 09:00
+      * 3 VMPs | 3 VMPPs | 3 AMPPs
+      * 3 Drug Tariff prices | 3 NHS Indicative Prices
+      * 2 ingredients | 2 combination VMPs
+
