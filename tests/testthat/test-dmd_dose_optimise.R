@@ -28,7 +28,7 @@ test_that("dose string with no space between value and unit is accepted", {
     preparation = "tablet|none|oral"
   )
   expect_s3_class(res, "tbl_df")
-  expect_true(all(res$dose_delivered >= 500))
+  expect_gte(min(res$dose_delivered), 500)
 })
 
 test_that("dose string with different unit (g) is converted correctly", {
@@ -49,22 +49,21 @@ test_that("dose string with different unit (g) is converted correctly", {
 })
 
 test_that("string dose with extra dose_unit warns and uses string unit", {
-  expect_warning(
-    dmd_dose_optimise(
+  expect_snapshot(
+    out <- dmd_dose_optimise(
       "metformin",
       dose = "900 mg",
       dose_unit = "g",
       db = db,
       preparation = "tablet|none|oral"
-    ),
-    regexp = "differs"
+    )
   )
 })
 
 test_that("unparseable dose string gives informative error", {
-  expect_error(
-    dmd_dose_optimise("metformin", dose = "lots", db = db),
-    regexp = "could not be parsed"
+  expect_snapshot(
+    error = TRUE,
+    dmd_dose_optimise("metformin", dose = "lots", db = db)
   )
 })
 
@@ -79,7 +78,7 @@ test_that("can_split = FALSE adds 'no-pack-splitting' note for solid forms", {
     preparation = "tablet|none|oral",
     can_split = FALSE
   )
-  expect_true(all(grepl("no-pack-splitting", res$notes)))
+  expect_match(res$notes, "no-pack-splitting", all = TRUE)
 })
 
 test_that("can_split = TRUE does not add 'no-pack-splitting' note", {
@@ -161,9 +160,9 @@ test_that("can_split = FALSE uses pack-level DP and picks cheapest whole pack", 
   expect_equal(res$total_items, 1L)
   expect_equal(res$cost_whole_pack_pence, 50)
   expect_equal(res$dose_delivered, 500)
-  expect_true(grepl("no-pack-splitting", res$notes))
+  expect_match(res$notes, "no-pack-splitting")
   # Combination AMPP should be the 500mg tablet.
-  expect_true(grepl("500mg", res$combination[[1]]$ampp_name))
+  expect_match(res$combination[[1]]$ampp_name, "500mg")
 })
 
 test_that("can_split = FALSE min_items counts packs, not tablets", {
@@ -201,15 +200,15 @@ test_that("can_split = FALSE min_items counts packs, not tablets", {
 })
 
 test_that("can_split must be a single logical", {
-  expect_error(
+  expect_snapshot(
+    error = TRUE,
     dmd_dose_optimise(
       "metformin",
       dose = 500,
       dose_unit = "mg",
       db = db,
       can_split = "yes"
-    ),
-    regexp = "single logical"
+    )
   )
 })
 
@@ -223,9 +222,9 @@ test_that("basic dose optimisation returns cheapest and min_items rows", {
     preparation = "tablet|none|oral"
   )
   expect_s3_class(res, "tbl_df")
-  expect_true(all(c("cheapest", "min_items") %in% res$objective))
+  expect_contains(res$objective, c("cheapest", "min_items"))
   expect_equal(unique(res$preparation_group), "tablet|none|oral")
-  expect_true(all(res$dose_delivered >= res$dose_requested))
+  expect_gte(min(res$dose_delivered - res$dose_requested), 0)
 })
 
 test_that("combination list-column identifies the AMPPs chosen", {
@@ -255,7 +254,7 @@ test_that("combination list-column identifies the AMPPs chosen", {
     ) %in%
       names(combo)
   ))
-  expect_true(all(combo$count > 0))
+  expect_gt(min(combo$count), 0)
 })
 
 test_that("cheapest and min_items can differ for a 900mg metformin dose", {
@@ -272,16 +271,16 @@ test_that("cheapest and min_items can differ for a 900mg metformin dose", {
   ch <- res[res$objective == "cheapest", , drop = FALSE]
   expect_equal(nrow(mi), 1)
   expect_equal(nrow(ch), 1)
-  expect_true(mi$dose_delivered >= 900)
-  expect_true(ch$dose_delivered >= 900)
-  expect_true(mi$total_items <= ch$total_items)
+  expect_gte(mi$dose_delivered, 900)
+  expect_gte(ch$dose_delivered, 900)
+  expect_lte(mi$total_items, ch$total_items)
 })
 
 test_that("preparations are segregated (IR vs MR)", {
   res <- dmd_dose_optimise("metformin", dose = 1000, dose_unit = "mg", db = db)
   groups <- unique(res$preparation_group)
-  expect_true("tablet|none|oral" %in% groups)
-  expect_true("modified-release tablet|modified-release|oral" %in% groups)
+  expect_contains(groups, "tablet|none|oral")
+  expect_contains(groups, "modified-release tablet|modified-release|oral")
 })
 
 test_that("morphine in mg units optimises across oral and injection groups", {
@@ -294,8 +293,8 @@ test_that("morphine in mg units optimises across oral and injection groups", {
   expect_s3_class(res, "tbl_df")
   groups <- unique(res$preparation_group)
   # Oral-solution and solution-for-injection should be segregated.
-  expect_true(any(grepl("oral solution", groups)))
-  expect_true(any(grepl("solution for injection", groups)))
+  expect_match(groups, "oral solution", all = FALSE)
+  expect_match(groups, "solution for injection", all = FALSE)
 })
 
 test_that("microgram dose exercises scaling", {
@@ -328,7 +327,7 @@ test_that("microgram dose exercises scaling", {
     db = ldb
   )
   expect_s3_class(res, "tbl_df")
-  expect_true(nrow(res) >= 1)
+  expect_gte(nrow(res), 1)
   # 125 micrograms = 25 + 100 mcg, so dose_delivered should equal 125 in
   # the same unit as the input.
   expect_equal(unique(res$dose_delivered), 125)
@@ -365,8 +364,8 @@ test_that("over-delivery is recorded in notes when dose is unreachable exactly",
   # no 50mg). 100mg × 7 + 500mg × 1 - ... Actually 750 = 500 + 250, no 250.
   # 750 = 100×7 + 50 — no. Options: 100×7 = 700 (under), 100×8 = 800 (over).
   # So 750 needs over-delivery. Confirm.
-  expect_true(all(res$over_delivery >= 0))
-  expect_true(any(grepl("over-delivery", res$notes)))
+  expect_gte(min(res$over_delivery), 0)
+  expect_match(res$notes, "over-delivery", all = FALSE)
 })
 
 test_that("print method for combination runs without error", {
@@ -422,8 +421,8 @@ test_that("both injection and infusion groups are returned for rituximab 900mg",
     db = db
   )
   groups <- unique(res$preparation_group)
-  expect_true(any(grepl("solution for injection", groups)))
-  expect_true(any(grepl("solution for infusion", groups)))
+  expect_match(groups, "solution for injection", all = FALSE)
+  expect_match(groups, "solution for infusion", all = FALSE)
   # cheapest + min_items for each group = 4 rows
   expect_equal(nrow(res), 4L)
 })
@@ -535,8 +534,8 @@ test_that("preparation partial match is case-insensitive", {
     db = db,
     preparation = "INFUSION"
   )
-  expect_true(nrow(res) > 0)
-  expect_true(all(grepl("infusion", res$preparation_group, ignore.case = TRUE)))
+  expect_gt(nrow(res), 0)
+  expect_match(res$preparation_group, "infusion", ignore.case = TRUE, all = TRUE)
 })
 
 test_that("exact preparation key still works after substring-match change", {
@@ -547,7 +546,7 @@ test_that("exact preparation key still works after substring-match change", {
     db = db,
     preparation = "tablet|none|oral"
   )
-  expect_true(nrow(res) > 0)
+  expect_gt(nrow(res), 0)
   expect_equal(unique(res$preparation_group), "tablet|none|oral")
 })
 
@@ -697,7 +696,7 @@ test_that("dmd_dose_cost with no preparation returns min cost across groups", {
     preparation = "injection"
   )
   cost_all <- dmd_dose_cost("rituximab", dose = 900, dose_unit = "mg", db = db)
-  expect_true(cost_all <= min(cost_infusion, cost_injection, na.rm = TRUE))
+  expect_lte(cost_all, min(cost_infusion, cost_injection, na.rm = TRUE))
 })
 
 # ── most_expensive objective ──────────────────────────────────────────────────
@@ -792,16 +791,15 @@ test_that("objective = 'all' returns three rows per preparation group", {
 })
 
 test_that("objective = 'both' triggers a deprecation warning", {
-  expect_warning(
-    dmd_dose_optimise(
+  expect_snapshot(
+    out <- dmd_dose_optimise(
       "metformin",
       dose = 1000,
       dose_unit = "mg",
       db = db,
       preparation = "tablet|none|oral",
       objective = "both"
-    ),
-    regexp = "both"
+    )
   )
 })
 
@@ -833,10 +831,10 @@ test_that("can_split_vials = TRUE gives non-integer count and vial-sharing note"
     can_split_vials = TRUE
   )
   expect_s3_class(res, "tbl_df")
-  expect_true(nrow(res) >= 1L)
+  expect_gte(nrow(res), 1L)
   combo <- res$combination[[1]]
   expect_false(combo$count[1] == as.integer(combo$count[1]))
-  expect_true(any(grepl("vial-sharing", res$notes)))
+  expect_match(res$notes, "vial-sharing", all = FALSE)
 })
 
 test_that("can_split_vials = TRUE cost <= whole-vial cost for same dose", {
@@ -909,10 +907,10 @@ test_that("most_expensive + can_split = FALSE picks the dearest pack", {
 
   expect_equal(res_me$objective, "most_expensive")
   # most_expensive must cost at least as much as cheapest in the same group.
-  expect_true(res_me$cost_whole_pack_pence >= res_ch$cost_whole_pack_pence)
+  expect_gte(res_me$cost_whole_pack_pence, res_ch$cost_whole_pack_pence)
   # And the note should reflect the correct selection rule.
-  expect_true(grepl("most-expensive-pack-per-dose", res_me$notes))
-  expect_true(grepl("no-pack-splitting", res_me$notes))
+  expect_match(res_me$notes, "most-expensive-pack-per-dose")
+  expect_match(res_me$notes, "no-pack-splitting")
 })
 
 # ── Regression: dmd_dose_cost + most_expensive (bug #1) ───────────────────────
@@ -926,8 +924,8 @@ test_that("dmd_dose_cost with objective = 'most_expensive' returns the worst-cas
     "metformin", dose = 1000, dose_unit = "mg", db = db,
     preparation = "tablet|none|oral", objective = "most_expensive"
   )
-  expect_true(!is.na(cost_me))
-  expect_true(cost_me >= cost_ch)
+  expect_false(is.na(cost_me))
+  expect_gte(cost_me, cost_ch)
 })
 
 test_that("dmd_dose_cost most_expensive picks max across preparation groups", {
@@ -941,8 +939,8 @@ test_that("dmd_dose_cost most_expensive picks max across preparation groups", {
     "rituximab", dose = 900, dose_unit = "mg", db = db,
     objective = "most_expensive"
   )
-  expect_true(!is.na(cost_all))
-  expect_true(cost_all >= cost_inf)
+  expect_false(is.na(cost_all))
+  expect_gte(cost_all, cost_inf)
 })
 
 test_that("dmd_dose_cost default c('cheapest','min_items') still returns the minimum", {
@@ -976,8 +974,8 @@ test_that("can_split_vials = TRUE + most_expensive picks the dearest vial fracti
     objective = "most_expensive", can_split_vials = TRUE
   )
   expect_equal(me$objective, "most_expensive")
-  expect_true(any(grepl("vial-sharing", me$notes)))
-  expect_true(me$dose_cost_pence >= ch$dose_cost_pence)
+  expect_match(me$notes, "vial-sharing", all = FALSE)
+  expect_gte(me$dose_cost_pence, ch$dose_cost_pence)
   # Non-integer count on the combination row.
   combo <- me$combination[[1]]
   expect_false(combo$count[1] == as.integer(combo$count[1]))
@@ -996,30 +994,31 @@ test_that("print.dmd_dose_combination renders fractional counts without warning"
   expect_false(combo$count[1] == as.integer(combo$count[1]))
   expect_no_warning(out <- capture.output(print(combo)))
   # And the fraction must appear verbatim in the printed output.
-  expect_true(any(grepl(format(combo$count[1]), out, fixed = TRUE)))
+  expect_match(out, format(combo$count[1]), fixed = TRUE, all = FALSE)
 })
 
 # ── Validation: empty and invalid objective vectors ───────────────────────────
 
 test_that("objective = character(0) errors with a helpful message", {
-  expect_error(
+  expect_snapshot(
+    error = TRUE,
     dmd_dose_optimise(
       "metformin", dose = 500, dose_unit = "mg", db = db,
       objective = character(0)
-    ),
-    regexp = "at least one"
+    )
   )
-  expect_error(
+  expect_snapshot(
+    error = TRUE,
     dmd_dose_cost(
       "metformin", dose = 500, dose_unit = "mg", db = db,
       objective = character(0)
-    ),
-    regexp = "at least one"
+    )
   )
 })
 
 test_that("objective = 'bogus' errors via match.arg", {
-  expect_error(
+  expect_snapshot(
+    error = TRUE,
     dmd_dose_optimise(
       "metformin", dose = 500, dose_unit = "mg", db = db,
       objective = "bogus"
@@ -1049,33 +1048,25 @@ test_that("compound products are skipped with a warning", {
     class = "dmd_db"
   )
 
-  expect_warning(
+  expect_snapshot(
     res <- dmd_dose_optimise(
       "co-codamol", dose = 8, dose_unit = "mg", db = compound_db
-    ),
-    regexp = "compound product"
+    )
   )
   expect_equal(nrow(res), 0L)
 
-  expect_warning(
+  expect_snapshot(
     cost <- dmd_dose_cost(
       "co-codamol", dose = 8, dose_unit = "mg", db = compound_db
-    ),
-    regexp = "compound product"
+    )
   )
   expect_true(is.na(cost))
 
-  warnings <- character()
-  withCallingHandlers(
+  expect_snapshot(
     range <- dmd_dose_cost_range(
       "co-codamol", dose = 8, dose_unit = "mg", db = compound_db
-    ),
-    warning = function(w) {
-      warnings <<- c(warnings, conditionMessage(w))
-      invokeRestart("muffleWarning")
-    }
+    )
   )
-  expect_equal(length(warnings), 1L)
   expect_true(is.na(range$lo_pence))
   expect_true(is.na(range$hi_pence))
 })
@@ -1086,13 +1077,12 @@ test_that("ingredient targeting doses combination products by one ingredient", {
   # Query "co" matches all three fixture products (Co-codamol x2, Codeine x1).
   # Without an ingredient, the two combinations are skipped with a warning and
   # only the single-ingredient codeine tablet survives.
-  expect_warning(
+  expect_snapshot(
     res_default <- dmd_dose_optimise(
       "co", dose = 60, dose_unit = "mg", db = db
-    ),
-    regexp = "compound product"
+    )
   )
-  expect_true(nrow(res_default) >= 1L)
+  expect_gte(nrow(res_default), 1L)
 
   # Targeting codeine doses against the codeine strength of every product,
   # including the combinations — and emits no compound warning.
@@ -1106,9 +1096,9 @@ test_that("ingredient targeting doses combination products by one ingredient", {
       objective = "cheapest"
     )
   )
-  expect_true(nrow(res) >= 1L)
+  expect_gte(nrow(res), 1L)
   # 60 mg of codeine must be delivered (within over-delivery tolerance).
-  expect_true(all(res$dose_delivered >= 60 - 1e-9))
+  expect_gte(min(res$dose_delivered), 60 - 1e-9)
   expect_equal(res$dose_requested[[1]], 60)
 })
 
@@ -1125,33 +1115,32 @@ test_that("ingredient targeting selects the cheapest source of the ingredient", 
     objective = "cheapest"
   )
   combo <- res$combination[[1]]
-  expect_true(any(grepl("Codeine phosphate 30mg", combo$ampp_name)))
+  expect_match(combo$ampp_name, "Codeine phosphate 30mg", all = FALSE)
 })
 
 test_that("ingredient targeting warns and returns nothing without VPI data", {
   # Use a db with no $ingredients element to exercise the no-VPI path.
   db_no_vpi <- .fake_dose_db()  # has no $ingredients
-  expect_warning(
+  expect_snapshot(
     res <- dmd_dose_optimise(
       "metformin",
       dose = 500,
       dose_unit = "mg",
       db = db_no_vpi,
       ingredient = "metformin"
-    ),
-    regexp = "ingredient data"
+    )
   )
   expect_equal(nrow(res), 0L)
 })
 
 test_that("ingredient argument is validated", {
-  expect_error(
-    dmd_dose_optimise("metformin", dose = 500, ingredient = c("a", "b")),
-    regexp = "single non-empty string"
+  expect_snapshot(
+    error = TRUE,
+    dmd_dose_optimise("metformin", dose = 500, ingredient = c("a", "b"))
   )
-  expect_error(
-    dmd_dose_optimise("metformin", dose = 500, ingredient = ""),
-    regexp = "single non-empty string"
+  expect_snapshot(
+    error = TRUE,
+    dmd_dose_optimise("metformin", dose = 500, ingredient = "")
   )
 })
 
@@ -1208,7 +1197,7 @@ test_that("ingredient matching is word-boundary based (codeine != dihydrocodeine
     )
   )
   combo <- res$combination[[1]]
-  expect_true(all(grepl("Co-codamol", combo$medicine)))
+  expect_match(combo$medicine, "Co-codamol", all = TRUE)
   expect_false(any(grepl("Dihydrocodeine", combo$medicine)))
 
   # Targeting dihydrocodeine explicitly does match the dihydrocodeine product.
@@ -1216,7 +1205,7 @@ test_that("ingredient matching is word-boundary based (codeine != dihydrocodeine
     "co", dose = 30, dose_unit = "mg", db = db,
     ingredient = "dihydrocodeine", objective = "cheapest"
   )
-  expect_true(any(grepl("Dihydrocodeine", res2$combination[[1]]$medicine)))
+  expect_match(res2$combination[[1]]$medicine, "Dihydrocodeine", all = FALSE)
 })
 
 test_that("ambiguous ingredient term warns and uses all matches", {
@@ -1243,18 +1232,12 @@ test_that("ambiguous ingredient term warns and uses all matches", {
     class = "dmd_db"
   )
 
-  warnings <- character()
-  withCallingHandlers(
-    dmd_dose_optimise(
+  expect_snapshot(
+    out <- dmd_dose_optimise(
       "sodium", dose = 100, dose_unit = "mg", db = db,
       ingredient = "sodium", objective = "cheapest"
-    ),
-    warning = function(w) {
-      warnings <<- c(warnings, conditionMessage(w))
-      invokeRestart("muffleWarning")
-    }
+    )
   )
-  expect_true(any(grepl("matched 2 distinct ingredients", warnings)))
 })
 
 test_that("targeting a non-mass ingredient warns and yields no dose", {
@@ -1279,18 +1262,12 @@ test_that("targeting a non-mass ingredient warns and yields no dose", {
     list(master = master, ingredients = ingredients, loaded_at = Sys.time()),
     class = "dmd_db"
   )
-  warnings <- character()
-  res <- withCallingHandlers(
-    dmd_dose_optimise(
+  expect_snapshot(
+    res <- dmd_dose_optimise(
       "Sodium iodide", dose = 1, dose_unit = "mg", db = db,
       ingredient = "Sodium iodide"
-    ),
-    warning = function(w) {
-      warnings <<- c(warnings, conditionMessage(w))
-      invokeRestart("muffleWarning")
-    }
+    )
   )
-  expect_true(any(grepl("non-mass strength", warnings)))
   expect_equal(nrow(res), 0L)
 })
 
@@ -1330,7 +1307,7 @@ test_that("cheapest tie-break prefers the lowest over-delivery", {
   expect_equal(res$over_delivery, 0)
   expect_equal(res$total_items, 2)
   combo <- res$combination[[1]]
-  expect_true(all(c("16mg", "24mg") %in% sub(".*?(\\d+mg).*", "\\1", combo$medicine)))
+  expect_contains(sub(".*?(\\d+mg).*", "\\1", combo$medicine), c("16mg", "24mg"))
 })
 
 test_that("compound rows are skipped while supported rows still optimise", {
@@ -1353,15 +1330,14 @@ test_that("compound rows are skipped while supported rows still optimise", {
     class = "dmd_db"
   )
 
-  expect_warning(
+  expect_snapshot(
     res <- dmd_dose_optimise(
       "testdrug",
       dose = 100,
       dose_unit = "mg",
       db = mixed_db,
       objective = "cheapest"
-    ),
-    regexp = "compound product"
+    )
   )
   expect_equal(nrow(res), 1L)
   expect_false(any(grepl("compound", res$combination[[1]]$ampp_name)))
@@ -1396,7 +1372,7 @@ test_that("rows with pack_size <= 0 yield NA per-item price and do not crash", {
       preparation = "tablet|none|oral"
     )
   )
-  expect_true(nrow(res) >= 1L)
+  expect_gte(nrow(res), 1L)
 })
 
 test_that("all pack_size = 0 returns an empty result rather than crashing", {
@@ -1429,12 +1405,11 @@ test_that("all pack_size = 0 returns an empty result rather than crashing", {
 # ── preparation filter that matches nothing ───────────────────────────────────
 
 test_that("preparation filter that matches no group warns and returns empty", {
-  expect_warning(
+  expect_snapshot(
     res <- dmd_dose_optimise(
       "metformin", dose = 500, dose_unit = "mg", db = db,
       preparation = "nonexistent-preparation-xyz"
-    ),
-    regexp = "No candidates remain"
+    )
   )
   expect_equal(nrow(res), 0L)
 })
@@ -1455,7 +1430,7 @@ test_that("dmd_dose_cost accepts objective = 'all' as a shorthand", {
     objective = c("cheapest", "min_items", "most_expensive")
   )
   expect_equal(cost_all, cost_triple)
-  expect_true(!is.na(cost_all))
+  expect_false(is.na(cost_all))
 })
 
 # ── dmd_dose_cost_range ───────────────────────────────────────────────────────
@@ -1481,7 +1456,7 @@ test_that("dmd_dose_cost_range: lo_pence <= hi_pence for all doses", {
   expect_true(all(is.finite(res$lo_pence)))
   expect_true(all(is.finite(res$hi_pence)))
   # Lower bound never exceeds upper bound
-  expect_true(all(res$lo_pence <= res$hi_pence))
+  expect_lte(max(res$lo_pence - res$hi_pence), 0)
 })
 
 test_that("dmd_dose_cost_range lo_pence matches dmd_dose_cost('cheapest')", {

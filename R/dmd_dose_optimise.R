@@ -488,8 +488,8 @@ dmd_dose_optimise <- function(
   }
   if ("both" %in% objective) {
     lifecycle::deprecate_warn(
-      "0.6.0",
-      'dmd_dose_optimise(objective = "both")',
+      when = "0.6.0",
+      what = I('`objective = "both"`'),
       details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
@@ -728,8 +728,8 @@ dmd_dose_cost <- function(
   }
   if ("both" %in% objective) {
     lifecycle::deprecate_warn(
-      "0.6.0",
-      'dmd_dose_cost(objective = "both")',
+      when = "0.6.0",
+      what = I('`objective = "both"`'),
       details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
