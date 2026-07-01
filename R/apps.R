@@ -14,9 +14,8 @@
 run_dmd_price_lookup <- function() {
   app_dir <- system.file("shiny", "dmd_price_lookup", package = "dmdprices")
   if (app_dir == "") {
-    stop(
-      "Could not find the app directory. Try re-installing dmdprices.",
-      call. = FALSE
+    cli::cli_abort(
+      "Could not find the app directory. Try re-installing {.pkg dmdprices}."
     )
   }
   shiny::runApp(app_dir, display.mode = "normal")
@@ -39,9 +38,8 @@ run_dmd_price_lookup <- function() {
 run_dmd_dose_optimise <- function() {
   app_dir <- system.file("shiny", "dmd_dose_optimise", package = "dmdprices")
   if (app_dir == "") {
-    stop(
-      "Could not find the app directory. Try re-installing dmdprices.",
-      call. = FALSE
+    cli::cli_abort(
+      "Could not find the app directory. Try re-installing {.pkg dmdprices}."
     )
   }
   shiny::runApp(app_dir, display.mode = "normal")
@@ -63,9 +61,8 @@ run_dmd_dose_optimise <- function() {
 run_inflate_nhscii <- function() {
   app_dir <- system.file("shiny", "inflate_nhscii", package = "dmdprices")
   if (app_dir == "") {
-    stop(
-      "Could not find the app directory. Try re-installing dmdprices.",
-      call. = FALSE
+    cli::cli_abort(
+      "Could not find the app directory. Try re-installing {.pkg dmdprices}."
     )
   }
   shiny::runApp(app_dir, display.mode = "normal")
