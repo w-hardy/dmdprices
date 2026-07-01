@@ -38,3 +38,7 @@ db <- dmd_load("~/dmdDataLoader")
 db
 }
 }
+\seealso{
+\code{\link[=as_dmd_db]{as_dmd_db()}} to build a \verb{<dmd_db>} from an in-memory table (e.g.
+external Drug-Tariff data); \code{\link[=dmd_price_lookup]{dmd_price_lookup()}}, \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}.
+}

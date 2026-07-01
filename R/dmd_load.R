@@ -21,6 +21,9 @@
 #'     `denominator_unit`, `strength_canonical`, `strength_unit_canon`.
 #'   * `$loaded_at` — a `POSIXct` timestamp recording when the data was loaded.
 #'
+#' @seealso [as_dmd_db()] to build a `<dmd_db>` from an in-memory table (e.g.
+#'   external Drug-Tariff data); [dmd_price_lookup()], [dmd_dose_optimise()].
+#'
 #' @export
 #'
 #' @examples
@@ -110,14 +113,7 @@ dmd_load <- function(path = getOption("dmdprices.path")) {
     )
   }
 
-  structure(
-    list(
-      master = master,
-      ingredients = ingredients,
-      loaded_at = Sys.time()
-    ),
-    class = "dmd_db"
-  )
+  .new_dmd_db(master, ingredients = ingredients, loaded_at = Sys.time())
 }
 
 # ── S3 methods for dmd_db ─────────────────────────────────────────────────────

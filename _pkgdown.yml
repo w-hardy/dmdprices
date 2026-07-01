@@ -41,6 +41,7 @@ reference:
     contents:
       - dmd_price_lookup
       - dmd_load
+      - as_dmd_db
   - title: "Dose optimisation"
     desc: "Find combinations of AMPPs that deliver a target dose"
     contents:

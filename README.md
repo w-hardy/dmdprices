@@ -210,6 +210,46 @@ Published by the **NHS Business Services Authority (NHSBSA)**.
 The dm+d is available from the NHSBSA TRUD service:
 <https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/6>
 
+**Prices are dm+d-derived.** Column names mirror the NHS Drug Tariff Part VIIIA
+CSV so the two can be used together, but the price *values* come from dm+d — not
+from the separately published Drug Tariff CSV, which can differ.
+
+---
+
+## Related work
+
+`dmdprices` is a **computational toolkit**: it looks up prices by medicine name,
+optimises dose/pack combinations, and inflates costs between years, all from R.
+It complements — rather than competes with — NICE's
+[COSTmos](https://github.com/NICE-Data-and-Analytics/COSTmos), an R package and
+Shiny dashboard that **collates and displays** England healthcare-cost reference
+datasets (Drug Tariff, Prescription Cost Analysis, National Cost Collection, and
+the PSSRU Unit Costs of Health and Social Care).
+
+|                 | `dmdprices`                              | COSTmos                              |
+| --------------- | ---------------------------------------- | ----------------------------------- |
+| Purpose         | Compute — look up, optimise, inflate     | Browse — display reference tables   |
+| Interface       | Functions (search, dose solver, `nhscii()`) | A dashboard + bundled data objects |
+| Drug price data | Derived from **dm+d**                    | The published **Drug Tariff**       |
+
+**Using COSTmos data with `dmdprices`.** Because both express prices in pence and
+share the Drug Tariff Part VIIIA layout, COSTmos' `drug_tariff_viii_a` table can
+drive the `dmdprices` engine via
+[`as_dmd_db()`](https://w-hardy.github.io/dmdprices/reference/as_dmd_db.html):
+
+```r
+# COSTmos is optional and not on CRAN; install it separately.
+library(dplyr)
+db <- COSTmos::drug_tariff_viii_a |>
+  rename(unit = unit_of_measure, basic_price = basic_price_in_p) |>  # already pence
+  as_dmd_db()
+dmd_dose_optimise("metformin", dose = "1500 mg", db = db)
+```
+
+That source carries no `nhs_indicative_price`, `ampp_name`, `ampp_snomed_code`, or
+`price_date`, so `as_dmd_db()` fills them with `NA` — brand-name search and
+AMPP-level detail are unavailable for that data — and reports what it filled.
+
 ---
 
 ## Interactive apps
