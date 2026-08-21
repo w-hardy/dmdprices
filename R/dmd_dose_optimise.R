@@ -52,8 +52,10 @@
 }
 
 .strength_token_count <- function(name) {
+  # .strength_num accepts comma thousands groups so a "1,000unit" token is
+  # counted from its true start rather than from the digits after the comma.
   pattern <- paste0(
-    "(?i)\\d+(?:\\.\\d+)?\\s*",
+    "(?i)", .strength_num, "\\s*",
     "(?:micrograms?|mcg|mg|ng|nanograms?|g|units?|u)\\b"
   )
   matches <- gregexpr(pattern, name, perl = TRUE)
@@ -338,7 +340,8 @@
 #' @param query        Character string passed through to [dmd_price_lookup()].
 #' @param dose         Numeric dose value (in `dose_unit`), **or** a
 #'   self-contained dose string such as `"250 mg"`, `"250mg"`, or
-#'   `"0.25 g"`. When a string is supplied `dose_unit` may be omitted.
+#'   `"0.25 g"`. Comma thousands separators are accepted (`"100,000 units"`).
+#'   When a string is supplied `dose_unit` may be omitted.
 #' @param dose_unit    One of `"mg"`, `"microgram"` / `"mcg"`, `"g"`, `"ml"`,
 #'   `"unit"`. Default `"mg"`. Ignored (with a warning) if `dose` is a
 #'   string that already contains a unit.
@@ -384,10 +387,38 @@
 #' @param can_split_vials Logical. If `TRUE`, concentration-based preparations
 #'   (vials, ampoules) may be costed as a fraction of a container (vial
 #'   sharing). Defaults to `FALSE`, which costs whole containers only.
+#' @param over_delivery How much more than the requested dose a combination may
+#'   deliver:
+#'   \describe{
+#'     \item{`"forbid"`}{(default) only combinations that deliver the dose
+#'       exactly. A preparation group that cannot hit the dose exactly returns
+#'       no row, and a warning names it.}
+#'     \item{`"minimise"`}{the smallest achievable over-delivery, with the
+#'       requested `objective` applied within it.}
+#'     \item{`"allow"`}{the objective decides across every combination that
+#'       delivers *at least* the dose; over-delivery is only a tie-break. This
+#'       was the behaviour before version 0.6.0.}
+#'   }
+#'   The policy applies where one "item" is an individually administered dose —
+#'   the splittable solid forms — because there over-delivery is extra drug
+#'   given to the patient. Whole-pack dispensing (`can_split = FALSE`) and
+#'   whole-container preparations (vials and ampoules with
+#'   `can_split_vials = FALSE`) are **exempt**: their surplus is wastage in the
+#'   pack or the vial, so the cheapest pack/container covering the dose remains
+#'   the costing answer and an `"over-delivery-policy-not-applied"` note is
+#'   added. Exact delivery from a container is available via
+#'   `can_split_vials = TRUE`.
+#' @param quiet Logical. `FALSE` (default) warns, once per call, when a
+#'   preparation group cannot deliver the dose exactly (and is therefore dropped
+#'   under `over_delivery = "forbid"`), and when a returned combination delivers
+#'   more than the requested dose — saying whether an exact combination existed.
+#'   `TRUE` silences both. Unrelated warnings (unsupported compounds, ingredient
+#'   matching) are not affected.
 #'
 #' @return A [tibble][tibble::tibble] with one row per
 #'   `(preparation_group, objective)` combination. See the package vignette for
-#'   the column layout. The `combination` column is a list of tibbles — one
+#'   the column layout. `dose_exact` is `TRUE` when the combination delivers the
+#'   requested dose exactly. The `combination` column is a list of tibbles — one
 #'   row per AMPP picked, identifying the specific branded product(s) used.
 #'   `dose_cost_pence` is the cost (in pence) of supplying the requested dose:
 #'   pro-rata item cost when `can_split = TRUE` (hospital), or whole-pack cost
@@ -417,6 +448,9 @@
 #'
 #' # Community pharmacy — whole packs must be dispensed
 #' dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
+#'
+#' # Allow over-delivery when no exact combination exists
+#' dmd_dose_optimise("metformin", dose = "750 mg", over_delivery = "minimise")
 #' }
 dmd_dose_optimise <- function(
   query,
@@ -431,7 +465,9 @@ dmd_dose_optimise <- function(
   ingredient = NULL,
   active_only = TRUE,
   can_split = TRUE,
-  can_split_vials = FALSE
+  can_split_vials = FALSE,
+  over_delivery = c("forbid", "minimise", "allow"),
+  quiet = FALSE
 ) {
   .validate_ingredient(ingredient)
   # ── Resolve dose / dose_unit ─────────────────────────────────────────────
@@ -466,22 +502,12 @@ dmd_dose_optimise <- function(
   if (!is.numeric(dose) || length(dose) != 1L || is.na(dose) || dose <= 0) {
     cli::cli_abort("{.arg dose} must be a single positive numeric value.")
   }
-  if (!is.logical(can_split) || length(can_split) != 1L || is.na(can_split)) {
-    cli::cli_abort(
-      "{.arg can_split} must be a single logical value (TRUE or FALSE)."
-    )
-  }
-  if (
-    !is.logical(can_split_vials) ||
-      length(can_split_vials) != 1L ||
-      is.na(can_split_vials)
-  ) {
-    cli::cli_abort(
-      "{.arg can_split_vials} must be a single logical value (TRUE or FALSE)."
-    )
-  }
+  .validate_flag(can_split, "can_split")
+  .validate_flag(can_split_vials, "can_split_vials")
+  .validate_flag(quiet, "quiet")
   method <- match.arg(method)
   price <- match.arg(price)
+  over_delivery <- match.arg(over_delivery)
 
   if (identical(objective, "all")) {
     objective <- c("cheapest", "min_items", "most_expensive")
@@ -597,6 +623,9 @@ dmd_dose_optimise <- function(
   ])
 
   out <- list()
+  no_exact <- character()
+  over_impossible <- character()
+  over_available <- character()
   for (g in seq_len(nrow(groups))) {
     sub <- enriched[
       enriched$preparation_group == groups$preparation_group[g],
@@ -613,11 +642,29 @@ dmd_dose_optimise <- function(
         preparation_group = groups$preparation_group[g],
         preparation_label = groups$preparation_label[g],
         can_split = can_split,
-        can_split_vials = can_split_vials
+        can_split_vials = can_split_vials,
+        over_delivery = over_delivery
       )
-      if (!is.null(row)) out[[length(out) + 1L]] <- row
+      if (.is_no_exact(row)) {
+        no_exact <- c(no_exact, groups$preparation_label[g])
+      } else if (!is.null(row)) {
+        out[[length(out) + 1L]] <- row
+        if (.policy_row(row) && !row$dose_exact) {
+          if (.exact_feasible(row)) {
+            over_available <- c(over_available, groups$preparation_label[g])
+          } else {
+            over_impossible <- c(over_impossible, groups$preparation_label[g])
+          }
+        }
+      }
     }
   }
+
+  # One warning per call, however many groups and objectives were dropped, so
+  # that an impossible exact dose is never silently indistinguishable from a
+  # query that matched nothing.
+  .warn_no_exact(no_exact, quiet)
+  .warn_over_delivery(over_impossible, over_available, quiet)
 
   if (length(out) == 0) {
     return(.empty_dose_result())
@@ -638,7 +685,7 @@ dmd_dose_optimise <- function(
   } else {
     result$cost_whole_pack_pence
   }
-  result[, names(.empty_dose_result())]
+  .drop_policy_info(result[, names(.empty_dose_result())])
 }
 
 # ── Vectorised cost lookup ────────────────────────────────────────────────────
@@ -675,6 +722,13 @@ dmd_dose_optimise <- function(
 #'   while `"most_expensive"` alone returns the worst-case cost across groups.
 #' @param can_split_vials As in [dmd_dose_optimise()]. If `TRUE`, vials and
 #'   ampoules are costed as a fraction of a container (vial sharing).
+#' @param over_delivery As in [dmd_dose_optimise()]. Defaults to `"forbid"`, so
+#'   doses that no combination delivers exactly return `na_value` (with one
+#'   warning per call) rather than the cost of an over-delivered dose. Pass
+#'   `"minimise"` or `"allow"` to cost over-delivering combinations.
+#' @param quiet As in [dmd_dose_optimise()]. Because this function returns bare
+#'   numbers, the warnings are the only signal that a cost is for an
+#'   over-delivered dose; `TRUE` silences them for bulk costing runs.
 #' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
 #'   or negative elements are returned as `na_value` without error.
 #' @param na_value Scalar returned for doses that are `NA`, non-positive, or for
@@ -717,11 +771,15 @@ dmd_dose_cost <- function(
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE,
+  over_delivery = c("forbid", "minimise", "allow"),
+  quiet = FALSE,
   na_value = NA_real_
 ) {
   .validate_ingredient(ingredient)
+  .validate_flag(quiet, "quiet")
   method <- match.arg(method)
   price <- match.arg(price)
+  over_delivery <- match.arg(over_delivery)
 
   if (identical(objective, "all")) {
     objective <- c("cheapest", "min_items", "most_expensive")
@@ -831,7 +889,13 @@ dmd_dose_cost <- function(
   #                           objectives (backward-compatible for the default
   #                           c("cheapest", "min_items"), conservative when
   #                           "most_expensive" is mixed in)
-  vapply(
+  # Collected across every dose and group, then reported once after the loop —
+  # a warning per dose element would be unusable on a costing table.
+  no_exact <- character()
+  over_impossible <- character()
+  over_available <- character()
+
+  costs <- vapply(
     dose,
     function(d) {
       if (is.na(d) || d <= 0) {
@@ -859,8 +923,13 @@ dmd_dose_cost <- function(
               preparation_group = groups$preparation_group[g],
               preparation_label = groups$preparation_label[g],
               can_split = can_split,
-              can_split_vials = can_split_vials
+              can_split_vials = can_split_vials,
+              over_delivery = over_delivery
             )
+            if (.is_no_exact(row)) {
+              no_exact <<- c(no_exact, groups$preparation_label[g])
+              next
+            }
             if (is.null(row)) {
               next
             }
@@ -871,6 +940,18 @@ dmd_dose_cost <- function(
             }
             if (is.na(cost)) {
               next
+            }
+            # Recorded only once the cost is usable, so the warning describes
+            # numbers the caller actually receives.
+            if (.policy_row(row) && !row$dose_exact) {
+              if (.exact_feasible(row)) {
+                over_available <<- c(over_available, groups$preparation_label[g])
+              } else {
+                over_impossible <<- c(
+                  over_impossible,
+                  groups$preparation_label[g]
+                )
+              }
             }
             if (is_max) {
               if (cost > best) best <- cost
@@ -888,6 +969,10 @@ dmd_dose_cost <- function(
     },
     numeric(1L)
   )
+
+  .warn_no_exact(no_exact, quiet)
+  .warn_over_delivery(over_impossible, over_available, quiet)
+  costs
 }
 
 # ── Cost range lookup ─────────────────────────────────────────────────────────
@@ -955,9 +1040,13 @@ dmd_dose_cost_range <- function(
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE,
+  over_delivery = c("forbid", "minimise", "allow"),
+  quiet = FALSE,
   na_value = NA_real_
 ) {
   .validate_ingredient(ingredient)
+  .validate_flag(quiet, "quiet")
+  over_delivery <- match.arg(over_delivery)
   shared <- list(
     query = query,
     dose = dose,
@@ -971,25 +1060,31 @@ dmd_dose_cost_range <- function(
     active_only = active_only,
     can_split = can_split,
     can_split_vials = can_split_vials,
+    over_delivery = over_delivery,
+    quiet = quiet,
     na_value = na_value
   )
-  compound_warning_seen <- FALSE
+  # Both bounds run the same candidate set, so each of these warnings would
+  # otherwise be raised twice for one user-visible call.
+  seen <- character()
+  once <- c(
+    "unsupported compound product",
+    "No exact-dose combination exists",
+    "Delivering more than the requested dose"
+  )
   call_cost <- function(obj) {
     withCallingHandlers(
       do.call(dmd_dose_cost, c(shared, list(objective = obj))),
       warning = function(w) {
-        if (
-          grepl(
-            "unsupported compound product",
-            conditionMessage(w),
-            fixed = TRUE
-          )
-        ) {
-          if (compound_warning_seen) {
-            invokeRestart("muffleWarning")
-          }
-          compound_warning_seen <<- TRUE
+        msg <- conditionMessage(w)
+        hit <- once[vapply(once, grepl, logical(1), msg, fixed = TRUE)]
+        if (length(hit) == 0L) {
+          return()
         }
+        if (hit[[1]] %in% seen) {
+          invokeRestart("muffleWarning")
+        }
+        seen <<- c(seen, hit[[1]])
       }
     )
   }
@@ -997,6 +1092,67 @@ dmd_dose_cost_range <- function(
   lo <- call_cost("cheapest")
   hi <- call_cost("most_expensive")
   tibble::tibble(lo_pence = lo, hi_pence = hi)
+}
+
+# Warn once about preparation groups that were dropped because no combination
+# delivers the dose exactly under `over_delivery = "forbid"`. `labels` may
+# contain repeats (one per objective and, in dmd_dose_cost(), per dose).
+.warn_no_exact <- function(labels, quiet = FALSE) {
+  labels <- unique(labels[!is.na(labels)])
+  if (isTRUE(quiet) || length(labels) == 0L) {
+    return(invisible())
+  }
+  cli::cli_warn(c(
+    "No exact-dose combination exists for {length(labels)} preparation group{?s}: {.val {labels}}.",
+    "i" = 'Pass {.code over_delivery = "minimise"} or {.code over_delivery = "allow"} to permit over-delivery.'
+  ))
+  invisible()
+}
+
+# Warn once about returned combinations that deliver more than the requested
+# dose, so a caller reading only the numbers — `dmd_dose_cost()` has no notes
+# column — still learns that the dose was not matched exactly. Only groups the
+# over-delivery policy governs reach this; whole packs and whole containers
+# report their surplus in `notes` alone. `impossible` names groups with no exact
+# combination at all, `available` those where one existed but the objective
+# preferred an over-delivering combination (reachable only under "allow").
+.warn_over_delivery <- function(impossible, available, quiet = FALSE) {
+  impossible <- unique(impossible[!is.na(impossible)])
+  available <- unique(available[!is.na(available)])
+  n <- length(impossible) + length(available)
+  if (isTRUE(quiet) || n == 0L) {
+    return(invisible())
+  }
+  msg <- "Delivering more than the requested dose for {n} preparation group{?s}."
+  if (length(impossible) > 0L) {
+    msg <- c(
+      msg,
+      "*" = "{.val {impossible}}: no exact-dose combination exists."
+    )
+  }
+  if (length(available) > 0L) {
+    msg <- c(
+      msg,
+      "*" = "{.val {available}}: an exact-dose combination exists, but the objective preferred an over-delivering one."
+    )
+  }
+  cli::cli_warn(c(
+    msg,
+    "i" = 'Pass {.code over_delivery = "forbid"} to return only exact-dose combinations, or {.code quiet = TRUE} to silence this.'
+  ))
+  invisible()
+}
+
+# Shared validator for the package's single-logical arguments. Errors are
+# attributed to the calling function, not this helper.
+.validate_flag <- function(x, arg, call = rlang::caller_env()) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+    cli::cli_abort(
+      "{.arg {arg}} must be a single logical value (TRUE or FALSE).",
+      call = call
+    )
+  }
+  invisible()
 }
 
 # Empty result scaffold with the declared columns.
@@ -1011,6 +1167,7 @@ dmd_dose_cost_range <- function(
     dose_delivered = numeric(),
     dose_delivered_unit = character(),
     over_delivery = numeric(),
+    dose_exact = logical(),
     total_items = numeric(),
     cost_prorata_pence = numeric(),
     cost_whole_pack_pence = numeric(),

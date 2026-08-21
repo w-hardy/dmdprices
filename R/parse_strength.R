@@ -46,6 +46,21 @@
   )
 }
 
+# ── Numeric strength grammar ─────────────────────────────────────────────────
+
+# Numeric strength token: digits with optional comma thousands groups and an
+# optional decimal part ("500", "2.5", "100,000", "1,234.5"). dm+d writes large
+# biological-activity strengths with commas (e.g. nystatin "100,000units/ml");
+# see issue #22. A comma group must be exactly three digits, so malformed
+# tokens ("1,00") and European decimal commas ("1,5") never match.
+.strength_num <- "\\d+(?:,\\d{3})*(?:\\.\\d+)?"
+
+# Convert a captured numeric token to numeric, stripping thousands commas.
+# NA-safe: unmatched optional capture groups pass through as NA.
+.strength_amount <- function(x) {
+  suppressWarnings(as.numeric(gsub(",", "", x, fixed = TRUE)))
+}
+
 # ── Strength parser ───────────────────────────────────────────────────────────
 
 # Regex captures an optional strength token of the form
@@ -56,12 +71,12 @@
   "(?i)",
   "(?<drug>.+?)",
   "\\s+",
-  "(?<amt>\\d+(?:\\.\\d+)?)",
+  "(?<amt>", .strength_num, ")",
   "\\s*",
   "(?<unit>micrograms?|mcg|mg|ng|nanograms?|g|units?|u)",
   "(?:",
   "\\s*/\\s*",
-  "(?<den_amt>\\d+(?:\\.\\d+)?)?",
+  "(?<den_amt>(?:", .strength_num, "))?",
   "\\s*",
   "(?<den_unit>ml|g|mg|dose|doses|actuation|actuations)",
   ")?",
@@ -90,10 +105,10 @@
   "(?i)^",
   "(.+?)\\s+",
   "(",
-  "\\d+(?:\\.\\d+)?\\s*(?:", .mass_unit_alt, ")",
-  "(?:\\s*/\\s*\\d+(?:\\.\\d+)?\\s*(?:", .mass_unit_alt, "))+",
+  .strength_num, "\\s*(?:", .mass_unit_alt, ")",
+  "(?:\\s*/\\s*", .strength_num, "\\s*(?:", .mass_unit_alt, "))+",
   ")",
-  "(?:\\s*/\\s*(\\d+(?:\\.\\d+)?)?\\s*(ml|litres?|l|doses?|actuations?))?",
+  "(?:\\s*/\\s*((?:", .strength_num, "))?\\s*(ml|litres?|l|doses?|actuations?))?",
   "(?:\\s+(.*))?$"
 )
 
@@ -145,7 +160,7 @@
   m <- regmatches(
     token,
     regexec(
-      paste0("(?i)^\\s*(\\d+(?:\\.\\d+)?)\\s*(", .mass_unit_alt, ")\\s*$"),
+      paste0("(?i)^\\s*(", .strength_num, ")\\s*(", .mass_unit_alt, ")\\s*$"),
       token,
       perl = TRUE
     )
@@ -153,7 +168,7 @@
   if (length(m) == 0) {
     return(NULL)
   }
-  amt <- as.numeric(m[2])
+  amt <- .strength_amount(m[2])
   unit <- tolower(m[3])
   can <- .canonicalise_unit(amt, unit)
   tibble::tibble(
@@ -174,7 +189,7 @@
 
   drug <- m[2]
   block <- m[3]
-  den_amt <- suppressWarnings(as.numeric(m[4]))
+  den_amt <- .strength_amount(m[4])
   den_unit <- m[5]
   tail <- m[6]
 
@@ -213,9 +228,9 @@
 # Strength token within one ingredient segment: `<amt><unit>` optionally
 # followed by a `/<den_amt><den_unit>` concentration denominator.
 .segment_strength_regex <- paste0(
-  "(?i)(\\d+(?:\\.\\d+)?)\\s*(",
+  "(?i)(", .strength_num, ")\\s*(",
   .mass_unit_alt,
-  ")(?:\\s*/\\s*(\\d+(?:\\.\\d+)?)?\\s*(ml|litres?|l|doses?|actuations?|g))?"
+  ")(?:\\s*/\\s*((?:", .strength_num, "))?\\s*(ml|litres?|l|doses?|actuations?|g))?"
 )
 
 # Returns a strength row for a multi-ingredient product that lists each
@@ -244,7 +259,7 @@
       next
     }
     m <- regmatches(seg, regexec(.segment_strength_regex, seg, perl = TRUE))[[1]]
-    amt <- suppressWarnings(as.numeric(m[2]))
+    amt <- .strength_amount(m[2])
     unit <- tolower(m[3])
     can <- .canonicalise_unit(amt, unit)
     comps[[length(comps) + 1L]] <- tibble::tibble(
@@ -258,7 +273,7 @@
     # segment that carries one.
     if (is.na(den_unit) && !is.na(m[5]) && nzchar(m[5])) {
       den_unit <- tolower(m[5])
-      den_amt <- if (is.na(m[4]) || !nzchar(m[4])) 1 else as.numeric(m[4])
+      den_amt <- if (is.na(m[4]) || !nzchar(m[4])) 1 else .strength_amount(m[4])
     }
 
     if (k == 1L) {
@@ -331,9 +346,9 @@
   }
 
   drug <- unname(m[2])
-  amt <- suppressWarnings(as.numeric(m[3]))
+  amt <- .strength_amount(m[3])
   unit <- unname(m[4])
-  den_amt <- suppressWarnings(as.numeric(m[5]))
+  den_amt <- .strength_amount(m[5])
   den_unit <- unname(m[6])
   tail <- unname(m[7])
 
@@ -399,7 +414,7 @@
   m <- regmatches(
     x,
     regexec(
-      paste0("^(\\d+(?:\\.\\d+)?)\\s*(", unit_pat, ")$"),
+      paste0("^(", .strength_num, ")\\s*(", unit_pat, ")$"),
       x,
       perl = TRUE,
       ignore.case = TRUE
@@ -417,7 +432,7 @@
       )
     )
   }
-  list(value = as.numeric(m[2]), unit = tolower(m[3]))
+  list(value = .strength_amount(m[2]), unit = tolower(m[3]))
 }
 
 #' Parse a dm+d VMP name into drug stem, strength, and remainder
@@ -425,6 +440,10 @@
 #' Extracts a numeric strength and optional per-denominator concentration
 #' (e.g. `mg/ml`, `microgram/dose`) from a VMP name. Also returns a canonical
 #' form (mass in mg, volume in ml, biological activity as `"unit"`).
+#'
+#' Strengths written with comma thousands separators, as dm+d does for large
+#' biological-activity values (e.g. nystatin `"100,000units/ml"`), parse
+#' identically to their plain forms.
 #'
 #' Combination (multi-ingredient) products such as co-codamol
 #' (`"8mg/500mg"`) or co-careldopa (`"25mg/100mg"`) are detected and their
@@ -449,7 +468,8 @@
 #' dmd_parse_strength(c(
 #'   "Metformin 500mg tablets",
 #'   "Morphine 10mg/5ml oral solution",
-#'   "Salbutamol 100micrograms/dose inhaler CFC free"
+#'   "Salbutamol 100micrograms/dose inhaler CFC free",
+#'   "Nystatin 100,000units/ml oral suspension"
 #' ))
 #'
 #' # Combination products expose per-ingredient strengths

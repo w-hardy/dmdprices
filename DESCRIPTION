@@ -1,6 +1,6 @@
 Package: dmdprices
 Title: Look Up Medicine Prices from the NHS dm+d
-Version: 0.5.0
+Version: 0.6.0
 Authors@R: person("Will", "Hardy", email = "w.hardy@bangor.ac.uk", role = c("aut", "cre", "cph"))
 Description: Programmatic tools to look up, optimise, and cost NHS medicine
     prices from the bundled dm+d (Dictionary of Medicines and Devices) pricing

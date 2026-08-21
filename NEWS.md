@@ -1,4 +1,43 @@
-# dmdprices (development version)
+# dmdprices 0.6.0
+
+## Dose optimisation now delivers the requested dose exactly by default
+
+`dmd_dose_optimise()`, `dmd_dose_cost()`, and `dmd_dose_cost_range()` gain an
+`over_delivery` argument, defaulting to `"forbid"` (#23).
+
+Previously every objective optimised across all combinations delivering *at
+least* the dose, with over-delivery only a tie-break. When an over-delivering
+combination was strictly cheaper, strictly fewer items, or strictly dearer, an
+available exact-dose combination was never surfaced by any objective — a 3 mg
+buprenorphine sublingual dose returned 4 mg (`cheapest`), 8 mg (`min_items`),
+and 11 mg (`most_expensive`), so `dmd_dose_cost()` silently costed 4 mg.
+
+- `"forbid"` (new default) returns only exact-dose combinations. A preparation
+  group that cannot hit the dose exactly returns no row and is named in a single
+  warning per call; `dmd_dose_cost()` returns `NA` for such doses.
+- `"minimise"` returns the smallest achievable over-delivery, with the requested
+  objective applied within it.
+- `"allow"` restores the previous behaviour.
+
+The policy applies where one item is an individually administered dose. Whole
+pack dispensing (`can_split = FALSE`) and whole containers (vials and ampoules
+with `can_split_vials = FALSE`) are exempt — there the surplus is wastage, so
+the cheapest pack or container covering the dose is still returned, with an
+`"over-delivery-policy-not-applied"` note.
+
+Results gain a `dose_exact` logical column, and `notes` gains `"exact-dose"`,
+`"over-delivery-minimised"`, and `"over-delivery-policy-not-applied"` entries,
+so an optimised exact dose, an impossible one, and a query that matched nothing
+are all distinguishable.
+
+A returned combination that over-delivers now also raises a warning — one per
+call, listing the preparation groups and saying whether no exact combination
+existed or whether one existed but the objective preferred an over-delivering
+combination. This matters most for `dmd_dose_cost()` and `dmd_dose_cost_range()`,
+which return bare numbers and so cannot show the `notes` column. The exempt
+whole-pack and whole-container results do not warn, since their surplus is
+expected wastage. `quiet = TRUE` (new argument on all three functions) silences
+this warning and the no-exact one, leaving unrelated warnings intact.
 
 ## Behaviour changes
 
@@ -121,6 +160,19 @@ following changes can alter **results** and are worth noting when upgrading:
 
 ## Fixed
 
+- `dmd_parse_strength()` now parses strengths written with comma thousands
+  separators, e.g. nystatin `"100,000units/ml"` (#22). Around 551 bundled
+  medicine names carry such strengths (nystatin suspensions, factor VIII/IX
+  and other `N,NNNunit` vials); previously they parsed to `NA` and so could not
+  be dose-costed, and `dmd_dose_cost()` returned `NA` for them. Two follow-on
+  corrections: multi-ingredient names such as
+  `"Colecalciferol 1,000unit / Menaquinone-7 45microgram capsules"` previously
+  matched mid-number and silently produced a **zero-strength** component
+  (`"000unit"` -> 0) with a mangled `drug_stem`; both now parse correctly. Dose
+  strings passed to `dmd_dose_optimise()` also accept the comma form
+  (`dose = "100,000 units"`). A comma group must be exactly three digits, so
+  malformed tokens and European decimal commas are still rejected. Identity
+  matching in `dmd_price_lookup()` is unaffected.
 - Dose-optimiser combination rows no longer conflate two AMPPs. In the
   splittable path, the cheapest *per-tablet* pack and the cheapest *whole*
   pack of a strength can differ; the row previously showed one pack's identity

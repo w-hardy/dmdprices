@@ -64,10 +64,9 @@ whole-pack cost breakdown.
 
 ## When objectives differ
 
-A 900 mg metformin dose is a good illustration. The cheapest combination
-may use more items (several smaller tablets) while the minimum-items answer
-may over-deliver (e.g. two 500 mg tablets → 1,000 mg). The output flags
-`over_delivery` in both the column and the notes:
+A 900 mg metformin dose is a good illustration. The cheapest combination may
+use more items (several smaller tablets) while the minimum-items answer uses
+fewer, larger ones. Both deliver 900 mg exactly:
 
 ```{r, eval = FALSE}
 res <- dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg",
@@ -75,6 +74,68 @@ res <- dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg",
 res[, c("objective", "total_items", "dose_delivered",
         "over_delivery", "cost_prorata_pence", "cost_whole_pack_pence")]
 ```
+
+## Over-delivery
+
+By default the optimiser returns only combinations that deliver the requested
+dose **exactly** (`over_delivery = "forbid"`), because for tablets and capsules
+a surplus is extra drug the patient takes. A preparation group that cannot hit
+the dose exactly returns no row and is named in a warning, so an impossible
+dose is never silently costed as an over-delivered one:
+
+```{r, eval = FALSE}
+# 750 mg cannot be built from 500 mg and 1,000 mg tablets — no rows, with a warning
+dmd_dose_optimise("metformin", dose = 750, dose_unit = "mg",
+                  preparation = "tablet|none|oral")
+
+# smallest achievable over-delivery, objective applied within it
+dmd_dose_optimise("metformin", dose = 750, dose_unit = "mg",
+                  preparation = "tablet|none|oral",
+                  over_delivery = "minimise")[,
+  c("objective", "dose_delivered", "over_delivery", "dose_exact", "notes")]
+
+# "allow" lets the objective decide across everything covering the dose
+dmd_dose_optimise("metformin", dose = 750, dose_unit = "mg",
+                  preparation = "tablet|none|oral",
+                  over_delivery = "allow")
+```
+
+`dose_exact` flags whether the row delivers the dose exactly, so you do not have
+to compare a floating-point `over_delivery` to zero.
+
+Whenever a returned combination over-delivers, one warning per call lists the
+preparation groups affected and says which case it is — no exact combination
+exists, or one exists but the objective preferred an over-delivering combination
+(only possible under `"allow"`). That warning is the only signal in
+`dmd_dose_cost()` and `dmd_dose_cost_range()`, which return bare numbers with no
+`notes` column to inspect. Pass `quiet = TRUE` to silence it in bulk costing
+runs; unrelated warnings still come through:
+
+```{r, eval = FALSE}
+# warns: an exact 3 mg combination existed but the cheapest one over-delivers
+dmd_dose_cost("buprenorphine", dose = 3, dose_unit = "mg",
+              preparation = "sublingual tablet", over_delivery = "allow")
+
+# same call, silenced
+dmd_dose_cost("buprenorphine", dose = 3, dose_unit = "mg",
+              preparation = "sublingual tablet", over_delivery = "allow",
+              quiet = TRUE)
+```
+
+Two cases are **exempt**, because there the surplus stays in the pack or the
+vial rather than reaching the patient, and the cheapest pack or container
+covering the dose is the costing answer:
+
+- whole-pack dispensing (`can_split = FALSE`), and
+- whole containers — vials and ampoules with `can_split_vials = FALSE`.
+
+Exempt rows carry an `"over-delivery-policy-not-applied"` note and do not warn,
+since buying whole packs or vials to cover a dose is the expected costing
+answer. Exact delivery from a container is available with
+`can_split_vials = TRUE`.
+
+The same argument is accepted by `dmd_dose_cost()` and `dmd_dose_cost_range()`,
+where a dose that cannot be delivered exactly returns `NA` under the default.
 
 ## Segregating preparations
 
@@ -244,7 +305,8 @@ dm+d views or NHS Drug Tariff Part VIIIA CSVs.
 - Discrete items only — tablet splitting is not considered.
 - For liquids, each "item" is one container (bottle, ampoule, vial) unless
   `can_split_vials = TRUE`. A small dose requested against a large container is
-  delivered as one whole container with an `over_delivery` flag.
+  delivered as one whole container with an `over_delivery` flag; containers are
+  exempt from the `over_delivery` policy for that reason.
 - Compound products (multiple active ingredients in one VMP) are skipped with
   a warning and are not returned as optimiser rows.
 - Clinical safety (max single / max daily dose) is **not** enforced.

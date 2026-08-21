@@ -176,18 +176,104 @@
   counts
 }
 
+# ── Over-delivery policy ─────────────────────────────────────────────────────
+
+# Sentinel returned by .optimise_group_items() when the over-delivery policy is
+# "forbid" and no exact-dose combination exists for the group. Distinguishes
+# "this group cannot deliver the dose exactly" (case 2) from "this group has no
+# usable candidates at all" (case 3, signalled by NULL). Callers aggregate these
+# and warn once per call rather than once per group.
+.no_exact_result <- function() {
+  structure(list(), class = "dmd_no_exact")
+}
+
+.is_no_exact <- function(x) {
+  inherits(x, "dmd_no_exact")
+}
+
+# Records, on a returned result row, that the over-delivery policy governed this
+# group and whether the group could have delivered the dose exactly. Carried as
+# attributes rather than columns: the caller reads them to build one warning per
+# call, and dplyr::bind_rows() drops them before the tibble reaches the user.
+# Groups exempt from the policy carry neither, which is what keeps them out of
+# the over-delivery warning.
+.set_policy_info <- function(res, exact_feasible) {
+  attr(res, "policy_applied") <- TRUE
+  attr(res, "exact_feasible") <- exact_feasible
+  res
+}
+
+.policy_row <- function(x) {
+  isTRUE(attr(x, "policy_applied", exact = TRUE))
+}
+
+.exact_feasible <- function(x) {
+  isTRUE(attr(x, "exact_feasible", exact = TRUE))
+}
+
+# dplyr::bind_rows() carries the attributes of a single input through, so strip
+# them explicitly before the result reaches the user.
+.drop_policy_info <- function(x) {
+  attr(x, "policy_applied") <- NULL
+  attr(x, "exact_feasible") <- NULL
+  x
+}
+
+# Restrict the candidate target positions according to the over-delivery policy.
+# `feasible` and `ts` are parallel vectors over the candidate targets; the return
+# value is a vector of positions into them (possibly empty).
+#
+#   "allow"    all feasible targets — cost / item count decides, over-delivery is
+#              only a tie-break (the historical behaviour).
+#   "minimise" the feasible target with the smallest over-delivery.
+#   "forbid"   the exact target only.
+#
+# "minimise" and "forbid" both collapse to a single target, so the objective then
+# only chooses which back-pointer path to follow to that target.
+.restrict_targets <- function(feasible, ts, dose_int, over_delivery) {
+  keep <- which(feasible)
+  if (length(keep) == 0L || identical(over_delivery, "allow")) {
+    return(keep)
+  }
+  if (identical(over_delivery, "forbid")) {
+    return(keep[ts[keep] == dose_int])
+  }
+  # "minimise"
+  over <- ts[keep] - dose_int
+  keep[which.min(over)]
+}
+
 # ── Pick the best target t for each objective ────────────────────────────────
 
-.best_target <- function(dp, dose_int, max_over, objective) {
+.best_target <- function(
+  dp,
+  dose_int,
+  max_over,
+  objective,
+  over_delivery = "allow"
+) {
   ts <- dose_int:(dose_int + max_over)
   idx <- ts + 1L
   items_vec <- dp$min_items[idx]
   cost_vec <- dp$min_cost[idx]
 
-  feasible <- is.finite(items_vec)
-  if (!any(feasible)) {
+  allowed <- .restrict_targets(
+    is.finite(items_vec),
+    ts,
+    dose_int,
+    over_delivery
+  )
+  if (length(allowed) == 0L) {
     return(NULL)
   }
+  # Blank out the disallowed targets so every feasibility test below — including
+  # the cost-side ones — sees only the targets the policy permits, leaving the
+  # objective and tie-break logic itself untouched.
+  drop <- setdiff(seq_along(ts), allowed)
+  items_vec[drop] <- Inf
+  cost_vec[drop] <- Inf
+
+  feasible <- is.finite(items_vec)
 
   if (objective == "min_items") {
     # Smallest items; tie-break by smallest over-delivery, then cost.
@@ -249,12 +335,27 @@
 
 # Like .best_target() but selects the target that MAXIMISES cost (most expensive).
 # Tie-breaks: most items, then largest over-delivery.
-.best_target_max <- function(dp, dose_int, max_over) {
+.best_target_max <- function(dp, dose_int, max_over, over_delivery = "allow") {
   ts <- dose_int:(dose_int + max_over)
   idx <- ts + 1L
   min_items_vec <- dp$min_items[idx]
   items_vec <- dp$max_items[idx]
   cost_vec <- dp$max_cost[idx]
+
+  allowed <- .restrict_targets(
+    is.finite(min_items_vec),
+    ts,
+    dose_int,
+    over_delivery
+  )
+  if (length(allowed) == 0L) {
+    return(NULL)
+  }
+  # As in .best_target(): disallowed targets are made infeasible (and unpriced)
+  # so the selection below only ever sees policy-permitted targets.
+  drop <- setdiff(seq_along(ts), allowed)
+  min_items_vec[drop] <- Inf
+  cost_vec[drop] <- -Inf
 
   feasible <- is.finite(min_items_vec)
   finite_cost <- is.finite(cost_vec)
@@ -318,6 +419,11 @@
 #   concentration-based preparations are always whole-container regardless.
 # can_split_vials: logical. TRUE = concentration preparations may be costed
 #   as a fraction of a container (vial sharing). Default FALSE.
+# over_delivery: "forbid", "minimise", or "allow". Applies only where an "item"
+#   is an individually administered dose (the item DP over solid forms), because
+#   there over-delivery is extra drug given to the patient. Whole-pack mode and
+#   whole-container preparations are exempt: their over-delivery is wastage, and
+#   the cheapest pack/container covering the dose remains the costing answer.
 .optimise_group <- function(
   group_df,
   dose_canonical,
@@ -327,7 +433,8 @@
   preparation_group,
   preparation_label,
   can_split = TRUE,
-  can_split_vials = FALSE
+  can_split_vials = FALSE,
+  over_delivery = "allow"
 ) {
   # Detect whether every row in this group is concentration-based.
   all_concentration <- all(!is.na(group_df$denominator_unit))
@@ -350,6 +457,13 @@
   # regardless of can_split, so they take the standard path.
   use_pack_dp <- !can_split && !all_concentration
 
+  # Whole packs and whole containers deliver surplus into the pack or the vial,
+  # not into the patient, so the over-delivery policy governs neither. When it
+  # does not apply, the group is optimised as if "allow" had been requested and
+  # says so in its notes.
+  policy_applies <- !use_pack_dp && !all_concentration
+  note_exemption <- !policy_applies && !identical(over_delivery, "allow")
+
   if (use_pack_dp) {
     .optimise_group_packs(
       group_df = group_df,
@@ -358,7 +472,8 @@
       objective = objective,
       medicine_root = medicine_root,
       preparation_group = preparation_group,
-      preparation_label = preparation_label
+      preparation_label = preparation_label,
+      policy_exempt = note_exemption
     )
   } else {
     .optimise_group_items(
@@ -368,7 +483,10 @@
       objective = objective,
       medicine_root = medicine_root,
       preparation_group = preparation_group,
-      preparation_label = preparation_label
+      preparation_label = preparation_label,
+      over_delivery = if (policy_applies) over_delivery else "allow",
+      policy_applies = policy_applies,
+      policy_exempt = note_exemption
     )
   }
 }
@@ -385,7 +503,10 @@
   objective,
   medicine_root,
   preparation_group,
-  preparation_label
+  preparation_label,
+  over_delivery = "allow",
+  policy_applies = FALSE,
+  policy_exempt = FALSE
 ) {
   # The DP operates on per-item canonical doses: for tablets/capsules this
   # is the strength itself; for liquids it is concentration × pack_size so
@@ -436,12 +557,18 @@
   dp <- .dose_dp(strengths_int, price_per_strength, dose_int, max_over)
 
   best <- if (is_max) {
-    .best_target_max(dp, dose_int, max_over)
+    .best_target_max(dp, dose_int, max_over, over_delivery)
   } else {
-    .best_target(dp, dose_int, max_over, objective)
+    .best_target(dp, dose_int, max_over, objective, over_delivery)
   }
 
   if (is.null(best)) {
+    # Under "forbid" the only reason selection can fail on an otherwise usable
+    # group is that no combination lands exactly on the dose. Report that
+    # separately so callers can warn about it once.
+    if (identical(over_delivery, "forbid")) {
+      return(.no_exact_result())
+    }
     return(NULL)
   }
 
@@ -540,10 +667,16 @@
 
   combination <- dplyr::bind_rows(combo_rows)
   dose_delivered <- best$t / scale
-  over_delivery <- dose_delivered - dose_canonical
+  over_amount <- dose_delivered - dose_canonical
 
-  if (over_delivery > 0) {
+  if (over_amount > 0) {
     notes <- c(notes, "over-delivery")
+    if (identical(over_delivery, "minimise")) {
+      notes <- c(notes, "over-delivery-minimised")
+    }
+  }
+  if (policy_exempt) {
+    notes <- c(notes, "over-delivery-policy-not-applied")
   }
   if (price_fallback) {
     notes <- c(notes, "price-field-fallback")
@@ -554,7 +687,7 @@
     notes <- c(notes, "cheapest-AMPP-per-strength")
   }
 
-  .assemble_result(
+  res <- .assemble_result(
     combination = combination,
     dose_delivered = dose_delivered,
     dose_canonical = dose_canonical,
@@ -570,6 +703,13 @@
     objective = objective,
     group_df = group_df
   )
+
+  if (!policy_applies) {
+    return(res)
+  }
+  # An exact target is reachable iff the DP found any item combination summing
+  # to the dose itself, whatever this objective settled on.
+  .set_policy_info(res, is.finite(dp$min_items[dose_int + 1L]))
 }
 
 # ── Vial-sharing optimisation (can_split_vials = TRUE, concentration only) ────
@@ -674,7 +814,8 @@
   objective,
   medicine_root,
   preparation_group,
-  preparation_label
+  preparation_label,
+  policy_exempt = FALSE
 ) {
   pack_df <- .build_pack_df(group_df)
 
@@ -806,10 +947,13 @@
 
   combination <- dplyr::bind_rows(combo_rows)
   dose_delivered <- best$t / scale
-  over_delivery <- dose_delivered - dose_canonical
+  over_amount <- dose_delivered - dose_canonical
 
-  if (over_delivery > 0) {
+  if (over_amount > 0) {
     notes <- c(notes, "over-delivery")
+  }
+  if (policy_exempt) {
+    notes <- c(notes, "over-delivery-policy-not-applied")
   }
   if (price_fallback) {
     notes <- c(notes, "price-field-fallback")
@@ -862,6 +1006,12 @@
   group_df
 ) {
   over_delivery <- dose_delivered - dose_canonical
+  # Exactness is reported as a flag rather than left to the caller comparing a
+  # floating-point difference to zero.
+  dose_exact <- abs(over_delivery) <= 1e-9 * max(1, dose_canonical)
+  if (dose_exact) {
+    notes <- c(notes, "exact-dose")
+  }
   # Report the price field of the AMPPs actually chosen (matched back to the
   # group by AMPP code), so price_field_used is consistent with the pack prices
   # shown in each combination row rather than reflecting some other AMPP in the
@@ -881,6 +1031,7 @@
     dose_delivered = dose_delivered,
     dose_delivered_unit = dose_unit_canon,
     over_delivery = over_delivery,
+    dose_exact = dose_exact,
     total_items = as.numeric(total_items),
     cost_prorata_pence = if (any(is.na(combination$subtotal_prorata_pence))) {
       NA_real_

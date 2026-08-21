@@ -17,6 +17,8 @@ dmd_dose_cost_range(
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE,
+  over_delivery = c("forbid", "minimise", "allow"),
+  quiet = FALSE,
   na_value = NA_real_
 )
 }
@@ -28,6 +30,15 @@ or negative elements yield \code{na_value} in both output columns.}
 
 \item{can_split_vials}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. If \code{TRUE}, vials and
 ampoules are costed as a fraction of a container (vial sharing).}
+
+\item{over_delivery}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. Defaults to \code{"forbid"}, so
+doses that no combination delivers exactly return \code{na_value} (with one
+warning per call) rather than the cost of an over-delivered dose. Pass
+\code{"minimise"} or \code{"allow"} to cost over-delivering combinations.}
+
+\item{quiet}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. Because this function returns bare
+numbers, the warnings are the only signal that a cost is for an
+over-delivered dose; \code{TRUE} silences them for bulk costing runs.}
 
 \item{na_value}{Scalar returned for doses that are \code{NA}, non-positive, or
 for which no solution is found. Default \code{NA_real_}.}

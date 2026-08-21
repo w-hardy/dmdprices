@@ -17,7 +17,9 @@ dmd_dose_optimise(
   ingredient = NULL,
   active_only = TRUE,
   can_split = TRUE,
-  can_split_vials = FALSE
+  can_split_vials = FALSE,
+  over_delivery = c("forbid", "minimise", "allow"),
+  quiet = FALSE
 )
 }
 \arguments{
@@ -25,7 +27,8 @@ dmd_dose_optimise(
 
 \item{dose}{Numeric dose value (in \code{dose_unit}), \strong{or} a
 self-contained dose string such as \code{"250 mg"}, \code{"250mg"}, or
-\code{"0.25 g"}. When a string is supplied \code{dose_unit} may be omitted.}
+\code{"0.25 g"}. Comma thousands separators are accepted (\code{"100,000 units"}).
+When a string is supplied \code{dose_unit} may be omitted.}
 
 \item{dose_unit}{One of \code{"mg"}, \code{"microgram"} / \code{"mcg"}, \code{"g"}, \code{"ml"},
 \code{"unit"}. Default \code{"mg"}. Ignored (with a warning) if \code{dose} is a
@@ -80,11 +83,41 @@ reported costs are whole-pack costs rather than pro-rata costs, and a
 \item{can_split_vials}{Logical. If \code{TRUE}, concentration-based preparations
 (vials, ampoules) may be costed as a fraction of a container (vial
 sharing). Defaults to \code{FALSE}, which costs whole containers only.}
+
+\item{over_delivery}{How much more than the requested dose a combination may
+deliver:
+\describe{
+\item{\code{"forbid"}}{(default) only combinations that deliver the dose
+exactly. A preparation group that cannot hit the dose exactly returns
+no row, and a warning names it.}
+\item{\code{"minimise"}}{the smallest achievable over-delivery, with the
+requested \code{objective} applied within it.}
+\item{\code{"allow"}}{the objective decides across every combination that
+delivers \emph{at least} the dose; over-delivery is only a tie-break. This
+was the behaviour before version 0.6.0.}
+}
+The policy applies where one "item" is an individually administered dose —
+the splittable solid forms — because there over-delivery is extra drug
+given to the patient. Whole-pack dispensing (\code{can_split = FALSE}) and
+whole-container preparations (vials and ampoules with
+\code{can_split_vials = FALSE}) are \strong{exempt}: their surplus is wastage in the
+pack or the vial, so the cheapest pack/container covering the dose remains
+the costing answer and an \code{"over-delivery-policy-not-applied"} note is
+added. Exact delivery from a container is available via
+\code{can_split_vials = TRUE}.}
+
+\item{quiet}{Logical. \code{FALSE} (default) warns, once per call, when a
+preparation group cannot deliver the dose exactly (and is therefore dropped
+under \code{over_delivery = "forbid"}), and when a returned combination delivers
+more than the requested dose — saying whether an exact combination existed.
+\code{TRUE} silences both. Unrelated warnings (unsupported compounds, ingredient
+matching) are not affected.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per
 \verb{(preparation_group, objective)} combination. See the package vignette for
-the column layout. The \code{combination} column is a list of tibbles — one
+the column layout. \code{dose_exact} is \code{TRUE} when the combination delivers the
+requested dose exactly. The \code{combination} column is a list of tibbles — one
 row per AMPP picked, identifying the specific branded product(s) used.
 \code{dose_cost_pence} is the cost (in pence) of supplying the requested dose:
 pro-rata item cost when \code{can_split = TRUE} (hospital), or whole-pack cost
@@ -124,6 +157,9 @@ dmd_dose_optimise(
 
 # Community pharmacy — whole packs must be dispensed
 dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
+
+# Allow over-delivery when no exact combination exists
+dmd_dose_optimise("metformin", dose = "750 mg", over_delivery = "minimise")
 }
 }
 \seealso{

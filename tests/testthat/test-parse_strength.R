@@ -161,3 +161,65 @@ test_that(".classify_preparation distinguishes IR vs MR tablets", {
   expect_equal(res$modifier, c("none", "modified-release", "none", "none"))
   expect_equal(res$route, c("oral", "oral", "oral", "injection"))
 })
+
+# ── Comma thousands separators (issue #22) ───────────────────────────────────
+
+test_that("comma-formatted strengths parse identically to plain forms", {
+  res <- dmd_parse_strength(c(
+    "Nystatin 100,000units/ml oral suspension",
+    "Nystatin 100000units/ml oral suspension"
+  ))
+  expect_equal(res$strength_value, c(100000, 100000))
+  expect_equal(res$strength_unit, c("units", "units"))
+  expect_equal(res$denominator_value, c(1, 1))
+  expect_equal(res$denominator_unit, c("ml", "ml"))
+  expect_equal(res$strength_canonical, c(100000, 100000))
+  expect_equal(res$strength_unit_canon, c("unit/ml", "unit/ml"))
+  expect_equal(res$drug_stem, c("Nystatin", "Nystatin"))
+})
+
+test_that("multi-group and decimal comma strengths parse", {
+  res <- dmd_parse_strength(c(
+    "Testdrug 1,234,567units powder for solution vials",
+    "Testdrug 1,234.5mg tablets"
+  ))
+  expect_equal(res$strength_value, c(1234567, 1234.5))
+  expect_equal(res$strength_unit, c("units", "mg"))
+})
+
+test_that("malformed comma groups do not parse as strengths", {
+  # A comma group must be exactly three digits; "1,00" is not a strength and
+  # must not be misread as 1 or 100.
+  res <- dmd_parse_strength("Testdrug 1,00mg tablets")
+  expect_true(is.na(res$strength_value))
+  expect_true(is.na(res$strength_unit))
+})
+
+test_that("comma numbers without a unit stay unparsed", {
+  # Real bundled name: the number is a product name token, not a strength.
+  res <- dmd_parse_strength("Generic Pangrol 10,000 capsules")
+  expect_true(is.na(res$strength_value))
+  expect_true(is.na(res$denominator_unit))
+})
+
+test_that("spaced-slash combinations with comma strengths parse all components", {
+  # Regression: "1,000unit" previously matched from "000unit", producing a
+  # zero-strength component and drug_stem "Colecalciferol 1,".
+  res <- dmd_parse_strength(
+    "Colecalciferol 1,000unit / Menaquinone-7 45microgram capsules"
+  )
+  expect_true(res$is_combination)
+  expect_equal(res$drug_stem, "Colecalciferol")
+  comps <- res$components[[1]]
+  expect_equal(comps$value, c(1000, 45))
+  expect_equal(comps$unit, c("unit", "microgram"))
+  expect_false(any(comps$value == 0))
+})
+
+test_that("bare-slash combinations with comma strengths parse all components", {
+  res <- dmd_parse_strength("Testdrug 1,000mg/500mg tablets")
+  expect_true(res$is_combination)
+  comps <- res$components[[1]]
+  expect_equal(comps$value, c(1000, 500))
+  expect_equal(comps$unit, c("mg", "mg"))
+})
