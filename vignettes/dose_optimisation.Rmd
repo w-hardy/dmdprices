@@ -103,6 +103,25 @@ dmd_dose_optimise("metformin", dose = 750, dose_unit = "mg",
 `dose_exact` flags whether the row delivers the dose exactly, so you do not have
 to compare a floating-point `over_delivery` to zero.
 
+Whenever a returned combination over-delivers, one warning per call lists the
+preparation groups affected and says which case it is — no exact combination
+exists, or one exists but the objective preferred an over-delivering combination
+(only possible under `"allow"`). That warning is the only signal in
+`dmd_dose_cost()` and `dmd_dose_cost_range()`, which return bare numbers with no
+`notes` column to inspect. Pass `quiet = TRUE` to silence it in bulk costing
+runs; unrelated warnings still come through:
+
+```{r, eval = FALSE}
+# warns: an exact 3 mg combination existed but the cheapest one over-delivers
+dmd_dose_cost("buprenorphine", dose = 3, dose_unit = "mg",
+              preparation = "sublingual tablet", over_delivery = "allow")
+
+# same call, silenced
+dmd_dose_cost("buprenorphine", dose = 3, dose_unit = "mg",
+              preparation = "sublingual tablet", over_delivery = "allow",
+              quiet = TRUE)
+```
+
 Two cases are **exempt**, because there the surplus stays in the pack or the
 vial rather than reaching the patient, and the cheapest pack or container
 covering the dose is the costing answer:
@@ -110,8 +129,10 @@ covering the dose is the costing answer:
 - whole-pack dispensing (`can_split = FALSE`), and
 - whole containers — vials and ampoules with `can_split_vials = FALSE`.
 
-Exempt rows carry an `"over-delivery-policy-not-applied"` note. Exact delivery
-from a container is available with `can_split_vials = TRUE`.
+Exempt rows carry an `"over-delivery-policy-not-applied"` note and do not warn,
+since buying whole packs or vials to cover a dose is the expected costing
+answer. Exact delivery from a container is available with
+`can_split_vials = TRUE`.
 
 The same argument is accepted by `dmd_dose_cost()` and `dmd_dose_cost_range()`,
 where a dose that cannot be delivered exactly returns `NA` under the default.

@@ -360,7 +360,8 @@ test_that("over-delivery is recorded in notes when dose is unreachable exactly",
     dose_unit = "mg",
     db = db,
     preparation = "tablet|none|oral",
-    over_delivery = "allow"
+    over_delivery = "allow",
+    quiet = TRUE
   )
   # 750 with 100mg available is reachable exactly (1×500 + 2×100 + 1×50? no,
   # no 50mg). 100mg × 7 + 500mg × 1 - ... Actually 750 = 500 + 250, no 250.
@@ -394,7 +395,8 @@ test_that("over_delivery = 'minimise' picks the smallest over-delivery", {
     db = db,
     preparation = "tablet|none|oral",
     objective = "all",
-    over_delivery = "minimise"
+    over_delivery = "minimise",
+    quiet = TRUE
   )
   # Nearest reachable target above 750 with 100/500/1000mg tablets is 800.
   expect_true(all(res$dose_delivered == 800))
@@ -791,7 +793,8 @@ test_that("objective = 'most_expensive' follows the true max-cost DP path", {
     db = max_db,
     preparation = "tablet|none|oral",
     objective = "most_expensive",
-    over_delivery = "allow"
+    over_delivery = "allow",
+    quiet = TRUE
   )
   combo <- res$combination[[1]]
   expect_equal(res$dose_cost_pence, 400)
@@ -1727,7 +1730,8 @@ test_that("over_delivery = 'allow' reproduces the pre-0.6.0 answers", {
     db = db_sl,
     preparation = "sublingual",
     objective = "all",
-    over_delivery = "allow"
+    over_delivery = "allow",
+    quiet = TRUE
   )
   delivered <- stats::setNames(res$dose_delivered, res$objective)
   expect_equal(delivered[["cheapest"]], 4)
@@ -1743,7 +1747,8 @@ test_that("over_delivery = 'allow' reproduces the pre-0.6.0 answers", {
     db = db_sl,
     preparation = "sublingual",
     objective = "cheapest",
-    over_delivery = "allow"
+    over_delivery = "allow",
+    quiet = TRUE
   )
   expect_equal(low$dose_delivered, 2)
   expect_equal(
@@ -1773,7 +1778,10 @@ test_that("dmd_dose_cost() costs the exact dose by default", {
     400
   )
   expect_equal(
-    do.call(dmd_dose_cost, c(shared, list(dose = 3, over_delivery = "allow"))),
+    do.call(dmd_dose_cost, c(
+      shared,
+      list(dose = 3, over_delivery = "allow", quiet = TRUE)
+    )),
     200
   )
 
@@ -1855,4 +1863,202 @@ test_that("dmd_dose_cost_range() passes the policy to both bounds", {
     }
   )
   expect_equal(sum(grepl("No exact-dose combination exists", warnings)), 1L)
+})
+
+# ── over-delivery warnings ───────────────────────────────────────────────────
+
+test_that("over-delivery warns and says an exact combination existed", {
+  db_sl <- .fake_sublingual_db()
+  expect_warning(
+    dmd_dose_optimise(
+      "buprenorphine",
+      dose = 3,
+      dose_unit = "mg",
+      db = db_sl,
+      preparation = "sublingual",
+      objective = "cheapest",
+      over_delivery = "allow"
+    ),
+    "exact-dose combination exists, but the objective preferred"
+  )
+})
+
+test_that("over-delivery warns that no exact combination exists", {
+  db_sl <- .fake_sublingual_db()
+  expect_warning(
+    dmd_dose_optimise(
+      "buprenorphine",
+      dose = 0.3,
+      dose_unit = "mg",
+      db = db_sl,
+      preparation = "sublingual",
+      objective = "cheapest",
+      over_delivery = "minimise"
+    ),
+    "no exact-dose combination exists"
+  )
+})
+
+test_that("exempt packs and containers do not raise the over-delivery warning", {
+  db <- .fake_dose_db()
+  # Whole packs: 750mg necessarily over-delivers, but that surplus stays in the
+  # pack, so it is reported in notes only.
+  expect_no_warning(
+    packs <- dmd_dose_optimise(
+      "metformin",
+      dose = 750,
+      dose_unit = "mg",
+      db = db,
+      preparation = "tablet|none|oral",
+      can_split = FALSE
+    )
+  )
+  expect_true(all(packs$over_delivery > 0))
+
+  # Whole vials: same for a 375mg dose built from 100/500/1400mg vials.
+  expect_no_warning(
+    vials <- dmd_dose_optimise(
+      "rituximab",
+      dose = 375,
+      dose_unit = "mg",
+      db = db,
+      preparation = "solution for infusion|none|intravenous",
+      objective = "cheapest"
+    )
+  )
+  expect_true(all(vials$over_delivery > 0))
+})
+
+test_that("quiet = TRUE silences the dose-policy warnings only", {
+  db <- .fake_dose_db()
+  db_sl <- .fake_sublingual_db()
+
+  # No-exact warning under the default.
+  expect_no_warning(
+    res <- dmd_dose_optimise(
+      "metformin",
+      dose = 750,
+      dose_unit = "mg",
+      db = db,
+      preparation = "tablet|none|oral",
+      quiet = TRUE
+    )
+  )
+  expect_equal(nrow(res), 0L)
+
+  # Over-delivery warning under "allow".
+  expect_no_warning(
+    dmd_dose_optimise(
+      "buprenorphine",
+      dose = 3,
+      dose_unit = "mg",
+      db = db_sl,
+      preparation = "sublingual",
+      objective = "cheapest",
+      over_delivery = "allow",
+      quiet = TRUE
+    )
+  )
+
+  # Unrelated warnings still come through.
+  compound_db <- structure(
+    list(
+      master = tibble::tibble(
+        medicine = "Co-codamol 8mg/500mg tablets",
+        pack_size = 32L,
+        unit = "tablet",
+        vmp_snomed_code = "V1",
+        vmpp_snomed_code = "VP1",
+        drug_tariff_category = "Part VIIIA Category M",
+        basic_price = 100L,
+        nhs_indicative_price = 100L,
+        price_basis = "NHS Indicative Price",
+        price_date = "2025-08-08",
+        ampp_name = "Co-codamol 8mg/500mg 32 tablet",
+        ampp_snomed_code = "A1"
+      ),
+      loaded_at = Sys.time()
+    ),
+    class = "dmd_db"
+  )
+  expect_warning(
+    dmd_dose_optimise(
+      "co-codamol",
+      dose = 8,
+      dose_unit = "mg",
+      db = compound_db,
+      quiet = TRUE
+    ),
+    "compound product"
+  )
+})
+
+test_that("dmd_dose_cost() and _range() warn once about over-delivery", {
+  db_sl <- .fake_sublingual_db()
+  shared <- list(
+    query = "buprenorphine",
+    dose_unit = "mg",
+    db = db_sl,
+    preparation = "sublingual"
+  )
+
+  warnings <- character()
+  costs <- withCallingHandlers(
+    do.call(dmd_dose_cost, c(
+      shared,
+      list(dose = c(0.3, 0.5, 0.7), over_delivery = "minimise")
+    )),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_false(any(is.na(costs)))
+  expect_equal(
+    sum(grepl("Delivering more than the requested dose", warnings)),
+    1L
+  )
+
+  # Both bounds share the candidate set, so the range call warns once, not twice.
+  warnings <- character()
+  withCallingHandlers(
+    do.call(dmd_dose_cost_range, c(
+      shared,
+      list(dose = 3, over_delivery = "allow")
+    )),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(
+    sum(grepl("Delivering more than the requested dose", warnings)),
+    1L
+  )
+})
+
+test_that("policy bookkeeping does not leak onto the returned tibble", {
+  res <- dmd_dose_optimise(
+    "buprenorphine",
+    dose = 3,
+    dose_unit = "mg",
+    db = .fake_sublingual_db(),
+    preparation = "sublingual"
+  )
+  expect_equal(
+    setdiff(names(attributes(res)), c("names", "row.names", "class")),
+    character(0)
+  )
+})
+
+test_that("quiet rejects a non-logical value", {
+  db_sl <- .fake_sublingual_db()
+  expect_error(
+    dmd_dose_optimise("buprenorphine", dose = 3, db = db_sl, quiet = "yes"),
+    "must be a single logical value"
+  )
+  expect_error(
+    dmd_dose_cost("buprenorphine", dose = 3, db = db_sl, quiet = NA),
+    "must be a single logical value"
+  )
 })

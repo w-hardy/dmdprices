@@ -18,7 +18,8 @@ dmd_dose_optimise(
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE,
-  over_delivery = c("forbid", "minimise", "allow")
+  over_delivery = c("forbid", "minimise", "allow"),
+  quiet = FALSE
 )
 }
 \arguments{
@@ -103,6 +104,13 @@ pack or the vial, so the cheapest pack/container covering the dose remains
 the costing answer and an \code{"over-delivery-policy-not-applied"} note is
 added. Exact delivery from a container is available via
 \code{can_split_vials = TRUE}.}
+
+\item{quiet}{Logical. \code{FALSE} (default) warns, once per call, when a
+preparation group cannot deliver the dose exactly (and is therefore dropped
+under \code{over_delivery = "forbid"}), and when a returned combination delivers
+more than the requested dose — saying whether an exact combination existed.
+\code{TRUE} silences both. Unrelated warnings (unsupported compounds, ingredient
+matching) are not affected.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per

@@ -191,6 +191,34 @@
   inherits(x, "dmd_no_exact")
 }
 
+# Records, on a returned result row, that the over-delivery policy governed this
+# group and whether the group could have delivered the dose exactly. Carried as
+# attributes rather than columns: the caller reads them to build one warning per
+# call, and dplyr::bind_rows() drops them before the tibble reaches the user.
+# Groups exempt from the policy carry neither, which is what keeps them out of
+# the over-delivery warning.
+.set_policy_info <- function(res, exact_feasible) {
+  attr(res, "policy_applied") <- TRUE
+  attr(res, "exact_feasible") <- exact_feasible
+  res
+}
+
+.policy_row <- function(x) {
+  isTRUE(attr(x, "policy_applied", exact = TRUE))
+}
+
+.exact_feasible <- function(x) {
+  isTRUE(attr(x, "exact_feasible", exact = TRUE))
+}
+
+# dplyr::bind_rows() carries the attributes of a single input through, so strip
+# them explicitly before the result reaches the user.
+.drop_policy_info <- function(x) {
+  attr(x, "policy_applied") <- NULL
+  attr(x, "exact_feasible") <- NULL
+  x
+}
+
 # Restrict the candidate target positions according to the over-delivery policy.
 # `feasible` and `ts` are parallel vectors over the candidate targets; the return
 # value is a vector of positions into them (possibly empty).
@@ -430,8 +458,11 @@
   use_pack_dp <- !can_split && !all_concentration
 
   # Whole packs and whole containers deliver surplus into the pack or the vial,
-  # not into the patient, so the over-delivery policy does not apply to them.
-  policy_exempt <- use_pack_dp || all_concentration
+  # not into the patient, so the over-delivery policy governs neither. When it
+  # does not apply, the group is optimised as if "allow" had been requested and
+  # says so in its notes.
+  policy_applies <- !use_pack_dp && !all_concentration
+  note_exemption <- !policy_applies && !identical(over_delivery, "allow")
 
   if (use_pack_dp) {
     .optimise_group_packs(
@@ -442,7 +473,7 @@
       medicine_root = medicine_root,
       preparation_group = preparation_group,
       preparation_label = preparation_label,
-      policy_exempt = !identical(over_delivery, "allow")
+      policy_exempt = note_exemption
     )
   } else {
     .optimise_group_items(
@@ -453,8 +484,9 @@
       medicine_root = medicine_root,
       preparation_group = preparation_group,
       preparation_label = preparation_label,
-      over_delivery = if (policy_exempt) "allow" else over_delivery,
-      policy_exempt = policy_exempt && !identical(over_delivery, "allow")
+      over_delivery = if (policy_applies) over_delivery else "allow",
+      policy_applies = policy_applies,
+      policy_exempt = note_exemption
     )
   }
 }
@@ -473,6 +505,7 @@
   preparation_group,
   preparation_label,
   over_delivery = "allow",
+  policy_applies = FALSE,
   policy_exempt = FALSE
 ) {
   # The DP operates on per-item canonical doses: for tablets/capsules this
@@ -654,7 +687,7 @@
     notes <- c(notes, "cheapest-AMPP-per-strength")
   }
 
-  .assemble_result(
+  res <- .assemble_result(
     combination = combination,
     dose_delivered = dose_delivered,
     dose_canonical = dose_canonical,
@@ -670,6 +703,13 @@
     objective = objective,
     group_df = group_df
   )
+
+  if (!policy_applies) {
+    return(res)
+  }
+  # An exact target is reachable iff the DP found any item combination summing
+  # to the dose itself, whatever this objective settled on.
+  .set_policy_info(res, is.finite(dp$min_items[dose_int + 1L]))
 }
 
 # ── Vial-sharing optimisation (can_split_vials = TRUE, concentration only) ────

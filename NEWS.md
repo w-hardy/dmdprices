@@ -30,6 +30,15 @@ Results gain a `dose_exact` logical column, and `notes` gains `"exact-dose"`,
 so an optimised exact dose, an impossible one, and a query that matched nothing
 are all distinguishable.
 
+A returned combination that over-delivers now also raises a warning — one per
+call, listing the preparation groups and saying whether no exact combination
+existed or whether one existed but the objective preferred an over-delivering
+combination. This matters most for `dmd_dose_cost()` and `dmd_dose_cost_range()`,
+which return bare numbers and so cannot show the `notes` column. The exempt
+whole-pack and whole-container results do not warn, since their surplus is
+expected wastage. `quiet = TRUE` (new argument on all three functions) silences
+this warning and the no-exact one, leaving unrelated warnings intact.
+
 ## Behaviour changes (upgrading from 0.3.0)
 
 No functions were removed or renamed and no argument signatures changed, so
