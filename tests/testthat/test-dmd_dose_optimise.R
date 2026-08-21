@@ -2092,3 +2092,106 @@ test_that("a comma-formatted concentration can be dose-costed", {
   )
   expect_equal(res_str$dose_delivered, 500000)
 })
+
+# ── Authoritative combination flag (issue #8) ────────────────────────────────
+
+test_that("a dm+d-flagged combination with a single-strength name is skipped", {
+  db_combo <- .fake_flagged_combo_db()
+  # 5 mg from a 10 ml pack at "500micrograms/ml" would have been the misread
+  # single-strength answer; the authoritative flag must forbid it.
+  expect_warning(
+    res <- dmd_dose_optimise(
+      "allergen mix",
+      dose = 5,
+      dose_unit = "mg",
+      db = db_combo,
+      objective = "cheapest"
+    ),
+    "unsupported compound product"
+  )
+  expect_equal(nrow(res), 0L)
+})
+
+test_that("ingredient targeting rescues a flagged single-name combination", {
+  db_combo <- .fake_flagged_combo_db()
+  # 0.3 mg/ml grass pollen x 10 ml pack = 3 mg per container.
+  res <- dmd_dose_optimise(
+    "allergen mix",
+    dose = 3,
+    dose_unit = "mg",
+    db = db_combo,
+    ingredient = "Grass pollen extract",
+    objective = "cheapest"
+  )
+  expect_equal(nrow(res), 1L)
+  expect_equal(res$dose_delivered, 3)
+  expect_true(res$dose_exact)
+  expect_equal(res$dose_cost_pence, 1200)
+})
+
+test_that("the name heuristic still skips unflagged multi-strength names", {
+  db_combo <- .fake_flagged_combo_db()
+  expect_warning(
+    res <- dmd_dose_optimise(
+      "testdrug",
+      dose = 50,
+      dose_unit = "mg",
+      db = db_combo,
+      objective = "cheapest"
+    ),
+    "unsupported compound product"
+  )
+  expect_equal(nrow(res), 0L)
+})
+
+test_that("ordinary products in a flagged db still optimise", {
+  db_combo <- .fake_flagged_combo_db()
+  res <- dmd_dose_optimise(
+    "plaindrug",
+    dose = 500,
+    dose_unit = "mg",
+    db = db_combo,
+    objective = "cheapest"
+  )
+  expect_equal(nrow(res), 1L)
+  expect_equal(res$dose_delivered, 500)
+  expect_true(res$dose_exact)
+})
+
+test_that("the compound warning names products and the ingredient remedy", {
+  db_combo <- .fake_flagged_combo_db()
+  warnings <- character()
+  withCallingHandlers(
+    dmd_dose_optimise(
+      "allergen mix",
+      dose = 5,
+      dose_unit = "mg",
+      db = db_combo,
+      objective = "cheapest"
+    ),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  msg <- warnings[grepl("unsupported compound product", warnings)]
+  expect_length(msg, 1L)
+  expect_match(msg, "Allergen mix 500micrograms/ml", fixed = TRUE)
+  expect_match(msg, "ingredient = ", fixed = TRUE)
+
+  # dmd_dose_cost_range() still shows the (new, longer) warning only once.
+  warnings <- character()
+  withCallingHandlers(
+    dmd_dose_cost_range(
+      "allergen mix",
+      dose = 5,
+      dose_unit = "mg",
+      db = db_combo
+    ),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(sum(grepl("unsupported compound product", warnings)), 1L)
+})

@@ -137,8 +137,12 @@ immediate-release and modified-release tablets are optimised separately and
 never mixed within a single combination. For each group, one row is returned
 per requested objective.
 
-Unsupported compound products with multiple active strengths in one VMP name
-are skipped with a warning rather than optimised against an ambiguous dose.
+Combination (multi-ingredient) products are skipped with a warning rather
+than optimised against an ambiguous dose. A product counts as a combination
+when the dm+d \code{is_combination} flag says so (authoritative, covering e.g.
+allergen mixes and factor concentrates whose names show a single number) or
+when its name lists multiple active strengths. Supply \code{ingredient} to dose
+such a product against one named active ingredient instead.
 }
 \examples{
 \dontrun{
