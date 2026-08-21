@@ -160,6 +160,20 @@ following changes can alter **results** and are worth noting when upgrading:
 
 ## Fixed
 
+- Combination-product detection now trusts the dm+d `is_combination` flag
+  (#8). Previously `dmd_dose_optimise()` decided combination-ness from the
+  product *name* alone, so 114 bundled combination products whose names show a
+  single number — allergen mix solutions ("Generic Tree mix 3 pollen
+  500micrograms/ml..."), multi-factor concentrates (Prothromplex Total) — were
+  silently dosed on that misread single strength. Where the database carries
+  `is_combination` (the bundled data and `dmd_load()` databases), a `TRUE`
+  flag now always routes the product through the combination path: it is
+  skipped with a warning unless `ingredient` names the active ingredient to
+  dose against. The name heuristic is retained as a union, so multi-strength
+  names ("X 50mg tablets and X 100mg tablets") stay skipped even when dm+d
+  does not flag them. The skip warning now also names example products and the
+  `ingredient` remedy, and the dose-optimisation vignette gains a
+  "Combination products" section with a worked co-codamol example.
 - `dmd_parse_strength()` now parses strengths written with comma thousands
   separators, e.g. nystatin `"100,000units/ml"` (#22). Around 551 bundled
   medicine names carry such strengths (nystatin suspensions, factor VIII/IX

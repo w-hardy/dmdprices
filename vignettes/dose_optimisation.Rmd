@@ -33,8 +33,9 @@ Pass a character vector to request multiple objectives at once, or use
 Preparations are segregated automatically: immediate-release tablets,
 modified-release tablets, oral solutions, and solutions for injection each
 get their own row so they are never mixed in a single combination.
-Compound products with multiple active strengths in one VMP name are skipped
-with a warning because the dose target would be ambiguous.
+Combination products (multiple active ingredients in one VMP) are skipped
+with a warning because the dose target would be ambiguous — see
+"Combination products" below for how to dose them by a single ingredient.
 
 ## A basic example
 
@@ -300,6 +301,46 @@ The `combination` list-column includes `vmpp_snomed_code` and
 `ampp_snomed_code` for each picked product, so you can join back to other
 dm+d views or NHS Drug Tariff Part VIIIA CSVs.
 
+## Combination products
+
+Some products contain more than one active ingredient — co-codamol
+(codeine + paracetamol) is the familiar case, but the class also includes
+allergen mix solutions and multi-factor concentrates whose names show only a
+single number. A single dose target is ambiguous for these, so the optimiser
+skips them and says so:
+
+```{r, eval = FALSE}
+dmd_dose_optimise("co-codamol", dose = 30, dose_unit = "mg")
+#> Warning: 110 unsupported compound products skipped during dose optimisation.
+#> x E.g. "Co-codamol 12.8mg/500mg tablets", ... and 9 more.
+#> i Pass `ingredient = "<name>"` to dose one active ingredient of a
+#>   combination product (e.g. the codeine in co-codamol).
+```
+
+A product counts as a combination when the dm+d `is_combination` flag says so —
+derived from the dm+d virtual product ingredient (VPI) data and authoritative
+even when the name reads as a single strength — or when its name lists
+multiple active strengths.
+
+To dose a combination product, name the ingredient you are dosing against.
+Candidates are then restricted to products containing that ingredient, and the
+dose is matched against the ingredient's own dm+d strength rather than
+whatever number appears in the product name:
+
+```{r, eval = FALSE}
+# 30 mg of codeine from co-codamol products, priced per preparation group
+dmd_dose_optimise(
+  "co-codamol", dose = 30, dose_unit = "mg",
+  ingredient = "codeine phosphate"
+)[, c("preparation_label", "objective", "dose_delivered",
+      "dose_exact", "dose_cost_pence")]
+```
+
+Ingredient matching is case-insensitive and word-boundary based (so
+`"codeine"` does not also match `"dihydrocodeine"`); see
+`?dmd_dose_optimise` for the details, including the warnings raised when a
+term matches several distinct ingredients or a non-mass strength.
+
 ## Limitations
 
 - Discrete items only — tablet splitting is not considered.
@@ -307,6 +348,7 @@ dm+d views or NHS Drug Tariff Part VIIIA CSVs.
   `can_split_vials = TRUE`. A small dose requested against a large container is
   delivered as one whole container with an `over_delivery` flag; containers are
   exempt from the `over_delivery` policy for that reason.
-- Compound products (multiple active ingredients in one VMP) are skipped with
-  a warning and are not returned as optimiser rows.
+- Combination products (multiple active ingredients in one VMP) are skipped
+  with a warning unless an `ingredient` is named — see "Combination products"
+  above.
 - Clinical safety (max single / max daily dose) is **not** enforced.

@@ -183,3 +183,50 @@
     class = "dmd_db"
   )
 }
+
+# Fake dmd_db for authoritative-combination tests (#8). Carries:
+# - a dm+d-flagged combination whose NAME reads as a single strength (the
+#   allergen-mix / factor-concentrate shape) plus its VPI ingredient rows;
+# - a multi-strength "X and Y" pack name that dm+d does NOT flag, which the
+#   name heuristic must keep skipping;
+# - an ordinary single-ingredient tablet that must keep optimising.
+.fake_flagged_combo_db <- function(loaded_at = .fixed_loaded_at) {
+  master <- tibble::tibble(
+    medicine = c(
+      "Allergen mix 500micrograms/ml solution for skin prick test",
+      "Testdrug 50mg tablets and Testdrug 100mg tablets",
+      "Plaindrug 250mg tablets"
+    ),
+    pack_size = c(10, 60, 28),
+    unit = c("ml", "tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2", "V3"),
+    vmpp_snomed_code = c("VPP1", "VPP2", "VPP3"),
+    drug_tariff_category = rep("Part VIIIA Category M", 3),
+    basic_price = c(1200L, 900L, 150L),
+    nhs_indicative_price = c(1200L, 900L, 150L),
+    price_basis = rep("NHS Indicative Price", 3),
+    price_date = rep("2025-08-08", 3),
+    ampp_name = c(
+      "Allergen mix skin prick test 10 ml",
+      "Testdrug 50mg and 100mg 60 tablet",
+      "Plaindrug 250mg 28 tablet"
+    ),
+    ampp_snomed_code = c("APP1", "APP2", "APP3"),
+    is_combination = c(TRUE, FALSE, FALSE)
+  )
+  ingredients <- tibble::tibble(
+    vmp_snomed_code = c("V1", "V1"),
+    ingredient_snomed_code = c("I_grass", "I_tree"),
+    ingredient_name = c("Grass pollen extract", "Tree pollen extract"),
+    strength_value = c(300, 200),
+    strength_unit = c("microgram", "microgram"),
+    denominator_value = c(1, 1),
+    denominator_unit = c("ml", "ml"),
+    strength_canonical = c(0.3, 0.2),
+    strength_unit_canon = c("mg/ml", "mg/ml")
+  )
+  structure(
+    list(master = master, ingredients = ingredients, loaded_at = loaded_at),
+    class = "dmd_db"
+  )
+}

@@ -69,6 +69,8 @@
     Condition
       Warning:
       1 unsupported compound product skipped during dose optimisation.
+      x E.g. "Co-codamol 8mg/500mg tablets".
+      i Pass `ingredient = "<name>"` to dose one active ingredient of a combination product (e.g. the codeine in co-codamol).
 
 ---
 
@@ -77,6 +79,8 @@
     Condition
       Warning:
       1 unsupported compound product skipped during dose optimisation.
+      x E.g. "Co-codamol 8mg/500mg tablets".
+      i Pass `ingredient = "<name>"` to dose one active ingredient of a combination product (e.g. the codeine in co-codamol).
 
 ---
 
@@ -85,6 +89,8 @@
     Condition
       Warning:
       1 unsupported compound product skipped during dose optimisation.
+      x E.g. "Co-codamol 8mg/500mg tablets".
+      i Pass `ingredient = "<name>"` to dose one active ingredient of a combination product (e.g. the codeine in co-codamol).
 
 # ingredient targeting doses combination products by one ingredient
 
@@ -93,6 +99,8 @@
     Condition
       Warning:
       2 unsupported compound products skipped during dose optimisation.
+      x E.g. "Co-codamol 30mg/500mg tablets" and "Co-codamol 8mg/500mg tablets".
+      i Pass `ingredient = "<name>"` to dose one active ingredient of a combination product (e.g. the codeine in co-codamol).
 
 # ingredient targeting warns and returns nothing without VPI data
 
@@ -150,6 +158,8 @@
     Condition
       Warning:
       1 unsupported compound product skipped during dose optimisation.
+      x E.g. "Testdrug 100mg/500mg tablets".
+      i Pass `ingredient = "<name>"` to dose one active ingredient of a combination product (e.g. the codeine in co-codamol).
 
 # preparation filter that matches no group warns and returns empty
 

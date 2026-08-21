@@ -88,7 +88,23 @@
 
   multiple_strengths <- .strength_token_count(enriched$medicine) > 1L
 
-  (same_dose_unit_ratio | multiple_strengths) & !topical_mass_concentration
+  # The dm+d VPI-derived is_combination flag is authoritative where present
+  # (bundled data and dmd_load() databases; the parser's name-based flag fills
+  # in otherwise). A product dm+d records as a combination has no single
+  # meaningful strength however its name reads — allergen mixes and factor
+  # concentrates list one number for many ingredients — so it always requires
+  # ingredient targeting, and it is not excused by the topical w/w exemption.
+  # The name heuristic is kept as a union: multi-strength names like
+  # "X 50mg tablets and X 100mg tablets" are ambiguous per-item even when
+  # dm+d does not flag them as combinations.
+  db_combination <- if ("is_combination" %in% names(enriched)) {
+    enriched$is_combination %in% TRUE
+  } else {
+    FALSE
+  }
+
+  ((same_dose_unit_ratio | multiple_strengths) & !topical_mass_concentration) |
+    db_combination
 }
 
 .drop_unsupported_compounds <- function(enriched) {
@@ -98,9 +114,19 @@
 
   n <- sum(enriched$unsupported_compound, na.rm = TRUE)
   if (n > 0L) {
-    cli::cli_warn(
-      "{n} unsupported compound product{?s} skipped during dose optimisation."
-    )
+    skipped <- unique(enriched$medicine[
+      enriched$unsupported_compound %in% TRUE
+    ])
+    shown <- utils::head(skipped, 3L)
+    more <- length(skipped) - length(shown)
+    more_txt <- if (more > 0L) paste0(" and ", more, " more") else ""
+    # The first line must keep its wording: dmd_dose_cost_range() and callers
+    # de-duplicate this warning by matching "unsupported compound product".
+    cli::cli_warn(c(
+      "{n} unsupported compound product{?s} skipped during dose optimisation.",
+      "x" = "E.g. {.val {shown}}{more_txt}.",
+      "i" = 'Pass {.code ingredient = "<name>"} to dose one active ingredient of a combination product (e.g. the codeine in co-codamol).'
+    ))
   }
   enriched[!enriched$unsupported_compound, , drop = FALSE]
 }
@@ -334,8 +360,12 @@
 #' never mixed within a single combination. For each group, one row is returned
 #' per requested objective.
 #'
-#' Unsupported compound products with multiple active strengths in one VMP name
-#' are skipped with a warning rather than optimised against an ambiguous dose.
+#' Combination (multi-ingredient) products are skipped with a warning rather
+#' than optimised against an ambiguous dose. A product counts as a combination
+#' when the dm+d `is_combination` flag says so (authoritative, covering e.g.
+#' allergen mixes and factor concentrates whose names show a single number) or
+#' when its name lists multiple active strengths. Supply `ingredient` to dose
+#' such a product against one named active ingredient instead.
 #'
 #' @param query        Character string passed through to [dmd_price_lookup()].
 #' @param dose         Numeric dose value (in `dose_unit`), **or** a
