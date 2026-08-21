@@ -60,6 +60,10 @@
 #' NHS Dictionary of Medicines and Devices (dm+d), Week 15 2026 release
 #' (06 April 2026). Published by the NHS Business Services Authority (NHSBSA).
 #'
+#' Prices are **derived from dm+d**; the column layout mirrors the NHS Drug
+#' Tariff Part VIIIA CSV for interoperability, but that published CSV is not the
+#' source of these values.
+#'
 #' © Crown copyright. Contains public sector information licensed under the
 #' **Open Government Licence v3.0**.\cr
 #' <https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/>

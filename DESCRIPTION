@@ -1,14 +1,17 @@
 Package: dmdprices
 Title: Look Up Medicine Prices from the NHS dm+d
 Version: 0.5.0
-Authors@R: person("Will", "Hardy", email = "w.hardy@bangor.ac.uk", role = c("aut", "cre"))
-Description: Provides the bundled NHS dm+d (Dictionary of Medicines and
-    Devices) pricing dataset (Week 15 2026) and tools to query Drug Tariff
-    and NHS Indicative Prices by medicine name. Also supports loading updated
-    releases from the NHSBSA dmdDataLoader CSV output. Output columns mirror
-    the NHS Drug Tariff Part VIIIA CSV format so that dm+d and Drug Tariff
-    files can be used together directly. The dm+d data is Crown copyright,
-    licensed under the Open Government Licence v3.0
+Authors@R: person("Will", "Hardy", email = "w.hardy@bangor.ac.uk", role = c("aut", "cre", "cph"))
+Description: Programmatic tools to look up, optimise, and cost NHS medicine
+    prices from the bundled dm+d (Dictionary of Medicines and Devices) pricing
+    dataset (Week 15 2026). Query Drug Tariff and NHS Indicative Prices by
+    medicine name (partial, exact, or fuzzy), find the cheapest or fewest-pack
+    combination that delivers a dose, and adjust costs between years with the
+    NHS Cost Inflation Index. Also loads updated releases from the NHSBSA
+    'dmdDataLoader' CSV output. Prices are derived from dm+d; output columns
+    mirror the NHS Drug Tariff Part VIIIA CSV format for interoperability. The
+    dm+d data is Crown copyright, licensed under the Open Government Licence
+    v3.0
     <https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/>.
 License: MIT + file LICENSE
 Encoding: UTF-8
