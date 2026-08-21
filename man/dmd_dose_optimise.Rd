@@ -27,7 +27,8 @@ dmd_dose_optimise(
 
 \item{dose}{Numeric dose value (in \code{dose_unit}), \strong{or} a
 self-contained dose string such as \code{"250 mg"}, \code{"250mg"}, or
-\code{"0.25 g"}. When a string is supplied \code{dose_unit} may be omitted.}
+\code{"0.25 g"}. Comma thousands separators are accepted (\code{"100,000 units"}).
+When a string is supplied \code{dose_unit} may be omitted.}
 
 \item{dose_unit}{One of \code{"mg"}, \code{"microgram"} / \code{"mcg"}, \code{"g"}, \code{"ml"},
 \code{"unit"}. Default \code{"mg"}. Ignored (with a warning) if \code{dose} is a

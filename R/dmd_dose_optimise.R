@@ -52,8 +52,10 @@
 }
 
 .strength_token_count <- function(name) {
+  # .strength_num accepts comma thousands groups so a "1,000unit" token is
+  # counted from its true start rather than from the digits after the comma.
   pattern <- paste0(
-    "(?i)\\d+(?:\\.\\d+)?\\s*",
+    "(?i)", .strength_num, "\\s*",
     "(?:micrograms?|mcg|mg|ng|nanograms?|g|units?|u)\\b"
   )
   matches <- gregexpr(pattern, name, perl = TRUE)
@@ -338,7 +340,8 @@
 #' @param query        Character string passed through to [dmd_price_lookup()].
 #' @param dose         Numeric dose value (in `dose_unit`), **or** a
 #'   self-contained dose string such as `"250 mg"`, `"250mg"`, or
-#'   `"0.25 g"`. When a string is supplied `dose_unit` may be omitted.
+#'   `"0.25 g"`. Comma thousands separators are accepted (`"100,000 units"`).
+#'   When a string is supplied `dose_unit` may be omitted.
 #' @param dose_unit    One of `"mg"`, `"microgram"` / `"mcg"`, `"g"`, `"ml"`,
 #'   `"unit"`. Default `"mg"`. Ignored (with a warning) if `dose` is a
 #'   string that already contains a unit.

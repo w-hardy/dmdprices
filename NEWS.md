@@ -160,6 +160,19 @@ following changes can alter **results** and are worth noting when upgrading:
 
 ## Fixed
 
+- `dmd_parse_strength()` now parses strengths written with comma thousands
+  separators, e.g. nystatin `"100,000units/ml"` (#22). Around 551 bundled
+  medicine names carry such strengths (nystatin suspensions, factor VIII/IX
+  and other `N,NNNunit` vials); previously they parsed to `NA` and so could not
+  be dose-costed, and `dmd_dose_cost()` returned `NA` for them. Two follow-on
+  corrections: multi-ingredient names such as
+  `"Colecalciferol 1,000unit / Menaquinone-7 45microgram capsules"` previously
+  matched mid-number and silently produced a **zero-strength** component
+  (`"000unit"` -> 0) with a mangled `drug_stem`; both now parse correctly. Dose
+  strings passed to `dmd_dose_optimise()` also accept the comma form
+  (`dose = "100,000 units"`). A comma group must be exactly three digits, so
+  malformed tokens and European decimal commas are still rejected. Identity
+  matching in `dmd_price_lookup()` is unaffected.
 - Dose-optimiser combination rows no longer conflate two AMPPs. In the
   splittable path, the cheapest *per-tablet* pack and the cheapest *whole*
   pack of a strength can differ; the row previously showed one pack's identity

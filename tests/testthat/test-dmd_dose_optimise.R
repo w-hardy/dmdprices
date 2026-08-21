@@ -2037,3 +2037,58 @@ test_that("quiet rejects a non-logical value", {
     "must be a single logical value"
   )
 })
+
+# ── Comma-formatted strengths cost end to end (issue #22) ────────────────────
+
+test_that("a comma-formatted concentration can be dose-costed", {
+  m <- tibble::tibble(
+    medicine = "Nystatin 100,000units/ml oral suspension",
+    # A small bottle keeps the unit-scale DP inside its 5,000,000-cell cap
+    # (100,000 units/ml means a 30 ml pack is a 3,000,000-unit item).
+    pack_size = 5,
+    unit = "ml",
+    vmp_snomed_code = "V1",
+    vmpp_snomed_code = "VP1",
+    drug_tariff_category = "Part VIIIA Category M",
+    basic_price = 300L,
+    nhs_indicative_price = 300L,
+    price_basis = "NHS Indicative Price",
+    price_date = "2025-08-08",
+    ampp_name = "Nystatin 100,000units/ml oral suspension 5 ml",
+    ampp_snomed_code = "A1"
+  )
+  nyst_db <- structure(
+    list(master = m, loaded_at = .fixed_loaded_at),
+    class = "dmd_db"
+  )
+
+  # One 5 ml bottle delivers 500,000 units; the dose matching 1 ml is
+  # 100,000 units and is covered by one whole container at the pack price.
+  cost <- dmd_dose_cost(
+    "nystatin",
+    dose = 100000,
+    dose_unit = "unit",
+    db = nyst_db
+  )
+  expect_equal(cost, 300)
+
+  res <- dmd_dose_optimise(
+    "nystatin",
+    dose = 500000,
+    dose_unit = "unit",
+    db = nyst_db,
+    objective = "cheapest"
+  )
+  expect_equal(res$dose_delivered, 500000)
+  expect_true(res$dose_exact)
+  expect_equal(res$dose_cost_pence, 300)
+
+  # Dose strings accept the comma form too.
+  res_str <- dmd_dose_optimise(
+    "nystatin",
+    dose = "500,000 units",
+    db = nyst_db,
+    objective = "cheapest"
+  )
+  expect_equal(res_str$dose_delivered, 500000)
+})
