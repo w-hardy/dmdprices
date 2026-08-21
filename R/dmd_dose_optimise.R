@@ -511,8 +511,8 @@ dmd_dose_optimise <- function(
   }
   if ("both" %in% objective) {
     lifecycle::deprecate_warn(
-      "0.6.0",
-      'dmd_dose_optimise(objective = "both")',
+      when = "0.6.0",
+      what = I('`objective = "both"`'),
       details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
@@ -783,8 +783,8 @@ dmd_dose_cost <- function(
   }
   if ("both" %in% objective) {
     lifecycle::deprecate_warn(
-      "0.6.0",
-      'dmd_dose_cost(objective = "both")',
+      when = "0.6.0",
+      what = I('`objective = "both"`'),
       details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
@@ -1140,10 +1140,14 @@ dmd_dose_cost_range <- function(
   invisible()
 }
 
-# Shared validator for the package's single-logical arguments.
-.validate_flag <- function(x, arg) {
+# Shared validator for the package's single-logical arguments. Errors are
+# attributed to the calling function, not this helper.
+.validate_flag <- function(x, arg, call = rlang::caller_env()) {
   if (!is.logical(x) || length(x) != 1L || is.na(x)) {
-    cli::cli_abort("{.arg {arg}} must be a single logical value (TRUE or FALSE).")
+    cli::cli_abort(
+      "{.arg {arg}} must be a single logical value (TRUE or FALSE).",
+      call = call
+    )
   }
   invisible()
 }

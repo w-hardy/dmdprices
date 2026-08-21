@@ -12,14 +12,7 @@
 #'
 #' @export
 run_dmd_price_lookup <- function() {
-  app_dir <- system.file("shiny", "dmd_price_lookup", package = "dmdprices")
-  if (app_dir == "") {
-    stop(
-      "Could not find the app directory. Try re-installing dmdprices.",
-      call. = FALSE
-    )
-  }
-  shiny::runApp(app_dir, display.mode = "normal")
+  shiny::runApp(.app_dir("dmd_price_lookup"), display.mode = "normal")
 }
 
 #' Launch the dm+d dose optimiser Shiny app
@@ -37,14 +30,7 @@ run_dmd_price_lookup <- function() {
 #'
 #' @export
 run_dmd_dose_optimise <- function() {
-  app_dir <- system.file("shiny", "dmd_dose_optimise", package = "dmdprices")
-  if (app_dir == "") {
-    stop(
-      "Could not find the app directory. Try re-installing dmdprices.",
-      call. = FALSE
-    )
-  }
-  shiny::runApp(app_dir, display.mode = "normal")
+  shiny::runApp(.app_dir("dmd_dose_optimise"), display.mode = "normal")
 }
 
 #' Launch the NHS CII cost adjuster Shiny app
@@ -61,12 +47,24 @@ run_dmd_dose_optimise <- function() {
 #'
 #' @export
 run_inflate_nhscii <- function() {
-  app_dir <- system.file("shiny", "inflate_nhscii", package = "dmdprices")
-  if (app_dir == "") {
-    stop(
-      "Could not find the app directory. Try re-installing dmdprices.",
-      call. = FALSE
+  shiny::runApp(.app_dir("inflate_nhscii"), display.mode = "normal")
+}
+
+# Locate a bundled Shiny app directory. Thin wrapper over system.file() so the
+# missing-app branch of .app_dir() can be exercised in tests via
+# local_mocked_bindings() (base functions like system.file() cannot be mocked).
+.app_path <- function(name) {
+  system.file("shiny", name, package = "dmdprices")
+}
+
+# Resolve a bundled Shiny app directory, erroring clearly if it is missing
+# (e.g. a broken install).
+.app_dir <- function(name) {
+  dir <- .app_path(name)
+  if (dir == "") {
+    cli::cli_abort(
+      "Could not find the {.val {name}} app directory. Try re-installing {.pkg dmdprices}."
     )
   }
-  shiny::runApp(app_dir, display.mode = "normal")
+  dir
 }

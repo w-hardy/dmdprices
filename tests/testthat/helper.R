@@ -6,7 +6,12 @@
 # - a strength with NA basic_price but a nhs_indicative_price (fallback)
 # - a concentration vial whose strength_canonical is a repeating decimal
 #   (Rituximab 1400mg/11.7ml) to regression-test the per_item_dose fix
-.fake_dose_db <- function() {
+#
+# `loaded_at` defaults to a fixed timestamp so print/format methods and any
+# whole-<dmd_db> output can be snapshot-tested deterministically.
+.fixed_loaded_at <- as.POSIXct("2025-08-08 09:00:00", tz = "UTC")
+
+.fake_dose_db <- function(loaded_at = .fixed_loaded_at) {
   master <- tibble::tibble(
     medicine = c(
       "Metformin 500mg tablets",
@@ -86,7 +91,7 @@
     ),
     ampp_snomed_code = paste0("APP", seq_len(12))
   )
-  structure(list(master = master, loaded_at = Sys.time()), class = "dmd_db")
+  structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
 }
 
 # Fake dmd_db reproducing issue #23: a closed sublingual-tablet family whose
@@ -95,7 +100,7 @@
 # any exact build (400p), one 8 mg tablet is strictly fewest-items, and 11 mg is
 # strictly dearest. Every objective therefore used to skip the exact 3 mg
 # answer. Likewise a 0.4 mg request is under-cut by a single 2 mg tablet.
-.fake_sublingual_db <- function() {
+.fake_sublingual_db <- function(loaded_at = .fixed_loaded_at) {
   master <- tibble::tibble(
     medicine = c(
       "Buprenorphine 200microgram sublingual tablets sugar free",
@@ -121,14 +126,14 @@
     ),
     ampp_snomed_code = paste0("APP", 1:4)
   )
-  structure(list(master = master, loaded_at = Sys.time()), class = "dmd_db")
+  structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
 }
 
 # Fake dmd_db carrying ingredient (VPI) data, for combination dose-targeting
 # tests. Two co-codamol combination strengths plus a single-ingredient codeine
 # tablet — all containing codeine — and an `$ingredients` table giving each
 # VMP's per-ingredient strengths.
-.fake_ingredient_db <- function() {
+.fake_ingredient_db <- function(loaded_at = .fixed_loaded_at) {
   master <- tibble::tibble(
     medicine = c(
       "Co-codamol 8mg/500mg tablets",
@@ -173,7 +178,7 @@
     list(
       master = master,
       ingredients = ingredients,
-      loaded_at = Sys.time()
+      loaded_at = loaded_at
     ),
     class = "dmd_db"
   )
