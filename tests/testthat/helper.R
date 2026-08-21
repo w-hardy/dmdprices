@@ -89,6 +89,41 @@
   structure(list(master = master, loaded_at = Sys.time()), class = "dmd_db")
 }
 
+# Fake dmd_db reproducing issue #23: a closed sublingual-tablet family whose
+# strengths (0.2 / 0.4 / 2 / 8 mg) can build 3 mg exactly, while for a 3 mg
+# request an over-delivering 4 mg build (2 x 2mg, 200p) is strictly cheaper than
+# any exact build (400p), one 8 mg tablet is strictly fewest-items, and 11 mg is
+# strictly dearest. Every objective therefore used to skip the exact 3 mg
+# answer. Likewise a 0.4 mg request is under-cut by a single 2 mg tablet.
+.fake_sublingual_db <- function() {
+  master <- tibble::tibble(
+    medicine = c(
+      "Buprenorphine 200microgram sublingual tablets sugar free",
+      "Buprenorphine 400microgram sublingual tablets sugar free",
+      "Buprenorphine 2mg sublingual tablets sugar free",
+      "Buprenorphine 8mg sublingual tablets sugar free"
+    ),
+    pack_size = c(7, 7, 7, 7),
+    unit = rep("tablet", 4),
+    vmp_snomed_code = paste0("V", 1:4),
+    vmpp_snomed_code = paste0("VPP", 1:4),
+    drug_tariff_category = rep("Part VIIIA Category M", 4),
+    # Per tablet: 0.2mg = 60p, 0.4mg = 200p, 2mg = 100p, 8mg = 700p.
+    basic_price = c(420L, 1400L, 700L, 4900L),
+    nhs_indicative_price = c(420L, 1400L, 700L, 4900L),
+    price_basis = rep("NHS Indicative Price", 4),
+    price_date = rep("2025-08-08", 4),
+    ampp_name = c(
+      "Buprenorphine 200microgram sublingual 7 tablet",
+      "Buprenorphine 400microgram sublingual 7 tablet",
+      "Buprenorphine 2mg sublingual 7 tablet",
+      "Buprenorphine 8mg sublingual 7 tablet"
+    ),
+    ampp_snomed_code = paste0("APP", 1:4)
+  )
+  structure(list(master = master, loaded_at = Sys.time()), class = "dmd_db")
+}
+
 # Fake dmd_db carrying ingredient (VPI) data, for combination dose-targeting
 # tests. Two co-codamol combination strengths plus a single-ingredient codeine
 # tablet — all containing codeine — and an `$ingredients` table giving each

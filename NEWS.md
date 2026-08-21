@@ -1,5 +1,35 @@
 # dmdprices (development version)
 
+## Dose optimisation now delivers the requested dose exactly by default
+
+`dmd_dose_optimise()`, `dmd_dose_cost()`, and `dmd_dose_cost_range()` gain an
+`over_delivery` argument, defaulting to `"forbid"` (#23).
+
+Previously every objective optimised across all combinations delivering *at
+least* the dose, with over-delivery only a tie-break. When an over-delivering
+combination was strictly cheaper, strictly fewer items, or strictly dearer, an
+available exact-dose combination was never surfaced by any objective — a 3 mg
+buprenorphine sublingual dose returned 4 mg (`cheapest`), 8 mg (`min_items`),
+and 11 mg (`most_expensive`), so `dmd_dose_cost()` silently costed 4 mg.
+
+- `"forbid"` (new default) returns only exact-dose combinations. A preparation
+  group that cannot hit the dose exactly returns no row and is named in a single
+  warning per call; `dmd_dose_cost()` returns `NA` for such doses.
+- `"minimise"` returns the smallest achievable over-delivery, with the requested
+  objective applied within it.
+- `"allow"` restores the previous behaviour.
+
+The policy applies where one item is an individually administered dose. Whole
+pack dispensing (`can_split = FALSE`) and whole containers (vials and ampoules
+with `can_split_vials = FALSE`) are exempt — there the surplus is wastage, so
+the cheapest pack or container covering the dose is still returned, with an
+`"over-delivery-policy-not-applied"` note.
+
+Results gain a `dose_exact` logical column, and `notes` gains `"exact-dose"`,
+`"over-delivery-minimised"`, and `"over-delivery-policy-not-applied"` entries,
+so an optimised exact dose, an impossible one, and a query that matched nothing
+are all distinguishable.
+
 ## Behaviour changes (upgrading from 0.3.0)
 
 No functions were removed or renamed and no argument signatures changed, so

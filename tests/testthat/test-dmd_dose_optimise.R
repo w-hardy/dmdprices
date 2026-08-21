@@ -359,7 +359,8 @@ test_that("over-delivery is recorded in notes when dose is unreachable exactly",
     dose = 750,
     dose_unit = "mg",
     db = db,
-    preparation = "tablet|none|oral"
+    preparation = "tablet|none|oral",
+    over_delivery = "allow"
   )
   # 750 with 100mg available is reachable exactly (1×500 + 2×100 + 1×50? no,
   # no 50mg). 100mg × 7 + 500mg × 1 - ... Actually 750 = 500 + 250, no 250.
@@ -367,6 +368,39 @@ test_that("over-delivery is recorded in notes when dose is unreachable exactly",
   # So 750 needs over-delivery. Confirm.
   expect_true(all(res$over_delivery >= 0))
   expect_true(any(grepl("over-delivery", res$notes)))
+  expect_true(all(!res$dose_exact))
+})
+
+test_that("an unreachable dose returns no rows and warns under the default", {
+  expect_warning(
+    res <- dmd_dose_optimise(
+      "metformin",
+      dose = 750,
+      dose_unit = "mg",
+      db = db,
+      preparation = "tablet|none|oral"
+    ),
+    "No exact-dose combination exists"
+  )
+  expect_equal(nrow(res), 0L)
+  expect_named(res, names(dmdprices:::.empty_dose_result()))
+})
+
+test_that("over_delivery = 'minimise' picks the smallest over-delivery", {
+  res <- dmd_dose_optimise(
+    "metformin",
+    dose = 750,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    objective = "all",
+    over_delivery = "minimise"
+  )
+  # Nearest reachable target above 750 with 100/500/1000mg tablets is 800.
+  expect_true(all(res$dose_delivered == 800))
+  expect_true(all(res$over_delivery == 50))
+  expect_true(all(!res$dose_exact))
+  expect_true(all(grepl("over-delivery-minimised", res$notes)))
 })
 
 test_that("print method for combination runs without error", {
@@ -748,7 +782,25 @@ test_that("objective = 'most_expensive' follows the true max-cost DP path", {
     class = "dmd_db"
   )
 
+  # over_delivery = "allow" so the dearest combination may exceed the dose,
+  # which is what this objective is being tested for.
   res <- dmd_dose_optimise(
+    "testdrug",
+    dose = 200,
+    dose_unit = "mg",
+    db = max_db,
+    preparation = "tablet|none|oral",
+    objective = "most_expensive",
+    over_delivery = "allow"
+  )
+  combo <- res$combination[[1]]
+  expect_equal(res$dose_cost_pence, 400)
+  expect_equal(res$dose_delivered, 400)
+  expect_equal(combo$medicine, "Testdrug 100mg tablets")
+  expect_equal(combo$count, 4L)
+
+  # Under the default the dearest *exact* delivery is 2 x 100mg.
+  exact <- dmd_dose_optimise(
     "testdrug",
     dose = 200,
     dose_unit = "mg",
@@ -756,11 +808,9 @@ test_that("objective = 'most_expensive' follows the true max-cost DP path", {
     preparation = "tablet|none|oral",
     objective = "most_expensive"
   )
-  combo <- res$combination[[1]]
-  expect_equal(res$dose_cost_pence, 400)
-  expect_equal(res$dose_delivered, 400)
-  expect_equal(combo$medicine, "Testdrug 100mg tablets")
-  expect_equal(combo$count, 4L)
+  expect_equal(exact$dose_delivered, 200)
+  expect_true(exact$dose_exact)
+  expect_equal(exact$combination[[1]]$count, 2L)
 })
 
 test_that("objective = c('cheapest', 'most_expensive') returns two rows", {
@@ -1640,4 +1690,169 @@ test_that("each combination row's pack price belongs to its own AMPP", {
       )
     }
   }
+})
+
+# ── over-delivery policy (issue #23) ─────────────────────────────────────────
+
+test_that("an exact multi-strength dose is returned by every objective", {
+  db_sl <- .fake_sublingual_db()
+  res <- dmd_dose_optimise(
+    "buprenorphine",
+    dose = 3,
+    dose_unit = "mg",
+    db = db_sl,
+    preparation = "sublingual",
+    objective = "all"
+  )
+  expect_equal(nrow(res), 3L)
+  expect_true(all(res$dose_delivered == 3))
+  expect_true(all(res$over_delivery == 0))
+  expect_true(all(res$dose_exact))
+  expect_true(all(grepl("exact-dose", res$notes)))
+  expect_false(any(grepl("over-delivery", res$notes, fixed = TRUE)))
+
+  # Cheapest exact build is 1 x 2mg + 5 x 0.2mg = 400p, not the 200p 4mg build.
+  ch <- res[res$objective == "cheapest", ]
+  expect_equal(ch$dose_cost_pence, 400)
+  # Fewest-item exact build is 1 x 2mg + 2 x 0.4mg + 1 x 0.2mg.
+  expect_equal(res$total_items[res$objective == "min_items"], 4)
+})
+
+test_that("over_delivery = 'allow' reproduces the pre-0.6.0 answers", {
+  db_sl <- .fake_sublingual_db()
+  res <- dmd_dose_optimise(
+    "buprenorphine",
+    dose = 3,
+    dose_unit = "mg",
+    db = db_sl,
+    preparation = "sublingual",
+    objective = "all",
+    over_delivery = "allow"
+  )
+  delivered <- stats::setNames(res$dose_delivered, res$objective)
+  expect_equal(delivered[["cheapest"]], 4)
+  expect_equal(delivered[["min_items"]], 8)
+  expect_equal(delivered[["most_expensive"]], 11)
+  expect_true(all(!res$dose_exact))
+
+  # A 0.4mg request is likewise under-cut by a single 2mg tablet.
+  low <- dmd_dose_optimise(
+    "buprenorphine",
+    dose = 0.4,
+    dose_unit = "mg",
+    db = db_sl,
+    preparation = "sublingual",
+    objective = "cheapest",
+    over_delivery = "allow"
+  )
+  expect_equal(low$dose_delivered, 2)
+  expect_equal(
+    dmd_dose_optimise(
+      "buprenorphine",
+      dose = 0.4,
+      dose_unit = "mg",
+      db = db_sl,
+      preparation = "sublingual",
+      objective = "cheapest"
+    )$dose_delivered,
+    0.4
+  )
+})
+
+test_that("dmd_dose_cost() costs the exact dose by default", {
+  db_sl <- .fake_sublingual_db()
+  shared <- list(
+    query = "buprenorphine",
+    dose_unit = "mg",
+    db = db_sl,
+    preparation = "sublingual",
+    objective = "cheapest"
+  )
+  expect_equal(
+    do.call(dmd_dose_cost, c(shared, list(dose = 3))),
+    400
+  )
+  expect_equal(
+    do.call(dmd_dose_cost, c(shared, list(dose = 3, over_delivery = "allow"))),
+    200
+  )
+
+  # 0.3mg is unreachable with 0.2mg as the smallest step: NA, warned once.
+  warnings <- character()
+  costs <- withCallingHandlers(
+    do.call(dmd_dose_cost, c(shared, list(dose = c(0.3, 0.5, 3)))),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(costs, c(NA_real_, NA_real_, 400))
+  expect_equal(sum(grepl("No exact-dose combination exists", warnings)), 1L)
+})
+
+test_that("whole packs and whole containers are exempt from the policy", {
+  db <- .fake_dose_db()
+
+  # Community pharmacy: whole packs necessarily over-deliver a 750mg dose.
+  packs <- dmd_dose_optimise(
+    "metformin",
+    dose = 750,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral",
+    can_split = FALSE
+  )
+  expect_gt(nrow(packs), 0L)
+  expect_true(all(packs$over_delivery > 0))
+  expect_true(all(grepl("over-delivery-policy-not-applied", packs$notes)))
+
+  # Whole vials: 375mg cannot be built exactly from 100/500/1400mg vials.
+  vials <- dmd_dose_optimise(
+    "rituximab",
+    dose = 375,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous",
+    objective = "cheapest"
+  )
+  expect_gt(nrow(vials), 0L)
+  expect_true(all(vials$over_delivery > 0))
+  expect_true(all(grepl("over-delivery-policy-not-applied", vials$notes)))
+  expect_false(is.na(dmd_dose_cost(
+    "rituximab",
+    dose = 375,
+    dose_unit = "mg",
+    db = db,
+    preparation = "solution for infusion|none|intravenous"
+  )))
+})
+
+test_that("dmd_dose_cost_range() passes the policy to both bounds", {
+  db_sl <- .fake_sublingual_db()
+  rng <- dmd_dose_cost_range(
+    "buprenorphine",
+    dose = 3,
+    dose_unit = "mg",
+    db = db_sl,
+    preparation = "sublingual"
+  )
+  expect_equal(rng$lo_pence, 400)
+  # Dearest exact build: 7 x 0.4mg + 1 x 0.2mg = 1460p.
+  expect_equal(rng$hi_pence, 1460)
+
+  warnings <- character()
+  withCallingHandlers(
+    dmd_dose_cost_range(
+      "buprenorphine",
+      dose = 0.3,
+      dose_unit = "mg",
+      db = db_sl,
+      preparation = "sublingual"
+    ),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(sum(grepl("No exact-dose combination exists", warnings)), 1L)
 })
