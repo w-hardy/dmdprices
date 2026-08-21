@@ -1,4 +1,4 @@
-# dmdprices (development version)
+# dmdprices 0.6.0
 
 ## Dose optimisation now delivers the requested dose exactly by default
 
