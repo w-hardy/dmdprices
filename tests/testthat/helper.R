@@ -230,3 +230,49 @@
     class = "dmd_db"
   )
 }
+
+# Fake dmd_db for container-pack pricing. Concentration preparations sold as
+# packs of several containers (10 pre-filled syringes, 5 ampoules) alongside a
+# single-container pack (one multidose vial) and an inhaler whose pack quantity
+# is in the concentration's own denominator unit ("dose"), so that one item is
+# one whole inhaler. Prices in pence:
+# - 40 mg/0.4 ml syringes: pack of 10 at 3000  -> 300 per syringe
+# - 20 mg/0.2 ml syringes: pack of 10 at 2000  -> 200 per syringe
+# - 300 mg/3 ml multidose vial: pack of 1 at 2500
+# - 100 microgram/dose inhaler: 200 doses (20 mg) at 150, one container
+# - 500 microgram/1 ml ampoules: pack of 5 at 190 -> 38 per ampoule
+.fake_container_pack_db <- function(loaded_at = .fixed_loaded_at) {
+  master <- tibble::tibble(
+    medicine = c(
+      "Enoxaparin sodium 40mg/0.4ml solution for injection pre-filled syringes",
+      "Enoxaparin sodium 20mg/0.2ml solution for injection pre-filled syringes",
+      "Enoxaparin sodium 300mg/3ml solution for injection multidose vials",
+      "Salbutamol 100micrograms/dose inhaler CFC free",
+      "Salbutamol 500micrograms/1ml solution for injection ampoules"
+    ),
+    pack_size = c(10, 10, 1, 200, 5),
+    unit = c(
+      "pre-filled disposable injection",
+      "pre-filled disposable injection",
+      "vial",
+      "dose",
+      "ampoule"
+    ),
+    vmp_snomed_code = paste0("V", 1:5),
+    vmpp_snomed_code = paste0("VPP", 1:5),
+    drug_tariff_category = rep("Part VIIIA Category C", 5),
+    basic_price = c(3000L, 2000L, 2500L, 150L, 190L),
+    nhs_indicative_price = c(3000L, 2000L, 2500L, 150L, 190L),
+    price_basis = rep("NHS Indicative Price", 5),
+    price_date = rep("2025-08-08", 5),
+    ampp_name = c(
+      "Enoxaparin 40mg/0.4ml pre-filled syringes 10 pre-filled disposable injection",
+      "Enoxaparin 20mg/0.2ml pre-filled syringes 10 pre-filled disposable injection",
+      "Enoxaparin 300mg/3ml multidose vials 1 vial",
+      "Salbutamol 100micrograms/dose inhaler 200 dose",
+      "Salbutamol 500micrograms/1ml ampoules 5 ampoule"
+    ),
+    ampp_snomed_code = c("APP_SYR40", "APP_SYR20", "APP_VIAL300", "APP_INH", "APP_AMP")
+  )
+  structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
+}

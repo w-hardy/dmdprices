@@ -192,7 +192,10 @@ container regardless of `can_split`, since one bottle, vial, or ampoule is the
 minimum dispensing unit. For liquids where the pack quantity is in the same
 unit as the concentration denominator (for example `10 mg/5 ml` in a `100 ml`
 bottle), the optimiser uses the total pack volume to calculate the active
-quantity in the container.
+quantity in the container. A pack that counts containers (for example
+`10 pre-filled disposable injection` or `5 ampoule`) is priced per container
+— a tenth of the pack price for one of ten syringes — and its whole-pack cost
+buys as many packs as the containers need.
 
 ## Worst-case cost
 

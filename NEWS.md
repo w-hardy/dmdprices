@@ -1,3 +1,32 @@
+# dmdprices 0.6.1
+
+## Bug fixes
+
+- **Packs of several containers were priced at the whole pack per
+  container.** For a concentration preparation whose pack quantity counts
+  containers rather than volume or doses (10 pre-filled syringes, 5 ampoules,
+  20 nebuliser vials), one optimisation item is one container — as the
+  documentation and `per_item_dose` always said — but its price was the whole
+  pack, so a single 40 mg enoxaparin syringe from a ten-syringe pack cost ten
+  syringes, and the optimiser could prefer a dearer product whose pack held
+  one container. Each container now costs its share of the pack
+  (`per_item_price_pence = pack price / containers per pack`), whole-pack
+  figures buy `ceiling(containers / containers per pack)` packs, vial sharing
+  takes a fraction of one container's price, and pack-level coins (whole-pack
+  dispensing) carry the whole pack's dose. Single-container packs — a bottle
+  or an inhaler whose pack quantity is in the strength's own denominator unit
+  — are unchanged. The dose a container delivers still comes from the
+  strength's denominator volume, so a pen or bag whose fill volume is not in
+  the product name is still one denominator volume per item.
+- **A dose finer than every strength in a preparation group silently
+  dropped the group.** The integer scale used by the dose solver was chosen
+  from the strengths alone, so a 100 microgram dose against 20 mg-per-inhaler
+  products rounded to zero and the inhaler group returned nothing — no row,
+  no warning, `NA` from `dmd_dose_cost()`, and the cost range silently taken
+  from the remaining groups. The dose is now scaled together with the
+  strengths, and a dose that still cannot be resolved at the capped scale
+  warns instead of vanishing.
+
 # dmdprices 0.6.0
 
 ## Dose optimisation now delivers the requested dose exactly by default

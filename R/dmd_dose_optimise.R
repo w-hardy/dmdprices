@@ -20,6 +20,21 @@
   )
 }
 
+# TRUE for a concentration row whose pack quantity is expressed in the
+# strength's own denominator unit (a 100 ml bottle of a mg/ml liquid, a
+# 200-dose inhaler of a microgram/dose aerosol): the whole pack is one
+# container. FALSE for container-count packs (10 pre-filled syringes, 5
+# ampoules, 20 nebuliser vials), where pack_size counts the containers.
+.pack_is_one_container <- function(enriched) {
+  is_concentration <- !is.na(enriched$denominator_unit)
+  pack_unit_canon <- unname(.canonicalise_unit_name(enriched$unit))
+  den_unit_canon <- unname(.canonicalise_unit_name(enriched$denominator_unit))
+  is_concentration &
+    !is.na(pack_unit_canon) &
+    !is.na(den_unit_canon) &
+    pack_unit_canon == den_unit_canon
+}
+
 # Total dose represented by one discrete optimisation item. For liquids with a
 # pack unit matching the denominator unit, use the pack quantity. For vials and
 # other container-count packs, use the concentration denominator volume.
@@ -30,17 +45,12 @@
     return(out)
   }
 
-  pack_unit_canon <- .canonicalise_unit_name(enriched$unit)
-  den_unit_canon <- .canonicalise_unit_name(enriched$denominator_unit)
   den_value_canon <- .canonicalise_unit_value(
     enriched$denominator_value,
     enriched$denominator_unit
   )
 
-  use_pack_quantity <- is_concentration &
-    !is.na(pack_unit_canon) &
-    !is.na(den_unit_canon) &
-    pack_unit_canon == den_unit_canon
+  use_pack_quantity <- .pack_is_one_container(enriched)
 
   multiplier <- den_value_canon
   multiplier[use_pack_quantity] <- enriched$pack_size[use_pack_quantity]
@@ -49,6 +59,26 @@
     enriched$strength_canonical[is_concentration] *
       multiplier[is_concentration]
   out
+}
+
+# Items per pack and the price of one item, matching .per_item_dose(): a
+# solid-form item is one tablet or capsule (pack_size per pack); a
+# concentration item is one container — the whole pack when the pack quantity
+# is in the strength's denominator unit, otherwise one of the pack_size
+# containers the pack holds, so a 10-syringe pack prices each syringe at a
+# tenth of the pack. A pack whose container count is unknown (NA pack_size)
+# is treated as one container. NA or non-positive counts give an NA price,
+# and an NA pack price propagates through the division.
+.container_pricing <- function(enriched) {
+  is_concentration <- !is.na(enriched$denominator_unit)
+  one_container <- is_concentration &
+    (.pack_is_one_container(enriched) | is.na(enriched$pack_size))
+  items_per_pack <- ifelse(one_container, 1, enriched$pack_size)
+  safe_items <- items_per_pack
+  safe_items[!is.na(safe_items) & safe_items <= 0] <- NA_real_
+  enriched$items_per_pack <- items_per_pack
+  enriched$per_item_price_pence <- enriched$pack_price_pence / safe_items
+  enriched
 }
 
 .strength_token_count <- function(name) {
@@ -187,20 +217,7 @@
   enriched$price_field_used <- price_field
   enriched$price_fallback <- price_fallback
 
-  is_concentration <- !is.na(enriched$denominator_unit)
-  enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
-
-  # Pro-rata per-item price for solid forms. NA pack_size or non-positive
-  # pack_size yields NA; NA pack_price propagates through division.
-  safe_pack_size <- enriched$pack_size
-  safe_pack_size[!is.na(safe_pack_size) & safe_pack_size <= 0] <- NA_real_
-  enriched$per_item_price_pence <- ifelse(
-    is_concentration,
-    enriched$pack_price_pence,
-    enriched$pack_price_pence / safe_pack_size
-  )
-
-  enriched
+  .container_pricing(enriched)
 }
 
 .validate_ingredient <- function(ingredient) {
@@ -304,17 +321,7 @@
     ))
   }
 
-  is_concentration <- !is.na(enriched$denominator_unit)
-  enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
-  safe_pack_size <- enriched$pack_size
-  safe_pack_size[!is.na(safe_pack_size) & safe_pack_size <= 0] <- NA_real_
-  enriched$per_item_price_pence <- ifelse(
-    is_concentration,
-    enriched$pack_price_pence,
-    enriched$pack_price_pence / safe_pack_size
-  )
-
-  enriched
+  .container_pricing(enriched)
 }
 
 # Session-level memo with a lightweight cache key. The bundled dmd_master is
@@ -411,9 +418,11 @@
 #'   hospital dispensing. `FALSE` requires whole packs to be dispensed, as
 #'   is normal in community pharmacy. Concentration-based preparations
 #'   (liquids, inhalers, vials) are treated as one container regardless of this
-#'   setting unless `can_split_vials = TRUE`. When `can_split = FALSE`,
-#'   reported costs are whole-pack costs rather than pro-rata costs, and a
-#'   `"no-pack-splitting"` note is added.
+#'   setting unless `can_split_vials = TRUE`; a pack of several containers
+#'   (pre-filled syringes, ampoules, vials) is priced per container, and its
+#'   whole-pack cost buys as many packs as the containers need. When
+#'   `can_split = FALSE`, reported costs are whole-pack costs rather than
+#'   pro-rata costs, and a `"no-pack-splitting"` note is added.
 #' @param can_split_vials Logical. If `TRUE`, concentration-based preparations
 #'   (vials, ampoules) may be costed as a fraction of a container (vial
 #'   sharing). Defaults to `FALSE`, which costs whole containers only.

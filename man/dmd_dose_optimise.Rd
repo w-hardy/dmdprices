@@ -76,9 +76,11 @@ mass dose; such candidates are skipped with a warning. Requires ingredient
 hospital dispensing. \code{FALSE} requires whole packs to be dispensed, as
 is normal in community pharmacy. Concentration-based preparations
 (liquids, inhalers, vials) are treated as one container regardless of this
-setting unless \code{can_split_vials = TRUE}. When \code{can_split = FALSE},
-reported costs are whole-pack costs rather than pro-rata costs, and a
-\code{"no-pack-splitting"} note is added.}
+setting unless \code{can_split_vials = TRUE}; a pack of several containers
+(pre-filled syringes, ampoules, vials) is priced per container, and its
+whole-pack cost buys as many packs as the containers need. When
+\code{can_split = FALSE}, reported costs are whole-pack costs rather than
+pro-rata costs, and a \code{"no-pack-splitting"} note is added.}
 
 \item{can_split_vials}{Logical. If \code{TRUE}, concentration-based preparations
 (vials, ampoules) may be costed as a fraction of a container (vial

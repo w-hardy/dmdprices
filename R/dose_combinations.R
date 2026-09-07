@@ -20,7 +20,10 @@
   max_scale = 1e6,
   dp_cap = 5e6
 ) {
-  s <- .pick_scale(strengths, max_scale)
+  # The dose is scaled together with the strengths: a dose finer than every
+  # strength (100 micrograms against 20 mg inhalers) would otherwise round
+  # to zero and the group would vanish.
+  s <- .pick_scale(c(strengths, dose_canonical), max_scale)
   all_vals <- c(strengths, dose_canonical)
   all_vals <- all_vals[!is.na(all_vals) & all_vals > 0]
   if (length(all_vals) == 0) {
@@ -32,6 +35,15 @@
   # dose_int + max_over arithmetic safely in integer range
   max_safe_dp <- floor(dp_cap / dose_canonical)
   min(s, max(max_safe_int, 1L), max(max_safe_dp, 1L))
+}
+
+# A dose that still rounds to zero at the capped integer scale cannot be
+# optimised; say so rather than let the group disappear from the result.
+.warn_below_precision <- function(dose_canonical, dose_unit_canon, label) {
+  cli::cli_warn(
+    "Dose {dose_canonical} {dose_unit_canon} is below the resolvable precision for group {.val {label}}; skipping."
+  )
+  invisible()
 }
 
 # Pick an integer scale factor that turns all supplied values into integers
@@ -55,17 +67,11 @@
 # Adds a `pack_dose` column to group_df: the total canonical dose delivered
 # by purchasing one whole pack of each AMPP row.
 #
-# For solid-form rows (no denominator_unit): pack_dose = per_item_dose × pack_size
-# (e.g. 500 mg tablet × 28 = 14,000 mg per pack).
-# For concentration rows (denominator_unit present): per_item_dose already
-# encodes the full container dose, so pack_dose = per_item_dose unchanged.
+# pack_dose = per_item_dose × items_per_pack: 500 mg tablet × 28 = 14,000 mg
+# per pack; one container of a liquid or inhaler × 1; a 40 mg pre-filled
+# syringe × 10 for a ten-syringe pack.
 .build_pack_df <- function(group_df) {
-  is_concentration <- !is.na(group_df$denominator_unit)
-  group_df$pack_dose <- ifelse(
-    is_concentration,
-    group_df$per_item_dose,
-    group_df$per_item_dose * group_df$pack_size
-  )
+  group_df$pack_dose <- group_df$per_item_dose * group_df$items_per_pack
   group_df
 }
 
@@ -542,6 +548,7 @@
   dose_int <- as.integer(round(dose_canonical * scale))
 
   if (dose_int <= 0) {
+    .warn_below_precision(dose_canonical, dose_unit_canon, preparation_label)
     return(NULL)
   }
   max_strength <- max(strengths_int)
@@ -861,6 +868,7 @@
   dose_int <- as.integer(round(dose_canonical * scale))
 
   if (dose_int <= 0) {
+    .warn_below_precision(dose_canonical, dose_unit_canon, preparation_label)
     return(NULL)
   }
   max_strength <- max(strengths_int)
