@@ -20,10 +20,19 @@
   max_scale = 1e6,
   dp_cap = 5e6
 ) {
-  # The dose is scaled together with the strengths: a dose finer than every
-  # strength (100 micrograms against 20 mg inhalers) would otherwise round
-  # to zero and the group would vanish.
-  s <- .pick_scale(c(strengths, dose_canonical), max_scale)
+  # The scale comes from the strengths, as before; it is then raised by
+  # powers of ten only until the dose is at least one unit, so a dose finer
+  # than every strength (100 micrograms against 20 mg inhalers) no longer
+  # rounds to zero and vanishes with its group. It is NOT raised to make the
+  # dose an exact integer: that would scale max_over with it and push a
+  # 133.333 mg dose against 5,000 mg tablets past the DP cell limit, where
+  # 0.6.0 simply took the dose to the nearest whole unit (133 mg).
+  s <- .pick_scale(strengths, max_scale)
+  if (!is.na(dose_canonical) && dose_canonical > 0) {
+    while (s < max_scale && dose_canonical * s < 1) {
+      s <- s * 10
+    }
+  }
   all_vals <- c(strengths, dose_canonical)
   all_vals <- all_vals[!is.na(all_vals) & all_vals > 0]
   if (length(all_vals) == 0) {
@@ -811,7 +820,8 @@
 # ── Pack-level optimisation (can_split = FALSE, solid forms) ──────────────────
 
 # Runs the DP with whole-pack coins. One DP unit = one pack of a given AMPP.
-# Coin dose  = per_item_dose × pack_size  (e.g. 500 mg × 28 = 14,000 mg)
+# Coin dose  = per_item_dose × items_per_pack  (e.g. 500 mg × 28 = 14,000 mg;
+#              one 40 mg syringe × 10 for a ten-syringe pack)
 # Coin cost  = pack_price_pence
 # total_items in the result = number of packs dispensed.
 .optimise_group_packs <- function(

@@ -23,9 +23,14 @@
   from the strengths alone, so a 100 microgram dose against 20 mg-per-inhaler
   products rounded to zero and the inhaler group returned nothing — no row,
   no warning, `NA` from `dmd_dose_cost()`, and the cost range silently taken
-  from the remaining groups. The dose is now scaled together with the
-  strengths, and a dose that still cannot be resolved at the capped scale
-  warns instead of vanishing.
+  from the remaining groups. The strengths' scale is now raised by powers of
+  ten until the dose is at least one unit, so the group is optimised (one
+  whole container for such a dose); a dose that still cannot be resolved
+  within the scale limit warns instead of vanishing. Doses that already
+  priced are unaffected: their scale is unchanged, and a dose with finer
+  decimals than the strengths is still taken to the nearest whole unit of
+  the strengths' scale rather than resolved exactly (which would inflate the
+  solver's table).
 
 # dmdprices 0.6.0
 

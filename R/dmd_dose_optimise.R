@@ -1109,7 +1109,8 @@ dmd_dose_cost_range <- function(
   once <- c(
     "unsupported compound product",
     "No exact-dose combination exists",
-    "Delivering more than the requested dose"
+    "Delivering more than the requested dose",
+    "below the resolvable precision"
   )
   call_cost <- function(obj) {
     withCallingHandlers(

@@ -180,8 +180,8 @@ test_that("pack-level coins scale a multi-container pack by its containers", {
 # ── Doses below the integer scale of a group's strengths ─────────────────────
 
 test_that("a dose finer than the group's strengths is not silently dropped", {
-  # 100 microgram against inhalers of 20 mg per container: the dose must be
-  # scaled to an integer along with the strengths, then costed as one whole
+  # 100 microgram against inhalers of 20 mg per container: the scale must be
+  # raised until the dose is one unit, then the dose costed as one whole
   # container (the over-delivery policy does not govern whole containers).
   res <- dmd_dose_optimise(
     "salbutamol",
@@ -228,7 +228,7 @@ test_that("the cost range sees every preparation group for a small dose", {
   expect_equal(rng$hi_pence, 150)
 })
 
-test_that("the integer scale makes the dose integral as well as the strengths", {
+test_that("the integer scale keeps the dose at least one unit", {
   expect_equal(.pick_scale_safe(c(12, 20, 40), 0.1), 10)
   expect_equal(.pick_scale_safe(c(0.5, 5), 0.1), 10)
   expect_equal(.pick_scale_safe(c(500, 1000), 750), 1)
@@ -248,4 +248,80 @@ test_that("a dose below the resolvable precision warns instead of vanishing", {
     "precision"
   )
   expect_equal(nrow(res), 0L)
+})
+
+# ── The dose never raises the scale beyond what keeps the DP small ───────────
+
+test_that("a dose with finer decimals than the strengths keeps the strengths' scale", {
+  # 133.333 mg against 500 / 5000 mg tablets: the strengths need no scaling,
+  # so the dose is taken to the nearest whole unit (133 mg) exactly as 0.6.0
+  # did, and the smallest over-delivering build is one 500 mg tablet at
+  # 100p / 28 = 3.571429p. Scaling the dose to full precision instead would
+  # scale the 5000 mg coin with it, blow the DP past its 5,000,000-cell
+  # limit and return NA.
+  master <- tibble::tibble(
+    medicine = c("Testdrug 500mg tablets", "Testdrug 5000mg tablets"),
+    pack_size = c(28, 28),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VPP1", "VPP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(100L, 900L),
+    nhs_indicative_price = c(100L, 900L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Testdrug 500mg 28 tablet", "Testdrug 5000mg 28 tablet"),
+    ampp_snomed_code = c("APP1", "APP2")
+  )
+  coarse <- structure(
+    list(master = master, loaded_at = .fixed_loaded_at),
+    class = "dmd_db"
+  )
+  expect_equal(.pick_scale_safe(c(500, 5000), 133.333), 1)
+  expect_equal(
+    dmd_dose_cost(
+      "testdrug",
+      dose = 133.333,
+      dose_unit = "mg",
+      db = coarse,
+      over_delivery = "minimise",
+      quiet = TRUE
+    ),
+    100 / 28
+  )
+})
+
+test_that("a very fine dose raises the scale only until it is one unit", {
+  # 0.25 microgram against 12 / 20 / 40 mg inhalers: the scale is raised by
+  # powers of ten until the dose is at least one unit (0.00025 * 10000 = 2.5),
+  # not until it is an exact integer (100,000), so the DP stays small and one
+  # whole inhaler is still the answer.
+  expect_equal(.pick_scale_safe(c(12, 20, 40), 0.00025), 10000)
+  res <- dmd_dose_optimise(
+    "salbutamol",
+    dose = 0.25,
+    dose_unit = "microgram",
+    db = db,
+    preparation = "inhaler",
+    objective = "cheapest",
+    quiet = TRUE
+  )
+  expect_equal(nrow(res), 1L)
+  expect_equal(res$total_items, 1)
+  expect_equal(res$cost_prorata_pence, 150)
+})
+
+test_that("the precision warning is raised once by the cost range", {
+  expect_warning(
+    rng <- dmd_dose_cost_range(
+      "salbutamol",
+      dose = 5e-8,
+      dose_unit = "mg",
+      db = db,
+      preparation = "inhaler",
+      quiet = TRUE
+    ),
+    "precision"
+  )
+  expect_true(is.na(rng$lo_pence))
 })
