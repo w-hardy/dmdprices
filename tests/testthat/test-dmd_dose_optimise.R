@@ -96,9 +96,9 @@ test_that("can_split = TRUE does not add 'no-pack-splitting' note", {
 test_that("can_split = FALSE: single-container concentration packs price as whole packs", {
   # Every preparation is optimised over whole packs when packs cannot be
   # split, so the note appears for vials too. Each rituximab pack is one vial,
-  # so the whole-pack answer equals the whole-container answer: 900 mg is
-  # nine 100 mg vials at 87,500p (787,500p), cheaper than 500 + 4 x 100 mg
-  # (826,700p) or a 1400 mg vial (1,344,600p).
+  # so the whole-pack answer equals the whole-container answer: within the
+  # infusion group, 900 mg is nine 100 mg vials at 87,500p (787,500p), cheaper
+  # than 500 + 4 x 100 mg (826,700p) or two 500 mg vials (953,400p).
   res <- dmd_dose_optimise(
     "rituximab",
     dose = 900,

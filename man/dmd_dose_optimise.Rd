@@ -74,16 +74,17 @@ mass dose; such candidates are skipped with a warning. Requires ingredient
 \item{can_split}{Logical. \code{TRUE} (default) assumes that individual items
 (tablets, capsules) can be taken from a part-pack, as is normal in
 hospital dispensing. \code{FALSE} requires whole packs to be dispensed, as
-is normal in community pharmacy. Concentration-based preparations
-(liquids, inhalers, vials) are treated as one container regardless of this
-setting unless \code{can_split_vials = TRUE}; a pack of several containers
-(pre-filled syringes, ampoules, vials) is priced per container, and its
-whole-pack cost buys as many packs as the containers need. When
+is normal in community pharmacy. With \code{can_split = TRUE} a
+concentration-based preparation (liquid, inhaler, vial) is still costed
+in whole containers unless \code{can_split_vials = TRUE}; a pack of several
+containers (pre-filled syringes, ampoules, vials) is priced per container,
+and its whole-pack cost buys as many packs as the containers need. When
 \code{can_split = FALSE}, every preparation is optimised over whole packs — a
 pack of several containers is dispensed as whole packs and \code{total_items}
 counts packs — so \code{"cheapest"} is the cheapest set of whole packs covering
 the dose; reported costs are whole-pack costs rather than pro-rata costs,
-and a \code{"no-pack-splitting"} note is added.}
+and a \code{"no-pack-splitting"} note is added. \code{can_split_vials = TRUE} takes
+precedence for concentration preparations under either setting.}
 
 \item{can_split_vials}{Logical. If \code{TRUE}, concentration-based preparations
 (vials, ampoules) may be costed as a fraction of a container (vial

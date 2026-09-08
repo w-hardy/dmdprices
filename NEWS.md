@@ -27,9 +27,18 @@
   that product's whole pack, which after per-container pricing was no
   longer the cheapest available cover and could put `dmd_dose_cost_range()`'s
   lower bound above its upper bound. Single-container packs give the same
-  answers as before. A concentration row whose pack quantity is zero or
-  negative now carries no price (it was priced at the whole pack); it is
-  excluded from the pack coins as solid rows already were.
+  costs and item counts as before (their rows now also carry the
+  `"no-pack-splitting"` note the documentation always promised). Two
+  consequences of the pack path for these groups: the over-delivery budget
+  is one largest pack rather than one container, so `"most_expensive"` and
+  `dmd_dose_cost_range()$hi_pence` under `can_split = FALSE` can be several
+  times larger than before (an upper bound on whole-pack expenditure, as for
+  solid forms); and a dose that a pack over-covers reports `dose_exact =
+  FALSE` with an `"over-delivery"` note, where the container path reported
+  the container's dose. A concentration row whose pack quantity is zero or
+  negative now carries no price (it was priced at the whole pack) and, like a
+  solid row, is excluded from the pack coins — a group with no other row
+  returns no row.
 - **A dose finer than every strength in a preparation group silently
   dropped the group.** The integer scale used by the dose solver was chosen
   from the strengths alone, so a 100 microgram dose against 20 mg-per-inhaler

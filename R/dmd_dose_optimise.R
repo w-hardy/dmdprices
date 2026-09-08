@@ -416,16 +416,17 @@
 #' @param can_split    Logical. `TRUE` (default) assumes that individual items
 #'   (tablets, capsules) can be taken from a part-pack, as is normal in
 #'   hospital dispensing. `FALSE` requires whole packs to be dispensed, as
-#'   is normal in community pharmacy. Concentration-based preparations
-#'   (liquids, inhalers, vials) are treated as one container regardless of this
-#'   setting unless `can_split_vials = TRUE`; a pack of several containers
-#'   (pre-filled syringes, ampoules, vials) is priced per container, and its
-#'   whole-pack cost buys as many packs as the containers need. When
+#'   is normal in community pharmacy. With `can_split = TRUE` a
+#'   concentration-based preparation (liquid, inhaler, vial) is still costed
+#'   in whole containers unless `can_split_vials = TRUE`; a pack of several
+#'   containers (pre-filled syringes, ampoules, vials) is priced per container,
+#'   and its whole-pack cost buys as many packs as the containers need. When
 #'   `can_split = FALSE`, every preparation is optimised over whole packs — a
 #'   pack of several containers is dispensed as whole packs and `total_items`
 #'   counts packs — so `"cheapest"` is the cheapest set of whole packs covering
 #'   the dose; reported costs are whole-pack costs rather than pro-rata costs,
-#'   and a `"no-pack-splitting"` note is added.
+#'   and a `"no-pack-splitting"` note is added. `can_split_vials = TRUE` takes
+#'   precedence for concentration preparations under either setting.
 #' @param can_split_vials Logical. If `TRUE`, concentration-based preparations
 #'   (vials, ampoules) may be costed as a fraction of a container (vial
 #'   sharing). Defaults to `FALSE`, which costs whole containers only.
@@ -1220,7 +1221,9 @@ dmd_dose_cost_range <- function(
 # `labels` may repeat (one per objective and, in dmd_dose_cost(), per dose).
 .warn_unresolved <- function(precision, table, quiet = FALSE) {
   precision <- unique(precision[!is.na(precision)])
-  table <- unique(table[!is.na(table)])
+  # A group can hit both guards across a dose vector; name it once, under the
+  # reason met first.
+  table <- setdiff(unique(table[!is.na(table)]), precision)
   n <- length(precision) + length(table)
   if (isTRUE(quiet) || n == 0L) {
     return(invisible())
@@ -1229,7 +1232,7 @@ dmd_dose_cost_range <- function(
   if (length(precision) > 0L) {
     msg <- c(
       msg,
-      "*" = "{.val {precision}}: the dose is below the resolvable precision of the group's strengths."
+      "*" = "{.val {precision}}: the dose is below the resolvable precision at the integer scale the group's dose table allows."
     )
   }
   if (length(table) > 0L) {

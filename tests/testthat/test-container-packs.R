@@ -198,6 +198,100 @@ test_that("the cost range never puts the lower bound above the upper bound", {
   expect_equal(rng$hi_pence, 4000)
 })
 
+test_that("a dearer exact-container product cannot invert the whole-pack cost range", {
+  # The real-data shape of the defect: an 80 mg ten-syringe pack at 5513p is
+  # the exact single-container build for 80 mg, so choosing by pro-rata price
+  # (551.3p) and reporting its whole pack (5513p) exceeded the dearest cover
+  # the dearest-pack path found (two 20 mg packs, 4000p). The local fixture
+  # adds that product; its `loaded_at` differs from the shared fixture's so
+  # the memoised candidate table is not reused across the two databases.
+  master <- db$master
+  master <- rbind(
+    master,
+    tibble::tibble(
+      medicine = "Enoxaparin sodium 80mg/0.8ml solution for injection pre-filled syringes",
+      pack_size = 10,
+      unit = "pre-filled disposable injection",
+      vmp_snomed_code = "V80",
+      vmpp_snomed_code = "VPP80",
+      drug_tariff_category = "Part VIIIA Category C",
+      basic_price = 5513L,
+      nhs_indicative_price = 5513L,
+      price_basis = "NHS Indicative Price",
+      price_date = "2025-08-08",
+      ampp_name = "Enoxaparin 80mg/0.8ml pre-filled syringes 10 pre-filled disposable injection",
+      ampp_snomed_code = "APP_SYR80"
+    )
+  )
+  wide <- structure(
+    list(master = master, loaded_at = .fixed_loaded_at + 1),
+    class = "dmd_db"
+  )
+  rng <- dmd_dose_cost_range(
+    "enoxaparin",
+    dose = 80,
+    dose_unit = "mg",
+    db = wide,
+    preparation = "injection",
+    can_split = FALSE,
+    quiet = TRUE
+  )
+  expect_lte(rng$lo_pence, rng$hi_pence)
+  # Cheapest cover: the 20 mg ten-pack (200 mg, 2000p). The dearest cover may
+  # deliver up to one largest pack (800 mg) over the dose, i.e. at most 880 mg:
+  # four 20 mg ten-packs (800 mg, 8000p) beat a 40 mg pack plus two 20 mg
+  # packs (800 mg, 7000p), two vials plus a 20 mg pack (800 mg, 7000p) and the
+  # 80 mg pack alone (800 mg, 5513p); anything with the 80 mg pack plus another
+  # pack exceeds 880 mg.
+  expect_equal(rng$lo_pence, 2000)
+  expect_equal(rng$hi_pence, 8000)
+})
+
+test_that("fewest packs is counted in packs for a concentration group", {
+  # 80 mg with whole packs only: one 20 mg ten-pack (200 mg) is one pack; so
+  # is one 40 mg ten-pack (400 mg, dearer); min_items breaks the tie on cost.
+  res <- dmd_dose_optimise(
+    "enoxaparin",
+    dose = 80,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    objective = "min_items",
+    can_split = FALSE
+  )
+  expect_equal(res$total_items, 1)
+  expect_equal(res$dose_cost_pence, 2000)
+  expect_equal(res$combination[[1]]$packs_to_buy, 1L)
+})
+
+test_that("vial sharing takes precedence over whole-pack dispensing", {
+  # can_split_vials = TRUE is decided before the pack routing, so the answer
+  # is the same fraction of a container whether or not packs may be split.
+  shared <- dmd_dose_optimise(
+    "enoxaparin",
+    dose = 30,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    objective = "cheapest",
+    can_split = TRUE,
+    can_split_vials = TRUE
+  )
+  whole <- dmd_dose_optimise(
+    "enoxaparin",
+    dose = 30,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    objective = "cheapest",
+    can_split = FALSE,
+    can_split_vials = TRUE
+  )
+  expect_match(whole$notes, "vial-sharing")
+  expect_equal(whole$cost_prorata_pence, shared$cost_prorata_pence)
+  expect_equal(whole$combination[[1]]$count, 0.75)
+})
+
 test_that("the dearest container build prices multi-container packs per container", {
   # 40 mg, containers whole (the default): the cheapest exact build is one
   # 40 mg syringe (300p). Whole containers are exempt from the over-delivery
