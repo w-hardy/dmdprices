@@ -125,7 +125,11 @@ test_that("vial sharing takes a fraction of one container's price", {
   expect_equal(combo$per_item_price_pence, 300)
 })
 
-test_that("whole-pack dispensing of one container buys the whole pack", {
+test_that("whole-pack dispensing buys the cheapest whole pack covering the dose", {
+  # 40 mg with whole packs only: the ten-syringe 20 mg pack (2000p) is the
+  # cheapest pack covering the dose, ahead of the ten-syringe 40 mg pack (3000p)
+  # and the 300 mg vial (2500p). Choosing by pro-rata price (one 40 mg syringe
+  # at 300p) and then reporting its whole pack (3000p) is not "cheapest".
   res <- dmd_dose_optimise(
     "enoxaparin",
     dose = 40,
@@ -135,9 +139,13 @@ test_that("whole-pack dispensing of one container buys the whole pack", {
     objective = "cheapest",
     can_split = FALSE
   )
-  expect_equal(res$combination[[1]]$ampp_snomed_code, "APP_SYR40")
-  expect_equal(res$cost_whole_pack_pence, 3000)
-  expect_equal(res$dose_cost_pence, 3000)
+  expect_equal(nrow(res), 1L)
+  expect_equal(res$combination[[1]]$ampp_snomed_code, "APP_SYR20")
+  expect_equal(res$combination[[1]]$packs_to_buy, 1L)
+  expect_equal(res$cost_whole_pack_pence, 2000)
+  expect_equal(res$dose_cost_pence, 2000)
+  expect_equal(res$total_items, 1)
+  expect_match(res$notes, "no-pack-splitting")
   expect_equal(
     dmd_dose_cost(
       "enoxaparin",
@@ -147,8 +155,130 @@ test_that("whole-pack dispensing of one container buys the whole pack", {
       preparation = "injection",
       can_split = FALSE
     ),
-    3000
+    2000
   )
+})
+
+test_that("whole-pack dispensing picks a single-container pack when it is cheaper", {
+  # 500 mg with whole packs only: one 20 mg ten-pack (200 mg, 2000p) plus the
+  # 300 mg vial (2500p) delivers exactly 500 mg for 4500p; every other cover is
+  # dearer (two vials 5000p; a 40 mg pack plus a 20 mg pack 5000p; two 40 mg
+  # packs 6000p; three 20 mg packs 6000p).
+  res <- dmd_dose_optimise(
+    "enoxaparin",
+    dose = 500,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    objective = "cheapest",
+    can_split = FALSE
+  )
+  expect_equal(res$dose_cost_pence, 4500)
+  expect_equal(res$dose_delivered, 500)
+  expect_equal(res$total_items, 2)
+  expect_setequal(res$combination[[1]]$ampp_snomed_code, c("APP_SYR20", "APP_VIAL300"))
+})
+
+test_that("the cost range never puts the lower bound above the upper bound", {
+  # 80 mg with whole packs only. Cheapest: one 20 mg ten-pack (2000p, 200 mg).
+  # Dearest: the dearest cover delivering at most one largest pack dose
+  # (400 mg) over the dose, i.e. up to 480 mg — two 20 mg ten-packs (400 mg,
+  # 4000p) beat one 40 mg ten-pack (3000p) and the 300 mg vial (2500p).
+  rng <- dmd_dose_cost_range(
+    "enoxaparin",
+    dose = 80,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    can_split = FALSE,
+    quiet = TRUE
+  )
+  expect_lte(rng$lo_pence, rng$hi_pence)
+  expect_equal(rng$lo_pence, 2000)
+  expect_equal(rng$hi_pence, 4000)
+})
+
+test_that("the dearest container build prices multi-container packs per container", {
+  # 40 mg, containers whole (the default): the cheapest exact build is one
+  # 40 mg syringe (300p). Whole containers are exempt from the over-delivery
+  # policy, so the dearest build may deliver up to one largest container
+  # (300 mg) over the dose: seventeen 20 mg syringes (340 mg) at 200p each,
+  # 3400p — priced per container, where before this fix each syringe carried
+  # its whole pack's price (17 x 2000p = 34,000p).
+  rng <- dmd_dose_cost_range(
+    "enoxaparin",
+    dose = 40,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    quiet = TRUE
+  )
+  expect_equal(rng$lo_pence, 300)
+  expect_equal(rng$hi_pence, 3400)
+  dearest <- dmd_dose_optimise(
+    "enoxaparin",
+    dose = 40,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    objective = "most_expensive",
+    quiet = TRUE
+  )
+  expect_equal(dearest$total_items, 17)
+  expect_equal(dearest$combination[[1]]$per_item_price_pence, 200)
+  expect_equal(dearest$combination[[1]]$packs_to_buy, 2L)
+})
+
+test_that("ingredient-targeted candidates price multi-container packs per container", {
+  # A combination product sold as ten 0.4 ml pre-filled syringes at 3000p,
+  # dosed on one of its ingredients (40 mg per syringe): one syringe is
+  # 3000p / 10 = 300p and buys one pack.
+  master <- tibble::tibble(
+    medicine = "Coamix 40mg/0.4ml solution for injection pre-filled syringes",
+    pack_size = 10,
+    unit = "pre-filled disposable injection",
+    vmp_snomed_code = "V1",
+    vmpp_snomed_code = "VPP1",
+    drug_tariff_category = "Part VIIIA Category C",
+    basic_price = 3000L,
+    nhs_indicative_price = 3000L,
+    price_basis = "NHS Indicative Price",
+    price_date = "2025-08-08",
+    ampp_name = "Coamix 40mg/0.4ml pre-filled syringes 10 pre-filled disposable injection",
+    ampp_snomed_code = "APP_COMIX",
+    is_combination = TRUE
+  )
+  ingredients <- tibble::tibble(
+    vmp_snomed_code = c("V1", "V1"),
+    ingredient_snomed_code = c("I_a", "I_b"),
+    ingredient_name = c("Coamix substance", "Other substance"),
+    strength_value = c(40, 10),
+    strength_unit = c("mg", "mg"),
+    denominator_value = c(0.4, 0.4),
+    denominator_unit = c("ml", "ml"),
+    strength_canonical = c(100, 25),
+    strength_unit_canon = c("mg/ml", "mg/ml")
+  )
+  ing_db <- structure(
+    list(master = master, ingredients = ingredients, loaded_at = .fixed_loaded_at),
+    class = "dmd_db"
+  )
+  res <- dmd_dose_optimise(
+    "coamix",
+    dose = 40,
+    dose_unit = "mg",
+    db = ing_db,
+    ingredient = "Coamix substance",
+    objective = "cheapest",
+    quiet = TRUE
+  )
+  expect_equal(nrow(res), 1L)
+  expect_equal(res$total_items, 1)
+  expect_equal(res$cost_prorata_pence, 300)
+  combo <- res$combination[[1]]
+  expect_equal(combo$per_item_price_pence, 300)
+  expect_equal(combo$packs_to_buy, 1L)
+  expect_equal(combo$subtotal_whole_pack_pence, 3000)
 })
 
 test_that("vectorised costs price containers from multi-container packs", {
@@ -235,6 +365,8 @@ test_that("the integer scale keeps the dose at least one unit", {
 })
 
 test_that("a dose below the resolvable precision warns instead of vanishing", {
+  # The warning is one of the three `quiet` governs, so it is asserted with
+  # the default `quiet = FALSE`.
   expect_warning(
     res <- dmd_dose_optimise(
       "salbutamol",
@@ -242,8 +374,7 @@ test_that("a dose below the resolvable precision warns instead of vanishing", {
       dose_unit = "mg",
       db = db,
       preparation = "inhaler",
-      objective = "cheapest",
-      quiet = TRUE
+      objective = "cheapest"
     ),
     "precision"
   )
@@ -311,17 +442,107 @@ test_that("a very fine dose raises the scale only until it is one unit", {
   expect_equal(res$cost_prorata_pence, 150)
 })
 
-test_that("the precision warning is raised once by the cost range", {
-  expect_warning(
-    rng <- dmd_dose_cost_range(
-      "salbutamol",
-      dose = 5e-8,
-      dose_unit = "mg",
-      db = db,
-      preparation = "inhaler",
-      quiet = TRUE
-    ),
-    "precision"
+# Collect every warning a call raises, muffling them, so counts are exact.
+.collect_warnings <- function(expr) {
+  seen <- character()
+  value <- withCallingHandlers(
+    expr,
+    warning = function(w) {
+      seen <<- c(seen, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
   )
-  expect_true(is.na(rng$lo_pence))
+  list(value = value, warnings = seen)
+}
+
+test_that("the precision warning is raised exactly once by the cost range", {
+  got <- .collect_warnings(dmd_dose_cost_range(
+    "salbutamol",
+    dose = 5e-8,
+    dose_unit = "mg",
+    db = db,
+    preparation = "inhaler"
+  ))
+  expect_length(grep("precision", got$warnings), 1L)
+  expect_true(is.na(got$value$lo_pence))
+  expect_true(is.na(got$value$hi_pence))
+})
+
+test_that("one unresolved-dose warning per call names every dropped group", {
+  # Two groups (inhaler and injection) are both below the resolvable precision
+  # for 5e-8 mg; the default objective pair must not double the warning and
+  # the second group must not be lost from it.
+  got <- .collect_warnings(dmd_dose_optimise(
+    "salbutamol",
+    dose = 5e-8,
+    dose_unit = "mg",
+    db = db
+  ))
+  expect_equal(nrow(got$value), 0L)
+  expect_length(grep("precision", got$warnings), 1L)
+  expect_match(got$warnings[grep("precision", got$warnings)], "inhaler")
+  expect_match(got$warnings[grep("precision", got$warnings)], "injection")
+})
+
+test_that("quiet = TRUE silences the unresolved-dose warning", {
+  got <- .collect_warnings(dmd_dose_optimise(
+    "salbutamol",
+    dose = 5e-8,
+    dose_unit = "mg",
+    db = db,
+    preparation = "inhaler",
+    objective = "cheapest",
+    quiet = TRUE
+  ))
+  expect_equal(nrow(got$value), 0L)
+  expect_length(got$warnings, 0L)
+})
+
+test_that("a vector of unresolved doses raises the warning once", {
+  got <- .collect_warnings(dmd_dose_cost(
+    "salbutamol",
+    dose = rep(5e-8, 5),
+    dose_unit = "mg",
+    db = db,
+    preparation = "inhaler"
+  ))
+  expect_true(all(is.na(got$value)))
+  expect_length(grep("precision", got$warnings), 1L)
+})
+
+test_that("raising the scale for a fine dose never pushes a priceable group past the DP cap", {
+  # Strengths 0.01 mg and 5000 mg, dose 0.006 mg. The strengths' own scale is
+  # 100 (0.01 * 100 = 1); at 100 the dose is 0.6 units, and raising to 1000
+  # would make the table 5,000 * 1,000 + 6 cells — past the 5,000,000 cap that
+  # skips the group. 0.6.0 stopped at 100, took the dose to one unit (0.01 mg)
+  # and priced one tablet at 100p / 28. That answer must survive the raise.
+  master <- tibble::tibble(
+    medicine = c("Finedrug 10microgram tablets", "Finedrug 5g tablets"),
+    pack_size = c(28, 28),
+    unit = c("tablet", "tablet"),
+    vmp_snomed_code = c("V1", "V2"),
+    vmpp_snomed_code = c("VPP1", "VPP2"),
+    drug_tariff_category = rep("Part VIIIA Category M", 2),
+    basic_price = c(100L, 900L),
+    nhs_indicative_price = c(100L, 900L),
+    price_basis = rep("NHS Indicative Price", 2),
+    price_date = rep("2025-08-08", 2),
+    ampp_name = c("Finedrug 10microgram 28 tablet", "Finedrug 5g 28 tablet"),
+    ampp_snomed_code = c("APP1", "APP2")
+  )
+  wide <- structure(
+    list(master = master, loaded_at = .fixed_loaded_at),
+    class = "dmd_db"
+  )
+  expect_equal(.pick_scale_safe(c(0.01, 5000), 0.006), 100)
+  got <- .collect_warnings(dmd_dose_cost(
+    "finedrug",
+    dose = 0.006,
+    dose_unit = "mg",
+    db = wide,
+    over_delivery = "minimise",
+    quiet = TRUE
+  ))
+  expect_equal(got$value, 100 / 28)
+  expect_length(got$warnings, 0L)
 })

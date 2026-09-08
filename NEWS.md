@@ -18,6 +18,18 @@
   — are unchanged. The dose a container delivers still comes from the
   strength's denominator volume, so a pen or bag whose fill volume is not in
   the product name is still one denominator volume per item.
+  Whole-pack dispensing (`can_split = FALSE`) now optimises every
+  preparation over whole packs: a pack of several containers is dispensed as
+  whole packs, `total_items` counts packs for such a group (as it always did
+  for solid forms), and `"cheapest"` is the cheapest set of whole packs
+  covering the dose. Previously a concentration group under `can_split =
+  FALSE` still chose by the pro-rata per-container price and then reported
+  that product's whole pack, which after per-container pricing was no
+  longer the cheapest available cover and could put `dmd_dose_cost_range()`'s
+  lower bound above its upper bound. Single-container packs give the same
+  answers as before. A concentration row whose pack quantity is zero or
+  negative now carries no price (it was priced at the whole pack); it is
+  excluded from the pack coins as solid rows already were.
 - **A dose finer than every strength in a preparation group silently
   dropped the group.** The integer scale used by the dose solver was chosen
   from the strengths alone, so a 100 microgram dose against 20 mg-per-inhaler
@@ -25,12 +37,20 @@
   no warning, `NA` from `dmd_dose_cost()`, and the cost range silently taken
   from the remaining groups. The strengths' scale is now raised by powers of
   ten until the dose is at least one unit, so the group is optimised (one
-  whole container for such a dose); a dose that still cannot be resolved
-  within the scale limit warns instead of vanishing. Doses that already
-  priced are unaffected: their scale is unchanged, and a dose with finer
-  decimals than the strengths is still taken to the nearest whole unit of
-  the strengths' scale rather than resolved exactly (which would inflate the
-  solver's table).
+  whole container for such a dose). A raise that would push the group's
+  dose table past its 5,000,000-cell cap is not taken, so a group that
+  priced before (at the strengths' own scale) still prices. Doses that
+  already priced are unaffected: their scale is unchanged, and a dose with
+  finer decimals than the strengths is still taken to the nearest whole unit
+  of the strengths' scale rather than resolved exactly (which would inflate
+  the solver's table).
+- **Groups the solver cannot run for a dose are reported once per call.** A
+  dose still below the resolvable precision at the capped scale, or one whose
+  dose table would exceed the cell cap, returns no row for that group; every
+  such group is now named in one warning per call (per `dmd_dose_cost()`
+  vector, and once across the two bounds of `dmd_dose_cost_range()`) rather
+  than once per group and objective, and `quiet = TRUE` silences it as it
+  does the other per-call dose warnings.
 
 # dmdprices 0.6.0
 

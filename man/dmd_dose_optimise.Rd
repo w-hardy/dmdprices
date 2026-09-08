@@ -79,8 +79,11 @@ is normal in community pharmacy. Concentration-based preparations
 setting unless \code{can_split_vials = TRUE}; a pack of several containers
 (pre-filled syringes, ampoules, vials) is priced per container, and its
 whole-pack cost buys as many packs as the containers need. When
-\code{can_split = FALSE}, reported costs are whole-pack costs rather than
-pro-rata costs, and a \code{"no-pack-splitting"} note is added.}
+\code{can_split = FALSE}, every preparation is optimised over whole packs — a
+pack of several containers is dispensed as whole packs and \code{total_items}
+counts packs — so \code{"cheapest"} is the cheapest set of whole packs covering
+the dose; reported costs are whole-pack costs rather than pro-rata costs,
+and a \code{"no-pack-splitting"} note is added.}
 
 \item{can_split_vials}{Logical. If \code{TRUE}, concentration-based preparations
 (vials, ampoules) may be costed as a fraction of a container (vial
@@ -110,10 +113,13 @@ added. Exact delivery from a container is available via
 
 \item{quiet}{Logical. \code{FALSE} (default) warns, once per call, when a
 preparation group cannot deliver the dose exactly (and is therefore dropped
-under \code{over_delivery = "forbid"}), and when a returned combination delivers
-more than the requested dose — saying whether an exact combination existed.
-\code{TRUE} silences both. Unrelated warnings (unsupported compounds, ingredient
-matching) are not affected.}
+under \code{over_delivery = "forbid"}), when a returned combination delivers
+more than the requested dose — saying whether an exact combination existed
+— and when a group could not be solved for the dose at all (the dose is
+below the resolvable precision of the group's strengths, or the dose table
+would exceed its cell cap) and so returns no row. \code{TRUE} silences all
+three. Unrelated warnings (unsupported compounds, ingredient matching) are
+not affected.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per

@@ -421,8 +421,11 @@
 #'   setting unless `can_split_vials = TRUE`; a pack of several containers
 #'   (pre-filled syringes, ampoules, vials) is priced per container, and its
 #'   whole-pack cost buys as many packs as the containers need. When
-#'   `can_split = FALSE`, reported costs are whole-pack costs rather than
-#'   pro-rata costs, and a `"no-pack-splitting"` note is added.
+#'   `can_split = FALSE`, every preparation is optimised over whole packs — a
+#'   pack of several containers is dispensed as whole packs and `total_items`
+#'   counts packs — so `"cheapest"` is the cheapest set of whole packs covering
+#'   the dose; reported costs are whole-pack costs rather than pro-rata costs,
+#'   and a `"no-pack-splitting"` note is added.
 #' @param can_split_vials Logical. If `TRUE`, concentration-based preparations
 #'   (vials, ampoules) may be costed as a fraction of a container (vial
 #'   sharing). Defaults to `FALSE`, which costs whole containers only.
@@ -449,10 +452,13 @@
 #'   `can_split_vials = TRUE`.
 #' @param quiet Logical. `FALSE` (default) warns, once per call, when a
 #'   preparation group cannot deliver the dose exactly (and is therefore dropped
-#'   under `over_delivery = "forbid"`), and when a returned combination delivers
-#'   more than the requested dose — saying whether an exact combination existed.
-#'   `TRUE` silences both. Unrelated warnings (unsupported compounds, ingredient
-#'   matching) are not affected.
+#'   under `over_delivery = "forbid"`), when a returned combination delivers
+#'   more than the requested dose — saying whether an exact combination existed
+#'   — and when a group could not be solved for the dose at all (the dose is
+#'   below the resolvable precision of the group's strengths, or the dose table
+#'   would exceed its cell cap) and so returns no row. `TRUE` silences all
+#'   three. Unrelated warnings (unsupported compounds, ingredient matching) are
+#'   not affected.
 #'
 #' @return A [tibble][tibble::tibble] with one row per
 #'   `(preparation_group, objective)` combination. See the package vignette for
@@ -665,6 +671,8 @@ dmd_dose_optimise <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
+  unresolved_precision <- character()
+  unresolved_table <- character()
   for (g in seq_len(nrow(groups))) {
     sub <- enriched[
       enriched$preparation_group == groups$preparation_group[g],
@@ -686,6 +694,12 @@ dmd_dose_optimise <- function(
       )
       if (.is_no_exact(row)) {
         no_exact <- c(no_exact, groups$preparation_label[g])
+      } else if (.is_unresolved(row)) {
+        if (identical(.unresolved_reason(row), "precision")) {
+          unresolved_precision <- c(unresolved_precision, groups$preparation_label[g])
+        } else {
+          unresolved_table <- c(unresolved_table, groups$preparation_label[g])
+        }
       } else if (!is.null(row)) {
         out[[length(out) + 1L]] <- row
         if (.policy_row(row) && !row$dose_exact) {
@@ -704,6 +718,7 @@ dmd_dose_optimise <- function(
   # query that matched nothing.
   .warn_no_exact(no_exact, quiet)
   .warn_over_delivery(over_impossible, over_available, quiet)
+  .warn_unresolved(unresolved_precision, unresolved_table, quiet)
 
   if (length(out) == 0) {
     return(.empty_dose_result())
@@ -933,6 +948,8 @@ dmd_dose_cost <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
+  unresolved_precision <- character()
+  unresolved_table <- character()
 
   costs <- vapply(
     dose,
@@ -967,6 +984,17 @@ dmd_dose_cost <- function(
             )
             if (.is_no_exact(row)) {
               no_exact <<- c(no_exact, groups$preparation_label[g])
+              next
+            }
+            if (.is_unresolved(row)) {
+              if (identical(.unresolved_reason(row), "precision")) {
+                unresolved_precision <<- c(
+                  unresolved_precision,
+                  groups$preparation_label[g]
+                )
+              } else {
+                unresolved_table <<- c(unresolved_table, groups$preparation_label[g])
+              }
               next
             }
             if (is.null(row)) {
@@ -1011,6 +1039,7 @@ dmd_dose_cost <- function(
 
   .warn_no_exact(no_exact, quiet)
   .warn_over_delivery(over_impossible, over_available, quiet)
+  .warn_unresolved(unresolved_precision, unresolved_table, quiet)
   costs
 }
 
@@ -1110,7 +1139,7 @@ dmd_dose_cost_range <- function(
     "unsupported compound product",
     "No exact-dose combination exists",
     "Delivering more than the requested dose",
-    "below the resolvable precision"
+    "could not be resolved"
   )
   call_cost <- function(obj) {
     withCallingHandlers(
@@ -1179,6 +1208,39 @@ dmd_dose_cost_range <- function(
   cli::cli_warn(c(
     msg,
     "i" = 'Pass {.code over_delivery = "forbid"} to return only exact-dose combinations, or {.code quiet = TRUE} to silence this.'
+  ))
+  invisible()
+}
+
+# Warn once about preparation groups the solver could not run for the dose:
+# `precision` names groups whose dose still rounds to zero at the capped
+# integer scale of their strengths, `table` those whose dose table would exceed
+# the cell cap. Both return no row, so a caller reading bare numbers would
+# otherwise see an NA that is indistinguishable from "no product matched".
+# `labels` may repeat (one per objective and, in dmd_dose_cost(), per dose).
+.warn_unresolved <- function(precision, table, quiet = FALSE) {
+  precision <- unique(precision[!is.na(precision)])
+  table <- unique(table[!is.na(table)])
+  n <- length(precision) + length(table)
+  if (isTRUE(quiet) || n == 0L) {
+    return(invisible())
+  }
+  msg <- "The requested dose could not be resolved for {n} preparation group{?s}; {?it returns/they return} no row."
+  if (length(precision) > 0L) {
+    msg <- c(
+      msg,
+      "*" = "{.val {precision}}: the dose is below the resolvable precision of the group's strengths."
+    )
+  }
+  if (length(table) > 0L) {
+    msg <- c(
+      msg,
+      "*" = "{.val {table}}: the dose table would exceed 5,000,000 cells."
+    )
+  }
+  cli::cli_warn(c(
+    msg,
+    "i" = "Pass {.code quiet = TRUE} to silence this."
   ))
   invisible()
 }

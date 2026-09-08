@@ -29,7 +29,19 @@
   # 0.6.0 simply took the dose to the nearest whole unit (133 mg).
   s <- .pick_scale(strengths, max_scale)
   if (!is.na(dose_canonical) && dose_canonical > 0) {
-    while (s < max_scale && dose_canonical * s < 1) {
+    # Each raise scales the DP table (dose + largest strength, in scaled
+    # units) with it. A raise that would push a group past the table cap is
+    # not taken: the group then prices at the strengths' own scale, as it did
+    # before the raise existed, instead of being refused where it once priced.
+    largest <- suppressWarnings(max(strengths[!is.na(strengths) & strengths > 0]))
+    if (!is.finite(largest)) {
+      largest <- 0
+    }
+    while (
+      s < max_scale &&
+        dose_canonical * s < 1 &&
+        (dose_canonical + largest) * (s * 10) + 1 <= dp_cap
+    ) {
       s <- s * 10
     }
   }
@@ -46,13 +58,21 @@
   min(s, max(max_safe_int, 1L), max(max_safe_dp, 1L))
 }
 
-# A dose that still rounds to zero at the capped integer scale cannot be
-# optimised; say so rather than let the group disappear from the result.
-.warn_below_precision <- function(dose_canonical, dose_unit_canon, label) {
-  cli::cli_warn(
-    "Dose {dose_canonical} {dose_unit_canon} is below the resolvable precision for group {.val {label}}; skipping."
-  )
-  invisible()
+# A group the solver cannot run for this dose — the dose still rounds to zero
+# at the capped integer scale ("precision"), or the dose table would exceed
+# the cell cap ("table") — is signalled with this sentinel rather than a bare
+# NULL, so the callers can name every such group in ONE warning per call
+# (honouring `quiet`) instead of one warning per group and objective.
+.unresolved_result <- function(reason = c("precision", "table")) {
+  structure(list(), class = "dmd_unresolved", reason = match.arg(reason))
+}
+
+.is_unresolved <- function(x) {
+  inherits(x, "dmd_unresolved")
+}
+
+.unresolved_reason <- function(x) {
+  attr(x, "reason", exact = TRUE)
 }
 
 # Pick an integer scale factor that turns all supplied values into integers
@@ -467,10 +487,15 @@
     ))
   }
 
-  # Use pack-level DP when whole packs must be dispensed AND the preparation
-  # is a solid form. Concentration preparations are always whole-container
-  # regardless of can_split, so they take the standard path.
-  use_pack_dp <- !can_split && !all_concentration
+  # Use the pack-level DP whenever whole packs must be dispensed, for every
+  # preparation. A concentration group used to take the item path here on the
+  # grounds that a container is whole regardless of can_split — true while a
+  # container's price was its pack's price, but a pack of several containers
+  # is now priced per container, and the item DP would then choose by the
+  # pro-rata price and report the whole pack: not the cheapest set of whole
+  # packs covering the dose, and a cost range whose lower bound can exceed
+  # its upper bound.
+  use_pack_dp <- !can_split
 
   # Whole packs and whole containers deliver surplus into the pack or the vial,
   # not into the patient, so the over-delivery policy governs neither. When it
@@ -557,17 +582,13 @@
   dose_int <- as.integer(round(dose_canonical * scale))
 
   if (dose_int <= 0) {
-    .warn_below_precision(dose_canonical, dose_unit_canon, preparation_label)
-    return(NULL)
+    return(.unresolved_result("precision"))
   }
   max_strength <- max(strengths_int)
   max_over <- max_strength
 
   if ((dose_int + max_over + 1L) > 5e6) {
-    cli::cli_warn(
-      "Dose DP table for group {.val {preparation_label}} would exceed 5,000,000 cells; skipping."
-    )
-    return(NULL)
+    return(.unresolved_result("table"))
   }
 
   dp <- .dose_dp(strengths_int, price_per_strength, dose_int, max_over)
@@ -878,17 +899,13 @@
   dose_int <- as.integer(round(dose_canonical * scale))
 
   if (dose_int <= 0) {
-    .warn_below_precision(dose_canonical, dose_unit_canon, preparation_label)
-    return(NULL)
+    return(.unresolved_result("precision"))
   }
   max_strength <- max(strengths_int)
   max_over <- max_strength
 
   if ((dose_int + max_over + 1L) > 5e6) {
-    cli::cli_warn(
-      "Dose DP table for group {.val {preparation_label}} would exceed 5,000,000 cells; skipping."
-    )
-    return(NULL)
+    return(.unresolved_result("table"))
   }
 
   dp <- .dose_dp(strengths_int, price_per_pack_dose, dose_int, max_over)
