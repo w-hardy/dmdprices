@@ -20,6 +20,21 @@
   )
 }
 
+# TRUE for a concentration row whose pack quantity is expressed in the
+# strength's own denominator unit (a 100 ml bottle of a mg/ml liquid, a
+# 200-dose inhaler of a microgram/dose aerosol): the whole pack is one
+# container. FALSE for container-count packs (10 pre-filled syringes, 5
+# ampoules, 20 nebuliser vials), where pack_size counts the containers.
+.pack_is_one_container <- function(enriched) {
+  is_concentration <- !is.na(enriched$denominator_unit)
+  pack_unit_canon <- unname(.canonicalise_unit_name(enriched$unit))
+  den_unit_canon <- unname(.canonicalise_unit_name(enriched$denominator_unit))
+  is_concentration &
+    !is.na(pack_unit_canon) &
+    !is.na(den_unit_canon) &
+    pack_unit_canon == den_unit_canon
+}
+
 # Total dose represented by one discrete optimisation item. For liquids with a
 # pack unit matching the denominator unit, use the pack quantity. For vials and
 # other container-count packs, use the concentration denominator volume.
@@ -30,17 +45,12 @@
     return(out)
   }
 
-  pack_unit_canon <- .canonicalise_unit_name(enriched$unit)
-  den_unit_canon <- .canonicalise_unit_name(enriched$denominator_unit)
   den_value_canon <- .canonicalise_unit_value(
     enriched$denominator_value,
     enriched$denominator_unit
   )
 
-  use_pack_quantity <- is_concentration &
-    !is.na(pack_unit_canon) &
-    !is.na(den_unit_canon) &
-    pack_unit_canon == den_unit_canon
+  use_pack_quantity <- .pack_is_one_container(enriched)
 
   multiplier <- den_value_canon
   multiplier[use_pack_quantity] <- enriched$pack_size[use_pack_quantity]
@@ -49,6 +59,26 @@
     enriched$strength_canonical[is_concentration] *
       multiplier[is_concentration]
   out
+}
+
+# Items per pack and the price of one item, matching .per_item_dose(): a
+# solid-form item is one tablet or capsule (pack_size per pack); a
+# concentration item is one container — the whole pack when the pack quantity
+# is in the strength's denominator unit, otherwise one of the pack_size
+# containers the pack holds, so a 10-syringe pack prices each syringe at a
+# tenth of the pack. A pack whose container count is unknown (NA pack_size)
+# is treated as one container. NA or non-positive counts give an NA price,
+# and an NA pack price propagates through the division.
+.container_pricing <- function(enriched) {
+  is_concentration <- !is.na(enriched$denominator_unit)
+  one_container <- is_concentration &
+    (.pack_is_one_container(enriched) | is.na(enriched$pack_size))
+  items_per_pack <- ifelse(one_container, 1, enriched$pack_size)
+  safe_items <- items_per_pack
+  safe_items[!is.na(safe_items) & safe_items <= 0] <- NA_real_
+  enriched$items_per_pack <- items_per_pack
+  enriched$per_item_price_pence <- enriched$pack_price_pence / safe_items
+  enriched
 }
 
 .strength_token_count <- function(name) {
@@ -187,20 +217,7 @@
   enriched$price_field_used <- price_field
   enriched$price_fallback <- price_fallback
 
-  is_concentration <- !is.na(enriched$denominator_unit)
-  enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
-
-  # Pro-rata per-item price for solid forms. NA pack_size or non-positive
-  # pack_size yields NA; NA pack_price propagates through division.
-  safe_pack_size <- enriched$pack_size
-  safe_pack_size[!is.na(safe_pack_size) & safe_pack_size <= 0] <- NA_real_
-  enriched$per_item_price_pence <- ifelse(
-    is_concentration,
-    enriched$pack_price_pence,
-    enriched$pack_price_pence / safe_pack_size
-  )
-
-  enriched
+  .container_pricing(enriched)
 }
 
 .validate_ingredient <- function(ingredient) {
@@ -304,17 +321,7 @@
     ))
   }
 
-  is_concentration <- !is.na(enriched$denominator_unit)
-  enriched$items_per_pack <- ifelse(is_concentration, 1, enriched$pack_size)
-  safe_pack_size <- enriched$pack_size
-  safe_pack_size[!is.na(safe_pack_size) & safe_pack_size <= 0] <- NA_real_
-  enriched$per_item_price_pence <- ifelse(
-    is_concentration,
-    enriched$pack_price_pence,
-    enriched$pack_price_pence / safe_pack_size
-  )
-
-  enriched
+  .container_pricing(enriched)
 }
 
 # Session-level memo with a lightweight cache key. The bundled dmd_master is
@@ -409,11 +416,17 @@
 #' @param can_split    Logical. `TRUE` (default) assumes that individual items
 #'   (tablets, capsules) can be taken from a part-pack, as is normal in
 #'   hospital dispensing. `FALSE` requires whole packs to be dispensed, as
-#'   is normal in community pharmacy. Concentration-based preparations
-#'   (liquids, inhalers, vials) are treated as one container regardless of this
-#'   setting unless `can_split_vials = TRUE`. When `can_split = FALSE`,
-#'   reported costs are whole-pack costs rather than pro-rata costs, and a
-#'   `"no-pack-splitting"` note is added.
+#'   is normal in community pharmacy. With `can_split = TRUE` a
+#'   concentration-based preparation (liquid, inhaler, vial) is still costed
+#'   in whole containers unless `can_split_vials = TRUE`; a pack of several
+#'   containers (pre-filled syringes, ampoules, vials) is priced per container,
+#'   and its whole-pack cost buys as many packs as the containers need. When
+#'   `can_split = FALSE`, every preparation is optimised over whole packs — a
+#'   pack of several containers is dispensed as whole packs and `total_items`
+#'   counts packs — so `"cheapest"` is the cheapest set of whole packs covering
+#'   the dose; reported costs are whole-pack costs rather than pro-rata costs,
+#'   and a `"no-pack-splitting"` note is added. `can_split_vials = TRUE` takes
+#'   precedence for concentration preparations under either setting.
 #' @param can_split_vials Logical. If `TRUE`, concentration-based preparations
 #'   (vials, ampoules) may be costed as a fraction of a container (vial
 #'   sharing). Defaults to `FALSE`, which costs whole containers only.
@@ -440,10 +453,13 @@
 #'   `can_split_vials = TRUE`.
 #' @param quiet Logical. `FALSE` (default) warns, once per call, when a
 #'   preparation group cannot deliver the dose exactly (and is therefore dropped
-#'   under `over_delivery = "forbid"`), and when a returned combination delivers
-#'   more than the requested dose — saying whether an exact combination existed.
-#'   `TRUE` silences both. Unrelated warnings (unsupported compounds, ingredient
-#'   matching) are not affected.
+#'   under `over_delivery = "forbid"`), when a returned combination delivers
+#'   more than the requested dose — saying whether an exact combination existed
+#'   — and when a group could not be solved for the dose at all (the dose is
+#'   below the resolvable precision of the group's strengths, or the dose table
+#'   would exceed its cell cap) and so returns no row. `TRUE` silences all
+#'   three. Unrelated warnings (unsupported compounds, ingredient matching) are
+#'   not affected.
 #'
 #' @return A [tibble][tibble::tibble] with one row per
 #'   `(preparation_group, objective)` combination. See the package vignette for
@@ -656,6 +672,8 @@ dmd_dose_optimise <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
+  unresolved_precision <- character()
+  unresolved_table <- character()
   for (g in seq_len(nrow(groups))) {
     sub <- enriched[
       enriched$preparation_group == groups$preparation_group[g],
@@ -677,6 +695,12 @@ dmd_dose_optimise <- function(
       )
       if (.is_no_exact(row)) {
         no_exact <- c(no_exact, groups$preparation_label[g])
+      } else if (.is_unresolved(row)) {
+        if (identical(.unresolved_reason(row), "precision")) {
+          unresolved_precision <- c(unresolved_precision, groups$preparation_label[g])
+        } else {
+          unresolved_table <- c(unresolved_table, groups$preparation_label[g])
+        }
       } else if (!is.null(row)) {
         out[[length(out) + 1L]] <- row
         if (.policy_row(row) && !row$dose_exact) {
@@ -695,6 +719,7 @@ dmd_dose_optimise <- function(
   # query that matched nothing.
   .warn_no_exact(no_exact, quiet)
   .warn_over_delivery(over_impossible, over_available, quiet)
+  .warn_unresolved(unresolved_precision, unresolved_table, quiet)
 
   if (length(out) == 0) {
     return(.empty_dose_result())
@@ -924,6 +949,8 @@ dmd_dose_cost <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
+  unresolved_precision <- character()
+  unresolved_table <- character()
 
   costs <- vapply(
     dose,
@@ -958,6 +985,17 @@ dmd_dose_cost <- function(
             )
             if (.is_no_exact(row)) {
               no_exact <<- c(no_exact, groups$preparation_label[g])
+              next
+            }
+            if (.is_unresolved(row)) {
+              if (identical(.unresolved_reason(row), "precision")) {
+                unresolved_precision <<- c(
+                  unresolved_precision,
+                  groups$preparation_label[g]
+                )
+              } else {
+                unresolved_table <<- c(unresolved_table, groups$preparation_label[g])
+              }
               next
             }
             if (is.null(row)) {
@@ -1002,6 +1040,7 @@ dmd_dose_cost <- function(
 
   .warn_no_exact(no_exact, quiet)
   .warn_over_delivery(over_impossible, over_available, quiet)
+  .warn_unresolved(unresolved_precision, unresolved_table, quiet)
   costs
 }
 
@@ -1100,7 +1139,8 @@ dmd_dose_cost_range <- function(
   once <- c(
     "unsupported compound product",
     "No exact-dose combination exists",
-    "Delivering more than the requested dose"
+    "Delivering more than the requested dose",
+    "could not be resolved"
   )
   call_cost <- function(obj) {
     withCallingHandlers(
@@ -1169,6 +1209,41 @@ dmd_dose_cost_range <- function(
   cli::cli_warn(c(
     msg,
     "i" = 'Pass {.code over_delivery = "forbid"} to return only exact-dose combinations, or {.code quiet = TRUE} to silence this.'
+  ))
+  invisible()
+}
+
+# Warn once about preparation groups the solver could not run for the dose:
+# `precision` names groups whose dose still rounds to zero at the capped
+# integer scale of their strengths, `table` those whose dose table would exceed
+# the cell cap. Both return no row, so a caller reading bare numbers would
+# otherwise see an NA that is indistinguishable from "no product matched".
+# `labels` may repeat (one per objective and, in dmd_dose_cost(), per dose).
+.warn_unresolved <- function(precision, table, quiet = FALSE) {
+  precision <- unique(precision[!is.na(precision)])
+  # A group can hit both guards across a dose vector; name it once, under the
+  # reason met first.
+  table <- setdiff(unique(table[!is.na(table)]), precision)
+  n <- length(precision) + length(table)
+  if (isTRUE(quiet) || n == 0L) {
+    return(invisible())
+  }
+  msg <- "The requested dose could not be resolved for {n} preparation group{?s}; {?it returns/they return} no row."
+  if (length(precision) > 0L) {
+    msg <- c(
+      msg,
+      "*" = "{.val {precision}}: the dose is below the resolvable precision at the integer scale the group's dose table allows."
+    )
+  }
+  if (length(table) > 0L) {
+    msg <- c(
+      msg,
+      "*" = "{.val {table}}: the dose table would exceed 5,000,000 cells."
+    )
+  }
+  cli::cli_warn(c(
+    msg,
+    "i" = "Pass {.code quiet = TRUE} to silence this."
   ))
   invisible()
 }

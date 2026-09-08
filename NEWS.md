@@ -1,3 +1,66 @@
+# dmdprices 0.6.1
+
+## Bug fixes
+
+- **Packs of several containers were priced at the whole pack per
+  container.** For a concentration preparation whose pack quantity counts
+  containers rather than volume or doses (10 pre-filled syringes, 5 ampoules,
+  20 nebuliser vials), one optimisation item is one container — as the
+  documentation and `per_item_dose` always said — but its price was the whole
+  pack, so a single 40 mg enoxaparin syringe from a ten-syringe pack cost ten
+  syringes, and the optimiser could prefer a dearer product whose pack held
+  one container. Each container now costs its share of the pack
+  (`per_item_price_pence = pack price / containers per pack`), whole-pack
+  figures buy `ceiling(containers / containers per pack)` packs, vial sharing
+  takes a fraction of one container's price, and pack-level coins (whole-pack
+  dispensing) carry the whole pack's dose. Single-container packs — a bottle
+  or an inhaler whose pack quantity is in the strength's own denominator unit
+  — are unchanged. The dose a container delivers still comes from the
+  strength's denominator volume, so a pen or bag whose fill volume is not in
+  the product name is still one denominator volume per item.
+  Whole-pack dispensing (`can_split = FALSE`) now optimises every
+  preparation over whole packs: a pack of several containers is dispensed as
+  whole packs, `total_items` counts packs for such a group (as it always did
+  for solid forms), and `"cheapest"` is the cheapest set of whole packs
+  covering the dose. Previously a concentration group under `can_split =
+  FALSE` still chose by the pro-rata per-container price and then reported
+  that product's whole pack, which after per-container pricing was no
+  longer the cheapest available cover and could put `dmd_dose_cost_range()`'s
+  lower bound above its upper bound. Single-container packs give the same
+  costs and item counts as before (their rows now also carry the
+  `"no-pack-splitting"` note the documentation always promised). Two
+  consequences of the pack path for these groups: the over-delivery budget
+  is one largest pack rather than one container, so `"most_expensive"` and
+  `dmd_dose_cost_range()$hi_pence` under `can_split = FALSE` can be several
+  times larger than before (an upper bound on whole-pack expenditure, as for
+  solid forms); and a dose that a pack over-covers reports `dose_exact =
+  FALSE` with an `"over-delivery"` note, where the container path reported
+  the container's dose. A concentration row whose pack quantity is zero or
+  negative now carries no price (it was priced at the whole pack) and, like a
+  solid row, is excluded from the pack coins — a group with no other row
+  returns no row.
+- **A dose finer than every strength in a preparation group silently
+  dropped the group.** The integer scale used by the dose solver was chosen
+  from the strengths alone, so a 100 microgram dose against 20 mg-per-inhaler
+  products rounded to zero and the inhaler group returned nothing — no row,
+  no warning, `NA` from `dmd_dose_cost()`, and the cost range silently taken
+  from the remaining groups. The strengths' scale is now raised by powers of
+  ten until the dose is at least one unit, so the group is optimised (one
+  whole container for such a dose). A raise that would push the group's
+  dose table past its 5,000,000-cell cap is not taken, so a group that
+  priced before (at the strengths' own scale) still prices. Doses that
+  already priced are unaffected: their scale is unchanged, and a dose with
+  finer decimals than the strengths is still taken to the nearest whole unit
+  of the strengths' scale rather than resolved exactly (which would inflate
+  the solver's table).
+- **Groups the solver cannot run for a dose are reported once per call.** A
+  dose still below the resolvable precision at the capped scale, or one whose
+  dose table would exceed the cell cap, returns no row for that group; every
+  such group is now named in one warning per call (per `dmd_dose_cost()`
+  vector, and once across the two bounds of `dmd_dose_cost_range()`) rather
+  than once per group and objective, and `quiet = TRUE` silences it as it
+  does the other per-call dose warnings.
+
 # dmdprices 0.6.0
 
 ## Dose optimisation now delivers the requested dose exactly by default

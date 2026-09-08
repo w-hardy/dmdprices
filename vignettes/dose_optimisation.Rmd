@@ -187,12 +187,18 @@ When `can_split = FALSE`:
 - In the `combination` tibble, `count` is the number of **packs** dispensed
   rather than individual tablets.
 
-Concentration-based preparations (liquids, vials, inhalers) are treated as one
-container regardless of `can_split`, since one bottle, vial, or ampoule is the
-minimum dispensing unit. For liquids where the pack quantity is in the same
+With `can_split = TRUE`, concentration-based preparations (liquids, vials,
+inhalers) are still costed in whole containers unless `can_split_vials = TRUE`,
+since one bottle, vial, or ampoule is the minimum administration unit; with
+`can_split = FALSE` they are optimised over whole packs like every other
+preparation, so a pack of several syringes or ampoules is dispensed as whole
+packs and `total_items` counts packs. For liquids where the pack quantity is in the same
 unit as the concentration denominator (for example `10 mg/5 ml` in a `100 ml`
 bottle), the optimiser uses the total pack volume to calculate the active
-quantity in the container.
+quantity in the container. A pack that counts containers (for example
+`10 pre-filled disposable injection` or `5 ampoule`) is priced per container
+— a tenth of the pack price for one of ten syringes — and its whole-pack cost
+buys as many packs as the containers need.
 
 ## Worst-case cost
 
@@ -345,7 +351,8 @@ term matches several distinct ingredients or a non-mass strength.
 
 - Discrete items only — tablet splitting is not considered.
 - For liquids, each "item" is one container (bottle, ampoule, vial) unless
-  `can_split_vials = TRUE`. A small dose requested against a large container is
+  `can_split_vials = TRUE`, or one whole pack when `can_split = FALSE`. A small
+  dose requested against a large container (or pack) is
   delivered as one whole container with an `over_delivery` flag; containers are
   exempt from the `over_delivery` policy for that reason.
 - Combination products (multiple active ingredients in one VMP) are skipped

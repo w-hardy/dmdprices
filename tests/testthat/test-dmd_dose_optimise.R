@@ -93,16 +93,35 @@ test_that("can_split = TRUE does not add 'no-pack-splitting' note", {
   expect_false(any(grepl("no-pack-splitting", res$notes)))
 })
 
-test_that("can_split = FALSE: concentration preparations do not get no-pack-splitting note", {
-  # Vials / solutions are already whole-container; note should not appear.
+test_that("can_split = FALSE: single-container concentration packs price as whole packs", {
+  # Every preparation is optimised over whole packs when packs cannot be
+  # split, so the note appears for vials too. Each rituximab pack is one vial,
+  # so the whole-pack answer equals the whole-container answer: within the
+  # infusion group, 900 mg is nine 100 mg vials at 87,500p (787,500p), cheaper
+  # than 500 + 4 x 100 mg (826,700p) or two 500 mg vials (953,400p).
   res <- dmd_dose_optimise(
     "rituximab",
     dose = 900,
     dose_unit = "mg",
     db = db,
+    preparation = "infusion",
+    objective = "cheapest",
     can_split = FALSE
   )
-  expect_false(any(grepl("no-pack-splitting", res$notes)))
+  expect_equal(nrow(res), 1L)
+  expect_true(any(grepl("no-pack-splitting", res$notes)))
+  expect_equal(res$dose_cost_pence, 787500)
+  expect_equal(res$total_items, 9)
+  split <- dmd_dose_optimise(
+    "rituximab",
+    dose = 900,
+    dose_unit = "mg",
+    db = db,
+    preparation = "infusion",
+    objective = "cheapest",
+    can_split = TRUE
+  )
+  expect_equal(res$dose_cost_pence, split$cost_whole_pack_pence)
 })
 
 test_that("can_split = FALSE returns valid cost_whole_pack_pence", {

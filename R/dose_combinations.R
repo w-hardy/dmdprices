@@ -20,7 +20,31 @@
   max_scale = 1e6,
   dp_cap = 5e6
 ) {
+  # The scale comes from the strengths, as before; it is then raised by
+  # powers of ten only until the dose is at least one unit, so a dose finer
+  # than every strength (100 micrograms against 20 mg inhalers) no longer
+  # rounds to zero and vanishes with its group. It is NOT raised to make the
+  # dose an exact integer: that would scale max_over with it and push a
+  # 133.333 mg dose against 5,000 mg tablets past the DP cell limit, where
+  # 0.6.0 simply took the dose to the nearest whole unit (133 mg).
   s <- .pick_scale(strengths, max_scale)
+  if (!is.na(dose_canonical) && dose_canonical > 0) {
+    # Each raise scales the DP table (dose + largest strength, in scaled
+    # units) with it. A raise that would push a group past the table cap is
+    # not taken: the group then prices at the strengths' own scale, as it did
+    # before the raise existed, instead of being refused where it once priced.
+    largest <- suppressWarnings(max(strengths[!is.na(strengths) & strengths > 0]))
+    if (!is.finite(largest)) {
+      largest <- 0
+    }
+    while (
+      s < max_scale &&
+        dose_canonical * s < 1 &&
+        (dose_canonical + largest) * (s * 10) + 1 <= dp_cap
+    ) {
+      s <- s * 10
+    }
+  }
   all_vals <- c(strengths, dose_canonical)
   all_vals <- all_vals[!is.na(all_vals) & all_vals > 0]
   if (length(all_vals) == 0) {
@@ -32,6 +56,23 @@
   # dose_int + max_over arithmetic safely in integer range
   max_safe_dp <- floor(dp_cap / dose_canonical)
   min(s, max(max_safe_int, 1L), max(max_safe_dp, 1L))
+}
+
+# A group the solver cannot run for this dose — the dose still rounds to zero
+# at the capped integer scale ("precision"), or the dose table would exceed
+# the cell cap ("table") — is signalled with this sentinel rather than a bare
+# NULL, so the callers can name every such group in ONE warning per call
+# (honouring `quiet`) instead of one warning per group and objective.
+.unresolved_result <- function(reason = c("precision", "table")) {
+  structure(list(), class = "dmd_unresolved", reason = match.arg(reason))
+}
+
+.is_unresolved <- function(x) {
+  inherits(x, "dmd_unresolved")
+}
+
+.unresolved_reason <- function(x) {
+  attr(x, "reason", exact = TRUE)
 }
 
 # Pick an integer scale factor that turns all supplied values into integers
@@ -55,17 +96,11 @@
 # Adds a `pack_dose` column to group_df: the total canonical dose delivered
 # by purchasing one whole pack of each AMPP row.
 #
-# For solid-form rows (no denominator_unit): pack_dose = per_item_dose × pack_size
-# (e.g. 500 mg tablet × 28 = 14,000 mg per pack).
-# For concentration rows (denominator_unit present): per_item_dose already
-# encodes the full container dose, so pack_dose = per_item_dose unchanged.
+# pack_dose = per_item_dose × items_per_pack: 500 mg tablet × 28 = 14,000 mg
+# per pack; one container of a liquid or inhaler × 1; a 40 mg pre-filled
+# syringe × 10 for a ten-syringe pack.
 .build_pack_df <- function(group_df) {
-  is_concentration <- !is.na(group_df$denominator_unit)
-  group_df$pack_dose <- ifelse(
-    is_concentration,
-    group_df$per_item_dose,
-    group_df$per_item_dose * group_df$pack_size
-  )
+  group_df$pack_dose <- group_df$per_item_dose * group_df$items_per_pack
   group_df
 }
 
@@ -452,10 +487,15 @@
     ))
   }
 
-  # Use pack-level DP when whole packs must be dispensed AND the preparation
-  # is a solid form. Concentration preparations are always whole-container
-  # regardless of can_split, so they take the standard path.
-  use_pack_dp <- !can_split && !all_concentration
+  # Use the pack-level DP whenever whole packs must be dispensed, for every
+  # preparation. A concentration group used to take the item path here on the
+  # grounds that a container is whole regardless of can_split — true while a
+  # container's price was its pack's price, but a pack of several containers
+  # is now priced per container, and the item DP would then choose by the
+  # pro-rata price and report the whole pack: not the cheapest set of whole
+  # packs covering the dose, and a cost range whose lower bound can exceed
+  # its upper bound.
+  use_pack_dp <- !can_split
 
   # Whole packs and whole containers deliver surplus into the pack or the vial,
   # not into the patient, so the over-delivery policy governs neither. When it
@@ -542,16 +582,13 @@
   dose_int <- as.integer(round(dose_canonical * scale))
 
   if (dose_int <= 0) {
-    return(NULL)
+    return(.unresolved_result("precision"))
   }
   max_strength <- max(strengths_int)
   max_over <- max_strength
 
   if ((dose_int + max_over + 1L) > 5e6) {
-    cli::cli_warn(
-      "Dose DP table for group {.val {preparation_label}} would exceed 5,000,000 cells; skipping."
-    )
-    return(NULL)
+    return(.unresolved_result("table"))
   }
 
   dp <- .dose_dp(strengths_int, price_per_strength, dose_int, max_over)
@@ -804,7 +841,8 @@
 # ── Pack-level optimisation (can_split = FALSE, solid forms) ──────────────────
 
 # Runs the DP with whole-pack coins. One DP unit = one pack of a given AMPP.
-# Coin dose  = per_item_dose × pack_size  (e.g. 500 mg × 28 = 14,000 mg)
+# Coin dose  = per_item_dose × items_per_pack  (e.g. 500 mg × 28 = 14,000 mg;
+#              one 40 mg syringe × 10 for a ten-syringe pack)
 # Coin cost  = pack_price_pence
 # total_items in the result = number of packs dispensed.
 .optimise_group_packs <- function(
@@ -861,16 +899,13 @@
   dose_int <- as.integer(round(dose_canonical * scale))
 
   if (dose_int <= 0) {
-    return(NULL)
+    return(.unresolved_result("precision"))
   }
   max_strength <- max(strengths_int)
   max_over <- max_strength
 
   if ((dose_int + max_over + 1L) > 5e6) {
-    cli::cli_warn(
-      "Dose DP table for group {.val {preparation_label}} would exceed 5,000,000 cells; skipping."
-    )
-    return(NULL)
+    return(.unresolved_result("table"))
   }
 
   dp <- .dose_dp(strengths_int, price_per_pack_dose, dose_int, max_over)
