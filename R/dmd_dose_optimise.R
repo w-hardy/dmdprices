@@ -25,6 +25,10 @@
 # 200-dose inhaler of a microgram/dose aerosol): the whole pack is one
 # container. FALSE for container-count packs (10 pre-filled syringes, 5
 # ampoules, 20 nebuliser vials), where pack_size counts the containers.
+# Known gap (follow-up issue): a per-dose or per-actuation strength sold in a
+# pack measured in ml or g (a 13.2 ml nicotine 1mg/dose mouth spray, a 300 g
+# tub of 3.5g/dose granules) is one container whose dose count the dm+d does
+# not give, but the units differ, so it is read as pack_size one-dose items.
 .pack_is_one_container <- function(enriched) {
   is_concentration <- !is.na(enriched$denominator_unit)
   pack_unit_canon <- unname(.canonicalise_unit_name(enriched$unit))

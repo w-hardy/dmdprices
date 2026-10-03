@@ -171,6 +171,12 @@
   rebuilding the bundled data.
   `?as_dmd_db` describes `loaded_at` as display-only, and `?dmd_ingredients`
   no longer says the bundled table may be empty (it has 26,667 rows).
+  The vignette's limitations list now also names doses rounded to the
+  strengths' precision and a known costing gap, unchanged from earlier
+  versions: sprays and granules whose strength is per dose or actuation but
+  whose pack is measured in ml or g (nicotine mouth and nasal sprays,
+  lidocaine and colecalciferol sprays, ispaghula husk granules) are costed
+  as if each ml or g were one dose, because the dm+d gives no dose count.
 - The pkgdown home page links the dose optimisation article, and the news
   menu lists 0.6.1 and 0.6.2.
 - `.Rbuildignore` now excludes `.git` (a package built from a linked git

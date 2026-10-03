@@ -395,6 +395,11 @@ term matches several distinct ingredients or a non-mass strength.
   dose requested against a large container (or pack) is
   delivered as one whole container with an `over_delivery` flag; containers are
   exempt from the `over_delivery` policy for that reason.
+- Sprays and granules whose pack is measured in ml or g but whose strength is
+  per dose or actuation (for example nicotine 1mg/dose mouth spray in a 13.2 ml
+  bottle, or lidocaine 10mg/dose spray in a 50 ml bottle) are costed as if each
+  ml or g were one dose, because the dm+d gives no dose count for the pack.
+  Their costs can be wrong by an order of magnitude in either direction.
 - Combination products (multiple active ingredients in one VMP) are skipped
   with a warning unless an `ingredient` is named — see "Combination products"
   above. Packs holding several products are skipped with a warning of their
