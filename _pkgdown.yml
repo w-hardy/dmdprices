@@ -92,6 +92,10 @@ articles:
 
 news:
   releases:
+    - text: "Version 0.6.2"
+      href: news/index.html
+    - text: "Version 0.6.1"
+      href: news/index.html
     - text: "Version 0.6.0"
       href: news/index.html
     - text: "Version 0.5.0"
