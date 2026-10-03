@@ -181,10 +181,10 @@ attr(dmd_master, "package_date")
 ```{r}
 # The rates currently available
 # (from the .nhscii_rates internal object)
-# Coverage: 2015/16 to 2023/24
+# Coverage: 2014/15 to 2024/25 (2024/25 provisional)
 # Use nhscii() with any year in that range
 
-nhscii("2015/16", "2015/16")  # Should return 1
+nhscii("2014/15", "2014/15")  # Should return 1
 ```
 
 ## Reproducibility and audit trails
@@ -245,7 +245,7 @@ saveRDS(my_dm_d, "data/dm_d_current.rds")
 
 # 2. Check if NHS CII needs updating
 # Visit https://www.pssru.ac.uk and check if new manual is available
-# (Current package covers through 2023/24; update when 2024/25 rates published)
+# (Current package covers through 2024/25, provisional; update when 2025/26 rates are published)
 
 # 3. In your analysis scripts:
 dm_d <- readRDS("data/dm_d_current.rds")
@@ -254,7 +254,7 @@ medicine_cost <- dmd_price_lookup("Metformin 500mg", db = dm_d)
 # 4. Record versions
 analysis_metadata <- list(
   dm_d_release = attr(dm_d, "dmd_release_label"),
-  cii_latest_year = "2023/24",  # Update when new rates available
+  cii_latest_year = "2024/25",  # Update when new rates available
   analysis_date = Sys.Date()
 )
 ```
