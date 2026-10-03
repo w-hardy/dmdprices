@@ -615,15 +615,24 @@
 #'   the costing answer and an `"over-delivery-policy-not-applied"` note is
 #'   added. Exact delivery from a container is available via
 #'   `can_split_vials = TRUE`.
+#'
+#'   Under every policy, a dose with finer decimals than the group's strengths
+#'   is first taken to the nearest whole unit of the strengths' scale (2.4 mg
+#'   against 1 mg tablets is costed as 2 mg, and 2.6 mg as 3 mg), so the
+#'   returned combination can deliver slightly less or more than requested;
+#'   `dose_exact` is then `FALSE` and `over_delivery` shows the difference.
+#'   Where the policy applies, a warning also says that the dose was rounded.
 #' @param quiet Logical. `FALSE` (default) warns, once per call, when a
 #'   preparation group cannot deliver the dose exactly (and is therefore dropped
 #'   under `over_delivery = "forbid"`), when a returned combination delivers
 #'   more than the requested dose — saying whether an exact combination existed
-#'   — and when a group could not be solved for the dose at all (the dose is
-#'   below the resolvable precision of the group's strengths, or the dose table
-#'   would exceed its cell cap) and so returns no row. `TRUE` silences all
-#'   three. Unrelated warnings (unsupported compounds, multi-product packs,
-#'   ingredient matching) are not affected.
+#'   — when a returned combination delivers the dose rounded to the precision
+#'   of the group's strengths (see `over_delivery`), and when a group could not
+#'   be solved for the dose at all (the dose is below the resolvable precision
+#'   of the group's strengths, or the dose table would exceed its cell cap) and
+#'   so returns no row. `TRUE` silences all four. Unrelated warnings
+#'   (unsupported compounds, multi-product packs, ingredient matching) are not
+#'   affected.
 #'
 #' @return A [tibble][tibble::tibble] with one row per
 #'   `(preparation_group, objective)` combination. See the package vignette for
@@ -840,6 +849,7 @@ dmd_dose_optimise <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
+  rounded <- character()
   unresolved_precision <- character()
   unresolved_table <- character()
   for (g in seq_len(nrow(groups))) {
@@ -872,7 +882,9 @@ dmd_dose_optimise <- function(
       } else if (!is.null(row)) {
         out[[length(out) + 1L]] <- row
         if (.policy_row(row) && !row$dose_exact) {
-          if (.exact_feasible(row)) {
+          if (.dose_rounded(row)) {
+            rounded <- c(rounded, groups$preparation_label[g])
+          } else if (.exact_feasible(row)) {
             over_available <- c(over_available, groups$preparation_label[g])
           } else {
             over_impossible <- c(over_impossible, groups$preparation_label[g])
@@ -887,6 +899,7 @@ dmd_dose_optimise <- function(
   # query that matched nothing.
   .warn_no_exact(no_exact, quiet)
   .warn_over_delivery(over_impossible, over_available, quiet)
+  .warn_rounded(rounded, quiet)
   .warn_unresolved(unresolved_precision, unresolved_table, quiet)
 
   if (length(out) == 0) {
@@ -951,7 +964,8 @@ dmd_dose_optimise <- function(
 #'   `"minimise"` or `"allow"` to cost over-delivering combinations.
 #' @param quiet As in [dmd_dose_optimise()]. Because this function returns bare
 #'   numbers, the warnings are the only signal that a cost is for an
-#'   over-delivered dose; `TRUE` silences them for bulk costing runs.
+#'   over-delivered or rounded dose; `TRUE` silences them for bulk costing
+#'   runs.
 #' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
 #'   or negative elements are returned as `na_value` without error.
 #' @param na_value Scalar returned for doses that are `NA`, non-positive, or for
@@ -1117,6 +1131,7 @@ dmd_dose_cost <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
+  rounded <- character()
   unresolved_precision <- character()
   unresolved_table <- character()
 
@@ -1180,7 +1195,9 @@ dmd_dose_cost <- function(
             # Recorded only once the cost is usable, so the warning describes
             # numbers the caller actually receives.
             if (.policy_row(row) && !row$dose_exact) {
-              if (.exact_feasible(row)) {
+              if (.dose_rounded(row)) {
+                rounded <<- c(rounded, groups$preparation_label[g])
+              } else if (.exact_feasible(row)) {
                 over_available <<- c(over_available, groups$preparation_label[g])
               } else {
                 over_impossible <<- c(
@@ -1208,6 +1225,7 @@ dmd_dose_cost <- function(
 
   .warn_no_exact(no_exact, quiet)
   .warn_over_delivery(over_impossible, over_available, quiet)
+  .warn_rounded(rounded, quiet)
   .warn_unresolved(unresolved_precision, unresolved_table, quiet)
   costs
 }
@@ -1309,6 +1327,7 @@ dmd_dose_cost_range <- function(
     "multi-product pack",
     "No exact-dose combination exists",
     "Delivering more than the requested dose",
+    "was rounded to the precision of",
     "could not be resolved"
   )
   call_cost <- function(obj) {
@@ -1355,6 +1374,9 @@ dmd_dose_cost_range <- function(
 # report their surplus in `notes` alone. `impossible` names groups with no exact
 # combination at all, `available` those where one existed but the objective
 # preferred an over-delivering combination (reachable only under "allow").
+# A row that misses the dose only because the dose was rounded to the
+# strengths' scale goes to .warn_rounded() instead, so neither bullet, nor the
+# advice to pass "forbid", is reached under "forbid".
 .warn_over_delivery <- function(impossible, available, quiet = FALSE) {
   impossible <- unique(impossible[!is.na(impossible)])
   available <- unique(available[!is.na(available)])
@@ -1378,6 +1400,26 @@ dmd_dose_cost_range <- function(
   cli::cli_warn(c(
     msg,
     "i" = 'Pass {.code over_delivery = "forbid"} to return only exact-dose combinations, or {.code quiet = TRUE} to silence this.'
+  ))
+  invisible()
+}
+
+# Warn once about returned combinations that miss the requested dose only
+# because it has finer decimals than the group's strengths: the solver works on
+# the strengths' integer scale and takes the dose to the nearest unit of it
+# (2.4 mg against 1 mg tablets delivers 2 mg; 2.6 mg delivers 3 mg). That
+# happens under every over-delivery policy, so the warning neither calls the
+# result an over-delivery nor suggests "forbid". `labels` may repeat (one per
+# objective and, in dmd_dose_cost(), per dose).
+.warn_rounded <- function(labels, quiet = FALSE) {
+  labels <- unique(labels[!is.na(labels)])
+  if (isTRUE(quiet) || length(labels) == 0L) {
+    return(invisible())
+  }
+  cli::cli_warn(c(
+    "The requested dose was rounded to the precision of the strengths for {length(labels)} preparation group{?s}: {.val {labels}}.",
+    "i" = "Its decimals are finer than the strengths resolve, so it was taken to the nearest whole unit of their scale and the combination delivers slightly less or more than requested.",
+    "i" = "Pass {.code quiet = TRUE} to silence this."
   ))
   invisible()
 }

@@ -118,17 +118,26 @@ whole-container preparations (vials and ampoules with
 pack or the vial, so the cheapest pack/container covering the dose remains
 the costing answer and an \code{"over-delivery-policy-not-applied"} note is
 added. Exact delivery from a container is available via
-\code{can_split_vials = TRUE}.}
+\code{can_split_vials = TRUE}.
+
+Under every policy, a dose with finer decimals than the group's strengths
+is first taken to the nearest whole unit of the strengths' scale (2.4 mg
+against 1 mg tablets is costed as 2 mg, and 2.6 mg as 3 mg), so the
+returned combination can deliver slightly less or more than requested;
+\code{dose_exact} is then \code{FALSE} and \code{over_delivery} shows the difference.
+Where the policy applies, a warning also says that the dose was rounded.}
 
 \item{quiet}{Logical. \code{FALSE} (default) warns, once per call, when a
 preparation group cannot deliver the dose exactly (and is therefore dropped
 under \code{over_delivery = "forbid"}), when a returned combination delivers
 more than the requested dose — saying whether an exact combination existed
-— and when a group could not be solved for the dose at all (the dose is
-below the resolvable precision of the group's strengths, or the dose table
-would exceed its cell cap) and so returns no row. \code{TRUE} silences all
-three. Unrelated warnings (unsupported compounds, multi-product packs,
-ingredient matching) are not affected.}
+— when a returned combination delivers the dose rounded to the precision
+of the group's strengths (see \code{over_delivery}), and when a group could not
+be solved for the dose at all (the dose is below the resolvable precision
+of the group's strengths, or the dose table would exceed its cell cap) and
+so returns no row. \code{TRUE} silences all four. Unrelated warnings
+(unsupported compounds, multi-product packs, ingredient matching) are not
+affected.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per

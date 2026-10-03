@@ -386,6 +386,10 @@ term matches several distinct ingredients or a non-mass strength.
 ## Limitations
 
 - Discrete items only — tablet splitting is not considered.
+- A dose with finer decimals than the strengths is taken to the nearest whole
+  unit of their scale under every `over_delivery` policy: 2.4 mg against 1 mg
+  tablets is costed as 2 mg, an under-dose reported with `dose_exact = FALSE`
+  and a warning that the dose was rounded.
 - For liquids, each "item" is one container (bottle, ampoule, vial) unless
   `can_split_vials = TRUE`, or one whole pack when `can_split = FALSE`. A small
   dose requested against a large container (or pack) is

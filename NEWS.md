@@ -111,6 +111,20 @@
   1710 mg, not 1.71 mg) and delgocitinib, calcipotriol, estriol and
   ivermectin preparations. Results with `ingredient =` are unchanged. Re-run
   any analysis that costed these products with an earlier version.
+- **A dose with finer decimals than the strengths now gets its own
+  warning.** The dose functions take such a dose to the nearest whole unit
+  of the strengths' scale under every `over_delivery` policy, as since
+  0.6.1: 2.4 mg against 1 mg tablets is costed as 2 mg, and 2.6 mg as 3 mg.
+  Under the default `over_delivery = "forbid"` this used to raise the
+  over-delivery warning, which called a rounded-down dose "Delivering more
+  than the requested dose" and advised passing the `"forbid"` already in
+  force. Such a result now warns "The requested dose was rounded to the
+  precision of the strengths ..." instead, once per call (and once per
+  `dmd_dose_cost_range()` call); `quiet = TRUE` silences it, and
+  `?dmd_dose_optimise` documents the rounding under `over_delivery`. Costs
+  are unchanged. This matters for eptacog alfa, now costed by mass: a
+  weight-based 6.3 mg dose is costed as 6 mg (315,120p), one 1 mg vial
+  short of the dose.
 
 ## Documentation and infrastructure
 
