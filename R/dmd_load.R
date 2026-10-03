@@ -253,7 +253,7 @@ dmd_master_info <- function(db = dmdprices::dmd_master) {
 print.dmd_db_info <- function(x, ...) {
   label <- if (!is.na(x$release_label)) {
     x$release_label
-  } else if (!is.na(x$loaded_at[[1]])) {
+  } else if (length(x$loaded_at) && !is.na(x$loaded_at[[1]])) {
     paste0("loaded at ", format(x$loaded_at, "%Y-%m-%d %H:%M"))
   } else {
     "unknown"

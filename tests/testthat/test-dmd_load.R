@@ -263,5 +263,13 @@ test_that("dmd_master_info() price_date_range is a length-2 character vector", {
 
 test_that("print.dmd_db_info() runs without error", {
   info <- dmd_master_info(.fake_dose_db())
-  expect_no_error(print(info))
+  expect_no_error(suppressMessages(print(info)))
+})
+
+test_that("print.dmd_db_info() handles a <dmd_db> with a NULL loaded_at", {
+  # A hand-built <dmd_db> may have no timestamp; printing its info used to
+  # fail with "argument is of length zero".
+  info <- dmd_master_info(.fake_dose_db(loaded_at = NULL))
+  expect_no_error(suppressMessages(print(info)))
+  expect_message(print(info), "dm+d dataset: unknown", fixed = TRUE)
 })
