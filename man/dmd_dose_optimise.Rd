@@ -73,8 +73,11 @@ If the term still resolves to more than one distinct ingredient, all are
 used and a warning lists them. Ingredients recorded in non-mass units
 (e.g. radioactivity in GBq, electrolytes in mmol) cannot be converted to a
 mass dose; such candidates are skipped with a warning. Requires ingredient
-(VPI) data: a \code{\link[=dmd_load]{dmd_load()}} database that includes it, or a rebuilt bundled
-\link{dmd_ingredients}. With no ingredient data, returns no results and warns.}
+(VPI) data: the bundled \link{dmd_ingredients} (used when \code{db} is not a
+\verb{<dmd_db>}, including the default), the \verb{$ingredients} table of a
+\code{\link[=dmd_load]{dmd_load()}} database built with \code{f_vmp_VpiType.csv}, or the \code{ingredients}
+argument of \code{\link[=as_dmd_db]{as_dmd_db()}}. With no ingredient data, returns no results and
+warns.}
 
 \item{can_split}{Logical. \code{TRUE} (default) assumes that individual items
 (tablets, capsules) can be taken from a part-pack, as is normal in

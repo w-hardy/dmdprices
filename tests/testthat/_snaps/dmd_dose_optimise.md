@@ -110,7 +110,7 @@
     Condition
       Warning:
       No ingredient data available to target "metformin".
-      i Load a dm+d release that includes the VPI extract with `dmd_load()`, or rebuild the bundled data.
+      i Load a dm+d release that includes the VPI extract with `dmd_load()`, or pass `ingredients` to `as_dmd_db()`.
 
 # ingredient argument is validated
 

@@ -304,7 +304,7 @@
   if (is.null(ing_tbl) || nrow(ing_tbl) == 0L) {
     cli::cli_warn(c(
       "No ingredient data available to target {.val {ingredient}}.",
-      "i" = "Load a dm+d release that includes the VPI extract with {.fn dmd_load}, or rebuild the bundled data."
+      "i" = "Load a dm+d release that includes the VPI extract with {.fn dmd_load}, or pass {.arg ingredients} to {.fn as_dmd_db}."
     ))
     return(enriched[0, , drop = FALSE])
   }
@@ -566,8 +566,11 @@
 #'   used and a warning lists them. Ingredients recorded in non-mass units
 #'   (e.g. radioactivity in GBq, electrolytes in mmol) cannot be converted to a
 #'   mass dose; such candidates are skipped with a warning. Requires ingredient
-#'   (VPI) data: a [dmd_load()] database that includes it, or a rebuilt bundled
-#'   [dmd_ingredients]. With no ingredient data, returns no results and warns.
+#'   (VPI) data: the bundled [dmd_ingredients] (used when `db` is not a
+#'   `<dmd_db>`, including the default), the `$ingredients` table of a
+#'   [dmd_load()] database built with `f_vmp_VpiType.csv`, or the `ingredients`
+#'   argument of [as_dmd_db()]. With no ingredient data, returns no results and
+#'   warns.
 #' @param can_split    Logical. `TRUE` (default) assumes that individual items
 #'   (tablets, capsules) can be taken from a part-pack, as is normal in
 #'   hospital dispensing. `FALSE` requires whole packs to be dispensed, as
