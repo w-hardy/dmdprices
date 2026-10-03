@@ -184,11 +184,14 @@ test_that("equal content shares a key across loaded_at values and wrappers", {
 test_that("a table keeps its key after an ALTREP column is materialised", {
   .local_fresh_dose_cache()
   db <- .fake_dose_db()
-  # Precondition: the fixture's vmp_snomed_code (as.character(seq_len())) is
-  # an ALTREP deferred string, which rlang::hash() serialises differently once
-  # the optimiser has read its elements.
-  hash_before <- rlang::hash(db$master)
-  key_before <- .db_cache_key(db)
+  # The fixture's vmp_snomed_code (as.character(seq_len())) is an ALTREP
+  # deferred string. Before rlang 1.3.0, rlang::hash() serialised it in its
+  # current state, so the table hashed differently once the optimiser had read
+  # its elements; rlang >= 1.3.0 hashes the elements, so the hash is stable.
+  # Either way the remembered key must serve the call after materialisation:
+  # a sentinel in the slot shows that call never re-hashes the table.
+  .db_cache_key(db)
+  .db_key_memo$key <- "content:sentinel"
   dmd_dose_optimise(
     "metformin",
     dose = 500,
@@ -196,12 +199,8 @@ test_that("a table keeps its key after an ALTREP column is materialised", {
     db = db,
     quiet = TRUE
   )
-  skip_if(
-    identical(rlang::hash(db$master), hash_before),
-    "The fixture has no ALTREP column whose hash changes once materialised."
-  )
 
-  expect_identical(.db_cache_key(db), key_before)
+  expect_identical(.db_cache_key(db), "content:sentinel")
   expect_true(.has_candidates("metformin", db))
 })
 

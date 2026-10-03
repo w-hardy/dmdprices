@@ -409,11 +409,13 @@
 # compiled code) is not detected. A non-frame, which dmd_price_lookup() then
 # rejects, is hashed without evicting the slot.
 #
-# rlang::hash() serialises an ALTREP column in its current state, so a table
-# can hash differently once a deferred column (e.g. as.character(1:n)) has
-# been materialised. That can cost an extra miss, never a stale hit, and step
-# 2 absorbs it for repeat calls on the same object. Attributes are part of the
-# key: identical() and rlang::hash() both compare them.
+# Before rlang 1.3.0, rlang::hash() serialised an ALTREP column in its
+# current state, so a table could hash differently once a deferred column
+# (e.g. as.character(1:n)) had been materialised; rlang >= 1.3.0 walks the
+# elements (expanding such a column) and hashes it stably. Either way that
+# can cost an extra miss, never a stale hit, and step 2 absorbs it for repeat
+# calls on the same object. Attributes are part of the key: identical() and
+# rlang::hash() both compare them.
 #
 # The slot holds one reference to the last table hashed by step 3. That is
 # usually the caller's own table; at worst it keeps one superseded table alive
