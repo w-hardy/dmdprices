@@ -1,12 +1,21 @@
 on:
   push:
     branches: [main, master]
+  # Build (but never deploy) the site on PRs so pkgdown errors such as a
+  # topic missing from the reference index surface before merge.
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
 
 name: pkgdown
 
 jobs:
   pkgdown:
     runs-on: ubuntu-latest
+
+    # Only one deploy at a time; each PR build gets its own group.
+    concurrency:
+      group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -36,6 +45,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Deploy to GitHub pages
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           clean: false
