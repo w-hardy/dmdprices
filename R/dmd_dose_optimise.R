@@ -63,7 +63,13 @@
   # mg/mg), so a one-container pack's quantity must be canonical too ("60 g" ->
   # 60000 mg). VPI strengths (ingredient targeting) are per stated denominator;
   # that caller keeps the raw quantity until VPI strengths are normalised
-  # (follow-up issue).
+  # (follow-up issue). Known gaps in that convention, unchanged from 0.6.1:
+  # the raw quantity is exact only when the pack is measured in the VPI
+  # denominator's own unit (a 250 g tub of a "1 mg per 1 mg" powder counts as
+  # 250 mg), and a container-count item whose VPI denominator is in g or
+  # litres is 1000x too large, because the canonical denominator quantity
+  # multiplies a strength that is per stated denominator (Azyter 15mg/g unit
+  # doses count as 15000 mg).
   # The any() guard matters: a zero-length mapply() returns list(), and
   # assigning list() into a numeric vector turns it into a list.
   if (canonical_pack_quantity && any(use_pack_quantity)) {
