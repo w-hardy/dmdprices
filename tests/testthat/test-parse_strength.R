@@ -267,8 +267,10 @@ test_that(".dose_strength_count ignores restatements in another unit dimension",
     "Testosterone 20mg/g transdermal gel (23mg per actuation) refill",
     # nested brackets; the parsed strength is itself inside a bracket
     "Magnesium glycerophosphate (magnesium 97.2mg (4mmol)) tablets",
-    # no parsed strength, so nothing is a restatement
+    # a bracket naming a substance, with no parsed strength
     "Ferric maltol (iron 30mg) capsules",
+    # no parsed strength, so a bare bracketed strength restates nothing
+    "Trichloroacetic acid 80% (800mg/1ml) solution",
     # an unbalanced bracket is not a bare bracketed strength
     "Testdrug 10mg (Otherdrug 5mg tablets",
     # a different-dimension strength that names another substance is not a
@@ -282,7 +284,7 @@ test_that(".dose_strength_count ignores restatements in another unit dimension",
   unit <- dmd_parse_strength(ifelse(is.na(nm), "", nm))$strength_unit
   expect_equal(
     dmdprices:::.dose_strength_count(nm, unit),
-    c(1L, 2L, 2L, 2L, 2L, 1L, 1L, 2L, 2L, 1L, 0L, 0L)
+    c(1L, 2L, 2L, 2L, 2L, 1L, 1L, 1L, 2L, 2L, 1L, 0L, 0L)
   )
   expect_identical(
     dmdprices:::.dose_strength_count(character(), character()),

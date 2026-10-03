@@ -205,6 +205,20 @@ test_that("a dearer exact-container product cannot invert the whole-pack cost ra
   # the dearest-pack path found (two 20 mg packs, 4000p). The local fixture
   # adds that product and keeps the shared fixture's `loaded_at`: the
   # candidate cache keys on table content, so the added product is seen (#30).
+  .local_fresh_dose_cache()
+  # Prime the cache with the shared fixture under the same query and settings,
+  # so a key that ignored the added product would serve this range for `wide`.
+  primed <- dmd_dose_cost_range(
+    "enoxaparin",
+    dose = 80,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    can_split = FALSE,
+    quiet = TRUE
+  )
+  expect_equal(primed$hi_pence, 4000)
+
   master <- db$master
   master <- rbind(
     master,

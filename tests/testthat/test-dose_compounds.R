@@ -139,6 +139,18 @@ test_that("packs are skipped with a multi-product pack warning", {
   expect_equal(nrow(res), 0L)
 })
 
+test_that(".skipped_examples() shows three distinct names and counts the rest", {
+  ex <- .skipped_examples(c("A", "B", "A", "C", "D", "E"))
+  expect_identical(ex$n, 5L)
+  expect_identical(ex$shown, c("A", "B", "C"))
+  expect_identical(ex$more, " and 2 more")
+
+  ex <- .skipped_examples(c("A", "B", "B", "C"))
+  expect_identical(ex$n, 3L)
+  expect_identical(ex$shown, c("A", "B", "C"))
+  expect_identical(ex$more, "")
+})
+
 test_that("dmd_dose_cost_range() shows each skip warning once", {
   .local_fresh_dose_cache()
   db <- .fake_multi_strength_db()
