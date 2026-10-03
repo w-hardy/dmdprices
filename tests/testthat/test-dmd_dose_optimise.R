@@ -609,7 +609,7 @@ test_that("exact preparation key still works after substring-match change", {
 
 test_that("second call for the same drug is served from the memo cache", {
   # Verify the cache is populated after calling once.
-  memoise::forget(.dmd_prepare_candidates_memo)
+  .local_fresh_dose_cache()
   expect_false(
     memoise::has_cache(.dmd_prepare_candidates_memo)(
       query = "metformin",
@@ -640,7 +640,7 @@ test_that("second call for the same drug is served from the memo cache", {
 })
 
 test_that("memo cache is populated after the first call", {
-  memoise::forget(.dmd_prepare_candidates_memo)
+  .local_fresh_dose_cache()
   dmd_dose_optimise("metformin", dose = 500, dose_unit = "mg", db = db)
   expect_true(
     memoise::has_cache(.dmd_prepare_candidates_memo)(
@@ -1466,7 +1466,7 @@ test_that("all pack_size = 0 returns an empty result rather than crashing", {
     list(master = m, loaded_at = Sys.time()),
     class = "dmd_db"
   )
-  memoise::forget(.dmd_prepare_candidates_memo)
+  .local_fresh_dose_cache()
   expect_no_error(
     dmd_dose_cost(
       "metformin", dose = 500, dose_unit = "mg", db = edge_db

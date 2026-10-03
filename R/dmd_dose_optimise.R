@@ -324,22 +324,72 @@
   .container_pricing(enriched)
 }
 
-# Session-level memo with a lightweight cache key. The bundled dmd_master is
-# a ~118k-row tibble; memoise::memoise() would digest() the whole object on
-# every call. Instead we key on scalars only:
-#   - dmd_db objects: their loaded_at timestamp (set by dmd_load()).
-#   - bundled dmd_master: its dmd_release_label attribute.
-#   - any other tibble: rlang::hash() as a one-shot fallback (rare in practice).
-# Cache is capped at 1 GB; entries are separated by a NUL byte to prevent
-# collisions from adjacent argument concatenation.
+# Session-level memo for the dose-independent candidate step.
+#
+# The memo is keyed on the *content* of the table dmd_price_lookup() searches,
+# .db_master(db): `$master` for a <dmd_db>, `db` itself otherwise. That table
+# is all .dmd_prepare_candidates() reads (`$ingredients` is applied after the
+# memo, uncached), so a <dmd_db> and its bare `$master` share entries. Labels
+# and timestamps are not used, because they survive the changes that matter:
+# the `dmd_release_label` attribute survives subsetting and price edits of
+# dmd_master or of dmd_price_lookup() output, and `$loaded_at` survives an
+# in-place edit such as `db$master$basic_price <- new_prices` (and two
+# databases can share it, or both lack it). Keying on them served one table's
+# costs for another (#28, #29, #30).
+#
+# rlang::hash() of the ~118k-row bundled table costs about 50 ms, so cheap
+# identity checks come first. identical() returns at once when both arguments
+# are the same object and otherwise stops at the first difference:
+#   1. the bundled dmd_master (the default `db`)  -> "bundled";
+#   2. the frame step 3 last hashed (the slot)    -> its remembered key;
+#   3. any other frame                            -> "content:<hash>",
+#                                                    remembered in the slot.
+# Step 2 assumes copy-on-modify: R cannot change an object the slot still
+# references without copying it first. data.table's `:=` and set() edit a
+# table in place by reference, so a data.table skips the slot and is hashed
+# on every call. A by-reference edit of any other frame (only possible from
+# compiled code) is not detected. A non-frame, which dmd_price_lookup() then
+# rejects, is hashed without evicting the slot.
+#
+# rlang::hash() serialises an ALTREP column in its current state, so a table
+# can hash differently once a deferred column (e.g. as.character(1:n)) has
+# been materialised. That can cost an extra miss, never a stale hit, and step
+# 2 absorbs it for repeat calls on the same object. Attributes are part of the
+# key: identical() and rlang::hash() both compare them.
+#
+# The slot holds one reference to the last table hashed by step 3. That is
+# usually the caller's own table; at worst it keeps one superseded table alive
+# until another table is hashed.
+.db_key_memo <- new.env(parent = emptyenv())
+
 .db_cache_key <- function(db) {
-  if (inherits(db, "dmd_db")) {
-    return(format(db$loaded_at, "%Y%m%dT%H%M%OS6"))
+  master <- .db_master(db)
+  bundled <- tryCatch(dmdprices::dmd_master, error = function(e) NULL)
+  if (!is.null(bundled) && identical(master, bundled)) {
+    return("bundled")
   }
-  lbl <- attr(db, "dmd_release_label", exact = TRUE)
-  if (!is.null(lbl)) lbl else rlang::hash(db)
+  if (!is.data.frame(master) || inherits(master, "data.table")) {
+    return(paste0("content:", rlang::hash(master)))
+  }
+  if (!is.null(.db_key_memo$key) && identical(master, .db_key_memo$master)) {
+    return(.db_key_memo$key)
+  }
+  key <- paste0("content:", rlang::hash(master))
+  .db_key_memo$master <- master
+  .db_key_memo$key <- key
+  key
 }
 
+# Empty the candidate memo and the remembered table key. Internal; the tests
+# call it through .local_fresh_dose_cache() in tests/testthat/helper.R.
+.forget_dose_cache <- function() {
+  memoise::forget(.dmd_prepare_candidates_memo)
+  rm(list = ls(.db_key_memo, all.names = TRUE), envir = .db_key_memo)
+  invisible(TRUE)
+}
+
+# The cache is capped at 1 GiB. Key fields are joined with the ASCII unit
+# separator ("\x1f") so adjacent arguments cannot run together.
 .dmd_prepare_candidates_memo <- memoise::memoise(
   .dmd_prepare_candidates,
   hash = function(args) {

@@ -8,7 +8,9 @@
 #   (Rituximab 1400mg/11.7ml) to regression-test the per_item_dose fix
 #
 # `loaded_at` defaults to a fixed timestamp so print/format methods and any
-# whole-<dmd_db> output can be snapshot-tested deterministically.
+# whole-<dmd_db> output can be snapshot-tested deterministically. It is
+# display-only: the dose-candidate cache keys on the content of `$master`, so
+# fixtures can share this timestamp without sharing cached results (#30).
 .fixed_loaded_at <- as.POSIXct("2025-08-08 09:00:00", tz = "UTC")
 
 .fake_dose_db <- function(loaded_at = .fixed_loaded_at) {
@@ -275,4 +277,14 @@
     ampp_snomed_code = c("APP_SYR40", "APP_SYR20", "APP_VIAL300", "APP_INH", "APP_AMP")
   )
   structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
+}
+
+# Start a test with an empty dose-candidate cache (the memo and its remembered
+# table key) and empty it again when the test ends, so nothing cached carries
+# over between tests. Call it first in any test whose outcome depends on what
+# the cache holds.
+.local_fresh_dose_cache <- function(env = parent.frame()) {
+  .forget_dose_cache()
+  withr::defer(.forget_dose_cache(), envir = env)
+  invisible()
 }
