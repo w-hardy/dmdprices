@@ -163,7 +163,7 @@ inflate_nhscii(c(100, 250), from_year = 2020, to_year = 2024, index = "prices")
 - `"pay"`
 - `"prices"`
 
-**Note:** 2024/25 figures are provisional and may be revised in later PSSRU releases.
+**Note:** NHS CII rates cover 2014/15 to 2024/25; 2024/25 figures are provisional and may be revised in later PSSRU releases.
 
 ---
 
