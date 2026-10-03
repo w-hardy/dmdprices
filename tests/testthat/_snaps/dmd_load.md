@@ -14,7 +14,7 @@
     Condition
       Error in `dmd_load()`:
       ! No path supplied.
-      i Provide `path` or set `options(dmdprices.path = \"...\")`
+      i Provide `path` or set `options(dmdprices.path = "...")`
 
 # print.dmd_db summarises the pricing hierarchy
 

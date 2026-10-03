@@ -35,7 +35,7 @@ dmd_load <- function(path = getOption("dmdprices.path")) {
   if (is.null(path)) {
     cli::cli_abort(c(
       "No path supplied.",
-      "i" = "Provide {.arg path} or set {.code options(dmdprices.path = \\\"...\\\")}"
+      "i" = "Provide {.arg path} or set {.code options(dmdprices.path = \"...\")}"
     ))
   }
 
