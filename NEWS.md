@@ -123,6 +123,10 @@
 - `lifecycle (>= 1.0.2)` is now required: it is the first version whose
   `deprecate_warn()` accepts `what = I(...)`, which the `objective = "both"`
   deprecation uses.
+- `dplyr (>= 1.1.0)` is now required: it is the first version with
+  `join_by()`, which `dmd_load()` uses; an older dplyr made installation fail
+  at lazy-load. The tests now declare `testthat (>= 3.1.7)`, the first
+  version with `local_mocked_bindings()`.
 - `citation("dmdprices")` now reports the installed package version (it said
   0.5.0).
 - README: the dose optimisation example is now 1000 mg of immediate-release

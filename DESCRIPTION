@@ -21,7 +21,7 @@ Roxygen: list(markdown = TRUE)
 Imports:
     bslib,
     cachem,
-    dplyr,
+    dplyr (>= 1.1.0),
     DT,
     lifecycle (>= 1.0.2),
     readr,
@@ -33,7 +33,7 @@ Imports:
     memoise,
     shiny
 Suggests:
-    testthat (>= 3.0.0),
+    testthat (>= 3.1.7),
     withr,
     knitr,
     rmarkdown,
