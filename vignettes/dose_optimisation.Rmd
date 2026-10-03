@@ -36,6 +36,8 @@ get their own row so they are never mixed in a single combination.
 Combination products (multiple active ingredients in one VMP) are skipped
 with a warning because the dose target would be ambiguous — see
 "Combination products" below for how to dose them by a single ingredient.
+Packs holding several products (titration packs, co-packs) are skipped for
+the same reason, with a warning of their own.
 
 ## A basic example
 
@@ -328,6 +330,32 @@ derived from the dm+d virtual product ingredient (VPI) data and authoritative
 even when the name reads as a single strength — or when its name lists
 multiple active strengths.
 
+A strength in brackets that only restates the product's strength in another
+unit dimension is the same dose, so it does not make a product a combination:
+eptacog alfa "1mg (50,000unit)" is dosed by mass like any single-strength
+product. A bracketed strength in the same dimension, or one that names another
+substance, is a competing dose basis and the product stays skipped:
+"Iohexol 755mg/ml (Iodine 350mg/ml)" and
+"Mexiletine hydrochloride 200mg (Mexiletine 167mg)" are two examples.
+
+Packs that hold several products — titration packs such as
+"Danicopan 50mg tablets and Danicopan 100mg tablets", and co-packs of
+different products — have no single per-item strength either. They are
+skipped with a separate warning that names the kind of pack; cost each product
+in the pack individually instead. Here the single-strength tablets are still
+optimised:
+
+```{r, eval = FALSE}
+dmd_dose_optimise("danicopan", dose = 200, dose_unit = "mg")
+#> Warning: 1 multi-product pack skipped during dose optimisation.
+#> x Multi-strength pack: "Danicopan 50mg tablets and Danicopan 100mg tablets".
+#> i A pack holding several products has no single per-item strength; cost its
+#>   products individually.
+```
+
+Code that silences these warnings by matching their text should match
+`"multi-product pack"` as well as `"unsupported compound product"`.
+
 To dose a combination product, name the ingredient you are dosing against.
 Candidates are then restricted to products containing that ingredient, and the
 dose is matched against the ingredient's own dm+d strength rather than
@@ -357,5 +385,6 @@ term matches several distinct ingredients or a non-mass strength.
   exempt from the `over_delivery` policy for that reason.
 - Combination products (multiple active ingredients in one VMP) are skipped
   with a warning unless an `ingredient` is named — see "Combination products"
-  above.
+  above. Packs holding several products are skipped with a warning of their
+  own.
 - Clinical safety (max single / max daily dose) is **not** enforced.
