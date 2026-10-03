@@ -51,12 +51,18 @@ A VMP with two or more distinct ingredients is a combination product; this is
 also surfaced as the \code{is_combination} column on a \code{\link[=dmd_load]{dmd_load()}} database's
 \verb{$master} table.
 
-The version bundled with the package may be \strong{empty}: the VPI extract is an
-optional part of a dm+d release and is not always present. Rebuild the
-bundled data from a release that includes
-\code{f_vmp_VpiType.csv} (see \code{data-raw/dmd_master.R}), or
-load a full release with \code{\link[=dmd_load]{dmd_load()}}, to populate it. Check with
-\code{nrow(dmd_ingredients)}.
+The bundled table is built from the same Week 15 2026 release as
+\link{dmd_master} and has 26,667 rows (\code{nrow(dmd_ingredients)}).
+\code{data-raw/dmd_master.R} rebuilds both datasets.
+
+A database loaded with \code{\link[=dmd_load]{dmd_load()}} carries its own \verb{$ingredients} table,
+which is used in place of this one. That table depends on optional files of
+the \code{dmdDataLoader} export. Without \code{f_vmp_VpiType.csv} it is \code{NULL}, and
+the \code{ingredient} argument of \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}} returns no results, with
+a warning. Without \code{f_ingredient.csv} it is built but \code{ingredient_name} is
+\code{NA}, so \code{ingredient} matches nothing. Without
+\code{f_lookup_UoMHistoryInfoType.csv} its strength units are \code{NA}, so
+\code{ingredient} skips every candidate as having a non-mass strength.
 }
 \seealso{
 \link{dmd_master}, \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}, \code{\link[=dmd_load]{dmd_load()}}

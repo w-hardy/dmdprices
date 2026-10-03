@@ -494,7 +494,12 @@
 #'   `"unit"`. Default `"mg"`. Ignored (with a warning) if `dose` is a
 #'   string that already contains a unit.
 #' @param db           A `<dmd_db>` object from [dmd_load()] or a tibble in the
-#'   same shape as [dmd_master]. Default: bundled [dmd_master].
+#'   same shape as [dmd_master]. Default: bundled [dmd_master]. Candidate
+#'   searches are cached for the session by the content of this table, so
+#'   editing it between calls with ordinary R code is safe (for example
+#'   `db$basic_price <- new_prices`, or `db$master$basic_price <- new_prices`
+#'   for a `<dmd_db>`). An edit made in place by reference to a table that is
+#'   not a data.table (for example with `data.table::set()`) is not detected.
 #' @param method,max_dist,active_only Passed through to [dmd_price_lookup()].
 #' @param price        Which price column to use — `"basic_price"` (default) or
 #'   `"nhs_indicative_price"`. Falls back to the other column when the chosen

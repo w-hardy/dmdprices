@@ -35,7 +35,12 @@ When a string is supplied \code{dose_unit} may be omitted.}
 string that already contains a unit.}
 
 \item{db}{A \verb{<dmd_db>} object from \code{\link[=dmd_load]{dmd_load()}} or a tibble in the
-same shape as \link{dmd_master}. Default: bundled \link{dmd_master}.}
+same shape as \link{dmd_master}. Default: bundled \link{dmd_master}. Candidate
+searches are cached for the session by the content of this table, so
+editing it between calls with ordinary R code is safe (for example
+\code{db$basic_price <- new_prices}, or \code{db$master$basic_price <- new_prices}
+for a \verb{<dmd_db>}). An edit made in place by reference to a table that is
+not a data.table (for example with \code{data.table::set()}) is not detected.}
 
 \item{method, max_dist, active_only}{Passed through to \code{\link[=dmd_price_lookup]{dmd_price_lookup()}}.}
 
