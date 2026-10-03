@@ -9,7 +9,10 @@ dmd_load(path = getOption("dmdprices.path"))
 \arguments{
 \item{path}{Path to the \code{dmdDataLoader} folder (the parent of \verb{csv/}).
 Defaults to \code{getOption("dmdprices.path")}, allowing you to set a
-project-wide default via \code{options(dmdprices.path = "~/dmdDataLoader")}.}
+project-wide default via \code{options(dmdprices.path = "~/dmdDataLoader")}.
+If \code{path} has no \verb{csv/} subfolder, \code{dmd_load()} signals an error of class
+\code{dmdprices_error_missing_csv_dir} with the fields \code{path} (as supplied) and
+\code{csv_dir} (the resolved \verb{csv/} folder, with forward slashes).}
 }
 \value{
 A \verb{<dmd_db>} object: a list with the elements:

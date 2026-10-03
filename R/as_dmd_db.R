@@ -63,8 +63,10 @@
 #' [dmd_dose_cost_range()] cache their candidate search for the session by the
 #' *content* of `$master`, so a database whose `$master` holds different rows
 #' or prices, including one edited in place (for example
-#' `db$master$basic_price <- new_prices`), is never served another table's
-#' cached results.
+#' `db$master$basic_price <- new_prices`), is not served another table's
+#' cached results. The exception is an edit made by reference from compiled
+#' code to a table that is not a data.table, such as `data.table::set()` on a
+#' data frame (see the `db` argument of [dmd_dose_optimise()]).
 #'
 #' @param master A data frame with, at minimum, a `medicine` column and one of
 #'   `basic_price` / `nhs_indicative_price` (in pence). Columns already matching

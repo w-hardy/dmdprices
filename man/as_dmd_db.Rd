@@ -60,8 +60,10 @@ several databases. \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}, \code{
 \code{\link[=dmd_dose_cost_range]{dmd_dose_cost_range()}} cache their candidate search for the session by the
 \emph{content} of \verb{$master}, so a database whose \verb{$master} holds different rows
 or prices, including one edited in place (for example
-\code{db$master$basic_price <- new_prices}), is never served another table's
-cached results.
+\code{db$master$basic_price <- new_prices}), is not served another table's
+cached results. The exception is an edit made by reference from compiled
+code to a table that is not a data.table, such as \code{data.table::set()} on a
+data frame (see the \code{db} argument of \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}).
 }
 \examples{
 # A minimal Drug-Tariff-shaped table (prices in pence).
