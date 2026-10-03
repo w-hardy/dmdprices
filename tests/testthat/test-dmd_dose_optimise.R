@@ -2158,7 +2158,7 @@ test_that("the name heuristic still skips unflagged multi-strength names", {
       db = db_combo,
       objective = "cheapest"
     ),
-    "unsupported compound product"
+    "multi-product pack"
   )
   expect_equal(nrow(res), 0L)
 })

@@ -119,8 +119,8 @@ more than the requested dose — saying whether an exact combination existed
 — and when a group could not be solved for the dose at all (the dose is
 below the resolvable precision of the group's strengths, or the dose table
 would exceed its cell cap) and so returns no row. \code{TRUE} silences all
-three. Unrelated warnings (unsupported compounds, ingredient matching) are
-not affected.}
+three. Unrelated warnings (unsupported compounds, multi-product packs,
+ingredient matching) are not affected.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per
@@ -150,8 +150,16 @@ Combination (multi-ingredient) products are skipped with a warning rather
 than optimised against an ambiguous dose. A product counts as a combination
 when the dm+d \code{is_combination} flag says so (authoritative, covering e.g.
 allergen mixes and factor concentrates whose names show a single number) or
-when its name lists multiple active strengths. Supply \code{ingredient} to dose
-such a product against one named active ingredient instead.
+when its name lists multiple active strengths. A bracketed strength that
+only restates the product's strength in another unit dimension (eptacog
+alfa "1mg (50,000unit)") is the same dose and does not count; one in the
+same dimension, or one naming another substance ("Iohexol 755mg/ml (Iodine
+350mg/ml)"), still does. Supply \code{ingredient} to dose a combination product
+against one named active ingredient instead. Packs holding several products —
+titration packs ("Danicopan 50mg tablets and Danicopan 100mg tablets") and
+co-packs of different products — have no single per-item strength either;
+they are skipped with a separate "multi-product pack" warning, and their
+products should be costed individually.
 }
 \examples{
 \dontrun{

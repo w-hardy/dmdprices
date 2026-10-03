@@ -61,6 +61,130 @@
   suppressWarnings(as.numeric(gsub(",", "", x, fixed = TRUE)))
 }
 
+# ── Strength tokens, bracketed restatements and packs (#27) ──────────────────
+#
+# These helpers feed .is_unsupported_compound() in dmd_dose_optimise.R. They
+# live here because they are built from .strength_num and .unit_table at load
+# time, and dmd_dose_optimise.R collates before this file.
+
+# Strength token: an amount with a mass or biological-activity unit. Volume
+# and count units ("20ml solvent", "28 tablets") are not strengths.
+# .strength_num accepts comma thousands groups so a "1,000unit" token is
+# matched from its true start rather than from the digits after the comma.
+.strength_token_regex <- paste0(
+  "(?i)", .strength_num, "\\s*",
+  "(?:micrograms?|mcg|mg|ng|nanograms?|g|units?|u)\\b"
+)
+
+# Number of matches of `pattern` in each element of `x`: 0 for no match or NA.
+.count_matches <- function(x, pattern) {
+  vapply(
+    gregexpr(pattern, x, perl = TRUE),
+    function(m) if (is.na(m[1L]) || m[1L] == -1L) 0L else length(m),
+    integer(1)
+  )
+}
+
+# Number of strength tokens in each name (0 for a name with none, or NA).
+.strength_token_count <- function(name) {
+  .count_matches(name, .strength_token_regex)
+}
+
+# A bracketed segment holding nothing but one strength token, optionally with
+# a "/denominator": eptacog alfa's "(50,000unit)", or "(10mg/ml)". Capture 1 is
+# the token's unit. "(Iodine 350mg/ml)" names a substance, so it is not bare.
+.bare_paren_strength_regex <- paste0(
+  "(?i)\\(\\s*", .strength_num, "\\s*",
+  "(micrograms?|mcg|mg|ng|nanograms?|g|units?|u)",
+  "(?:\\s*/\\s*(?:", .strength_num, ")?\\s*[a-z]+)?\\s*\\)"
+)
+
+# Canonical unit ("mg", "ml", "unit", ...) of each unit label; NA if unknown.
+# Vectorised equivalent of .canonicalise_unit(1, unit)$unit.
+.canonical_unit_of <- function(unit) {
+  .unit_table$canonical[match(tolower(unit), .unit_table$input)]
+}
+
+# Number of bare bracketed strengths in each name that restate the parsed
+# strength in another unit dimension: eptacog alfa "1mg (50,000unit)" is one
+# mass dose restated as activity (#27). A bracketed value in the same
+# dimension ("200mg (Mexiletine 167mg)", "25units/ml (500unit)") is a competing
+# dose basis and is not a restatement, nor is a bracketed strength that names
+# another substance ("(Iodine 350mg/ml)"). With no parsed strength there is
+# nothing to restate, so the count is 0.
+.restatement_count <- function(name, strength_unit) {
+  primary <- .canonical_unit_of(strength_unit)
+  bare <- regmatches(
+    name,
+    gregexpr(.bare_paren_strength_regex, name, perl = TRUE)
+  )
+  vapply(
+    seq_along(bare),
+    function(i) {
+      if (is.na(primary[i]) || length(bare[[i]]) == 0L) {
+        return(0L)
+      }
+      unit <- sub(.bare_paren_strength_regex, "\\1", bare[[i]], perl = TRUE)
+      canon <- .canonical_unit_of(unit)
+      sum(!is.na(canon) & canon != primary[i])
+    },
+    integer(1)
+  )
+}
+
+# Strength tokens in each name that give a dose basis of their own: every
+# token, less the restatements above. Each restatement is itself a token, so
+# the result is never negative and never above .strength_token_count().
+.dose_strength_count <- function(name, strength_unit) {
+  .strength_token_count(name) - .restatement_count(name, strength_unit)
+}
+
+# One complete product phrase within a pack name: an optional drug name, a
+# strength (with optional "/denominator"s), then at least one more word (the
+# form). Capture 1 is the drug name. "Liposomal Iron 15mg" has no form, so it
+# is an ingredient of one product rather than a product of its own.
+.pack_phrase_regex <- paste0(
+  "^\\s*(.*?)\\s*",
+  .strength_num,
+  "\\s*(?i:micrograms?|mcg|mg|ng|nanograms?|g|units?|u)\\b",
+  "(?:\\s*/\\s*(?:", .strength_num, ")?\\s*[A-Za-z]+)*",
+  "\\s+[A-Za-z]"
+)
+
+# Classify names that are packs of several products (#27):
+# - "multi_strength_pack" when every product phrase names the same drug
+#   ("Danicopan 50mg tablets and Danicopan 100mg tablets") or the name says
+#   "initiation pack" / "titration pack";
+# - "co_pack" when the phrases name different products ("Tixagevimab ...
+#   vials and Cilgavimab ... vials");
+# - NA otherwise, including combination products.
+# Phrases are split on " and " followed by a capital or a digit, so dm+d's
+# "powder and solvent" idiom never splits, and every part must be a full
+# product phrase.
+.pack_kind <- function(name) {
+  out <- rep(NA_character_, length(name))
+  titration <- grepl(
+    "(?i)\\b(?:initiation|titration)\\s+pack\\b",
+    name,
+    perl = TRUE
+  )
+  out[titration] <- "multi_strength_pack"
+  parts <- strsplit(name, "\\s+and\\s+(?=[A-Z0-9])", perl = TRUE)
+  for (i in which(lengths(parts) >= 2L & !titration)) {
+    m <- regmatches(
+      parts[[i]],
+      regexec(.pack_phrase_regex, parts[[i]], perl = TRUE)
+    )
+    if (any(lengths(m) == 0L)) {
+      next
+    }
+    drugs <- tolower(trimws(vapply(m, `[[`, character(1), 2L)))
+    same_drug <- all(nzchar(drugs)) && length(unique(drugs)) == 1L
+    out[i] <- if (same_drug) "multi_strength_pack" else "co_pack"
+  }
+  out
+}
+
 # ── Strength parser ───────────────────────────────────────────────────────────
 
 # Regex captures an optional strength token of the form

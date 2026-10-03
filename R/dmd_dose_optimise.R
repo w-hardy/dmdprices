@@ -100,34 +100,16 @@
   enriched
 }
 
-.strength_token_count <- function(name) {
-  # .strength_num accepts comma thousands groups so a "1,000unit" token is
-  # counted from its true start rather than from the digits after the comma.
-  pattern <- paste0(
-    "(?i)", .strength_num, "\\s*",
-    "(?:micrograms?|mcg|mg|ng|nanograms?|g|units?|u)\\b"
-  )
-  matches <- gregexpr(pattern, name, perl = TRUE)
-  vapply(
-    matches,
-    function(m) {
-      if (length(m) == 1L && (is.na(m) || identical(m, -1L))) {
-        0L
-      } else {
-        length(m)
-      }
-    },
-    integer(1)
-  )
-}
-
 .is_unsupported_compound <- function(enriched) {
   den_unit <- tolower(enriched$denominator_unit)
   num_unit_canon <- .canonicalise_unit_name(enriched$strength_unit)
   den_unit_canon <- .canonicalise_unit_name(den_unit)
 
+  # %in% keeps the exemption FALSE, not NA, for a row with no denominator, so
+  # a name-flagged combination gel is skipped with a warning rather than
+  # dropped silently through an NA flag.
   topical_mass_concentration <- enriched$form %in% c("cream", "ointment", "gel") &
-    den_unit == "g"
+    den_unit %in% "g"
 
   same_dose_unit_ratio <- !is.na(den_unit) &
     !is.na(num_unit_canon) &
@@ -135,7 +117,12 @@
     num_unit_canon == den_unit_canon &
     num_unit_canon %in% c("mg", "unit")
 
-  multiple_strengths <- .strength_token_count(enriched$medicine) > 1L
+  # A bare bracketed strength restating the product's own strength in another
+  # unit dimension (eptacog alfa "1mg (50,000unit)") is not a second strength.
+  multiple_strengths <- .dose_strength_count(
+    enriched$medicine,
+    enriched$strength_unit
+  ) > 1L
 
   # The dm+d VPI-derived is_combination flag is authoritative where present
   # (bundled data and dmd_load() databases; the parser's name-based flag fills
@@ -156,28 +143,72 @@
     db_combination
 }
 
+# The distinct names in `medicine`: how many (`n`), up to three to show in a
+# warning (`shown`), and " and <k> more" text for the rest (`more`, "" when all
+# are shown).
+.skipped_examples <- function(medicine) {
+  medicine <- unique(medicine)
+  shown <- utils::head(medicine, 3L)
+  more <- length(medicine) - length(shown)
+  list(
+    n = length(medicine),
+    shown = shown,
+    more = if (more > 0L) paste0(" and ", more, " more") else ""
+  )
+}
+
 .drop_unsupported_compounds <- function(enriched) {
   if (!"unsupported_compound" %in% names(enriched)) {
     return(enriched)
   }
 
-  n <- sum(enriched$unsupported_compound, na.rm = TRUE)
+  skip <- enriched$unsupported_compound %in% TRUE
+  skipped <- enriched$medicine[skip]
+  kind <- .pack_kind(skipped)
+
+  n <- sum(is.na(kind))
   if (n > 0L) {
-    skipped <- unique(enriched$medicine[
-      enriched$unsupported_compound %in% TRUE
-    ])
-    shown <- utils::head(skipped, 3L)
-    more <- length(skipped) - length(shown)
-    more_txt <- if (more > 0L) paste0(" and ", more, " more") else ""
+    ex <- .skipped_examples(skipped[is.na(kind)])
     # The first line must keep its wording: dmd_dose_cost_range() and callers
     # de-duplicate this warning by matching "unsupported compound product".
     cli::cli_warn(c(
       "{n} unsupported compound product{?s} skipped during dose optimisation.",
-      "x" = "E.g. {.val {shown}}{more_txt}.",
+      "x" = "E.g. {.val {ex$shown}}{ex$more}.",
       "i" = 'Pass {.code ingredient = "<name>"} to dose one active ingredient of a combination product (e.g. the codeine in co-codamol).'
     ))
   }
-  enriched[!enriched$unsupported_compound, , drop = FALSE]
+
+  # A pack of several products (a titration pack, a co-pack) has no single
+  # per-item strength, so it gets its own warning without the ingredient
+  # advice. dmd_dose_cost_range() de-duplicates it by matching
+  # "multi-product pack".
+  n_pack <- sum(!is.na(kind))
+  if (n_pack > 0L) {
+    msg <- "{n_pack} multi-product pack{?s} skipped during dose optimisation."
+    multi <- skipped[kind %in% "multi_strength_pack"]
+    if (length(multi) > 0L) {
+      ex_multi <- .skipped_examples(multi)
+      msg <- c(
+        msg,
+        "x" = "Multi-strength {cli::qty(ex_multi$n)}pack{?s}: {.val {ex_multi$shown}}{ex_multi$more}."
+      )
+    }
+    co <- skipped[kind %in% "co_pack"]
+    if (length(co) > 0L) {
+      ex_co <- .skipped_examples(co)
+      msg <- c(
+        msg,
+        "x" = "{cli::qty(ex_co$n)}Co-pack{?s} of different products: {.val {ex_co$shown}}{ex_co$more}."
+      )
+    }
+    msg <- c(
+      msg,
+      "i" = "A pack holding several products has no single per-item strength; cost its products individually."
+    )
+    cli::cli_warn(msg)
+  }
+
+  enriched[!skip, , drop = FALSE]
 }
 
 # Performs all dose-independent work: price lookup, strength parsing,
@@ -443,8 +474,16 @@
 #' than optimised against an ambiguous dose. A product counts as a combination
 #' when the dm+d `is_combination` flag says so (authoritative, covering e.g.
 #' allergen mixes and factor concentrates whose names show a single number) or
-#' when its name lists multiple active strengths. Supply `ingredient` to dose
-#' such a product against one named active ingredient instead.
+#' when its name lists multiple active strengths. A bracketed strength that
+#' only restates the product's strength in another unit dimension (eptacog
+#' alfa "1mg (50,000unit)") is the same dose and does not count; one in the
+#' same dimension, or one naming another substance ("Iohexol 755mg/ml (Iodine
+#' 350mg/ml)"), still does. Supply `ingredient` to dose a combination product
+#' against one named active ingredient instead. Packs holding several products —
+#' titration packs ("Danicopan 50mg tablets and Danicopan 100mg tablets") and
+#' co-packs of different products — have no single per-item strength either;
+#' they are skipped with a separate "multi-product pack" warning, and their
+#' products should be costed individually.
 #'
 #' @param query        Character string passed through to [dmd_price_lookup()].
 #' @param dose         Numeric dose value (in `dose_unit`), **or** a
@@ -530,8 +569,8 @@
 #'   — and when a group could not be solved for the dose at all (the dose is
 #'   below the resolvable precision of the group's strengths, or the dose table
 #'   would exceed its cell cap) and so returns no row. `TRUE` silences all
-#'   three. Unrelated warnings (unsupported compounds, ingredient matching) are
-#'   not affected.
+#'   three. Unrelated warnings (unsupported compounds, multi-product packs,
+#'   ingredient matching) are not affected.
 #'
 #' @return A [tibble][tibble::tibble] with one row per
 #'   `(preparation_group, objective)` combination. See the package vignette for
@@ -1210,6 +1249,7 @@ dmd_dose_cost_range <- function(
   seen <- character()
   once <- c(
     "unsupported compound product",
+    "multi-product pack",
     "No exact-dose combination exists",
     "Delivering more than the requested dose",
     "could not be resolved"
