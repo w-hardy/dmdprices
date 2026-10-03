@@ -110,10 +110,12 @@ to compare a floating-point `over_delivery` to zero.
 Whenever a returned combination over-delivers, one warning per call lists the
 preparation groups affected and says which case it is — no exact combination
 exists, or one exists but the objective preferred an over-delivering combination
-(only possible under `"allow"`). That warning is the only signal in
-`dmd_dose_cost()` and `dmd_dose_cost_range()`, which return bare numbers with no
-`notes` column to inspect. Pass `quiet = TRUE` to silence it in bulk costing
-runs; unrelated warnings still come through:
+(only possible under `"allow"`). A combination that misses the dose only because
+the dose has finer decimals than the strengths gets a warning of its own, saying
+the dose was rounded (see "Limitations" below). These warnings are the only
+signal in `dmd_dose_cost()` and `dmd_dose_cost_range()`, which return bare
+numbers with no `notes` column to inspect. Pass `quiet = TRUE` to silence them
+in bulk costing runs; unrelated warnings still come through:
 
 ```{r, eval = FALSE}
 # warns: an exact 3 mg combination existed but the cheapest one over-delivers
