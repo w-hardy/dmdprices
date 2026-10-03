@@ -91,7 +91,11 @@
   a pack individually instead. `dmd_dose_cost_range()` shows it once per
   call, and `quiet = TRUE` does not silence it. Code that silences these
   warnings by matching their text should now match "multi-product pack" as
-  well as "unsupported compound product".
+  well as "unsupported compound product". A pack is recognised only when its
+  name gives each product's strength in mass or units: packs that give a
+  product's strength only as a percentage, such as "Fluconazole 150mg
+  capsule and Clotrimazole 2% cream", are not recognised and are still
+  costed as their first product, as before.
 - **The `dmd_load()` missing-folder error now has a class (#31).** It is
   `dmdprices_error_missing_csv_dir` and carries a `path` field (as supplied)
   and a `csv_dir` field (the resolved `csv/` folder, written with forward

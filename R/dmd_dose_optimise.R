@@ -513,11 +513,16 @@
 #' alfa "1mg (50,000unit)") is the same dose and does not count; one in the
 #' same dimension, or one naming another substance ("Iohexol 755mg/ml (Iodine
 #' 350mg/ml)"), still does. Supply `ingredient` to dose a combination product
-#' against one named active ingredient instead. Packs holding several products —
-#' titration packs ("Danicopan 50mg tablets and Danicopan 100mg tablets") and
-#' co-packs of different products — have no single per-item strength either;
-#' they are skipped with a separate "multi-product pack" warning, and their
-#' products should be costed individually.
+#' against one named active ingredient instead. Packs holding several products
+#' whose name gives a mass or unit strength for each one — titration packs
+#' ("Danicopan 50mg tablets and Danicopan 100mg tablets") and co-packs of
+#' different products — have no single per-item strength either; they are
+#' skipped with a separate "multi-product pack" warning, and their products
+#' should be costed individually. A pack that states a product's strength only
+#' as a percentage ("Fluconazole 150mg capsule and Clotrimazole 2% cream") is
+#' not recognised and is costed as its first product. A pack whose name gives
+#' no strength ("Generic Otezla tablets treatment initiation pack") is dropped
+#' like any other product without a parsed strength, with no warning naming it.
 #'
 #' @param query        Character string passed through to [dmd_price_lookup()].
 #' @param dose         Numeric dose value (in `dose_unit`), **or** a

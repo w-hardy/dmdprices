@@ -117,8 +117,11 @@ For high-volume costing, use `dmd_dose_cost()` for a numeric vector of doses or
 Unsupported compound products (several active strengths in one name) are
 skipped with a warning rather than optimised against an ambiguous dose; pass
 `ingredient = "<name>"` to dose one of their active ingredients instead. Packs
-holding several products (titration packs and co-packs) are also skipped, with
-their own warning; cost the products in such a pack individually.
+holding several products whose name gives each product's strength in mass or
+units (titration packs and co-packs) are also skipped, with their own warning;
+cost the products in such a pack individually. A co-pack whose other product
+is stated as a percentage (such as a capsule-and-cream pack) is not detected
+and is costed as its first product.
 
 ---
 

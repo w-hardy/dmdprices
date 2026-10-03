@@ -37,7 +37,8 @@ Combination products (multiple active ingredients in one VMP) are skipped
 with a warning because the dose target would be ambiguous — see
 "Combination products" below for how to dose them by a single ingredient.
 Packs holding several products (titration packs, co-packs) are skipped for
-the same reason, with a warning of their own.
+the same reason, with a warning of their own, when their name gives each
+product's strength in mass or units.
 
 ## A basic example
 
@@ -353,6 +354,13 @@ dmd_dose_optimise("danicopan", dose = 200, dose_unit = "mg")
 #>   products individually.
 ```
 
+Detection relies on the name giving each product's strength in mass or units.
+A co-pack whose other product is stated as a percentage, such as
+"Fluconazole 150mg capsule and Clotrimazole 2% cream", is not recognised and
+is costed as its first product. A pack whose name gives no strength, such as
+"Generic Otezla tablets treatment initiation pack", is dropped like any other
+product without a parsed strength, with no warning naming it.
+
 Code that silences these warnings by matching their text should match
 `"multi-product pack"` as well as `"unsupported compound product"`.
 
@@ -386,5 +394,6 @@ term matches several distinct ingredients or a non-mass strength.
 - Combination products (multiple active ingredients in one VMP) are skipped
   with a warning unless an `ingredient` is named — see "Combination products"
   above. Packs holding several products are skipped with a warning of their
-  own.
+  own when their name gives each product's strength in mass or units; a
+  co-pack with a percentage-strength cream is costed as its first product.
 - Clinical safety (max single / max daily dose) is **not** enforced.
