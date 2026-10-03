@@ -131,12 +131,18 @@
   FALSE`, and the combination-product warning), an `over_delivery =
   "minimise"` example, the multi-product pack warning and the optional
   `dmdDataLoader` files. Its NHS CII outputs are rerun on the current rates
-  and, like the NHS CII and data sources vignettes, it gives 2024/25 as the
-  provisional year. The NHS CII vignette's unavailable-year example now uses
-  a year that really is unavailable (2014/15 has been accepted since 0.6.0).
+  and, like the NHS CII, data sources and troubleshooting vignettes, it
+  gives 2014/15 to 2024/25 as the coverage, with 2024/25 provisional. The
+  NHS CII vignette's unavailable-year example now uses a year that really is
+  unavailable (2014/15 is a supported base year).
 - The dose optimisation vignette and `?dmd_dose_optimise` describe
   bracketed restatements and the multi-product pack warning, and the `db`
   argument now says that the candidate cache follows the table's contents.
+  The vignette's objectives example uses 1500 mg of metformin, which both
+  objectives deliver exactly (no tablet combination makes the 900 mg it
+  used). The `ingredient` argument and the "No ingredient data available"
+  warning now point to `as_dmd_db(ingredients = )` rather than to
+  rebuilding the bundled data.
   `?as_dmd_db` describes `loaded_at` as display-only, and `?dmd_ingredients`
   no longer says the bundled table may be empty (it has 26,667 rows).
 - The pkgdown home page links the dose optimisation article, and the news
@@ -254,11 +260,14 @@ this warning and the no-exact one, leaving unrelated warnings intact.
 
 ## Behaviour changes
 
-When upgrading from 0.5.0: no functions were removed or renamed, but arguments
-were added (`ingredient`, `can_split_vials`, `over_delivery`, `quiet`) and
-default results changed, above all through the new `over_delivery = "forbid"`
-default described above. The following changes can also alter **results** and
-are worth noting when upgrading:
+When upgrading from the 0.5.0 build released to main in June 2026 (#12): no
+functions were removed or renamed; `over_delivery` and `quiet` are new
+arguments and `as_dmd_db()` is a new function, and default results change,
+above all through the new `over_delivery = "forbid"` default described above.
+That build already contained the changes below. When upgrading from 0.3.0, or
+from a development build numbered 0.5.0 made before #12, `ingredient` and
+`can_split_vials` may also be new, and the following changes can also alter
+**results**:
 
 - **NHS CII 2023/24 figures revised.** Following the PSSRU 2025 manual, the
   provisional 2023/24 rates have been revised (e.g. `pay_and_prices` 2023/24
