@@ -55,9 +55,16 @@
 #' optimisation is unavailable or degraded.
 #'
 #' Unlike [dmd_load()], prices are trusted as given — a `0` price stays `0`
-#' (it is not treated as missing). Leave `loaded_at` at its default: the dose
-#' optimiser's session cache keys on it, so a fixed value shared across two
-#' different tables could return a stale cached result.
+#' (it is not treated as missing).
+#'
+#' `loaded_at` is descriptive: it is shown by `print()` and [dmd_master_info()]
+#' and changes no result, so any timestamp is safe, including one shared by
+#' several databases. [dmd_dose_optimise()], [dmd_dose_cost()] and
+#' [dmd_dose_cost_range()] cache their candidate search for the session by the
+#' *content* of `$master`, so a database whose `$master` holds different rows
+#' or prices, including one edited in place (for example
+#' `db$master$basic_price <- new_prices`), is never served another table's
+#' cached results.
 #'
 #' @param master A data frame with, at minimum, a `medicine` column and one of
 #'   `basic_price` / `nhs_indicative_price` (in pence). Columns already matching
@@ -66,7 +73,9 @@
 #'   per-ingredient strengths in the [dmd_ingredients] shape, enabling
 #'   ingredient-targeted dose optimisation.
 #' @param loaded_at A length-1 `POSIXct` timestamp recording when the data was
-#'   assembled. Defaults to [Sys.time()].
+#'   assembled, shown by `print()` and [dmd_master_info()]. Defaults to
+#'   [Sys.time()]. It is descriptive only: results and caching depend on the
+#'   content of `$master`, never on this value.
 #'
 #' @return A `<dmd_db>` object: a list with `$master` (a [tibble][tibble::tibble]
 #'   in the canonical schema), `$ingredients` (the supplied table or `NULL`), and
