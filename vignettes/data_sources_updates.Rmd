@@ -117,7 +117,7 @@ nrow(dmd_master)
 - Pay inflation rates
 - Price inflation rates
 - Combined pay+prices indices
-- Coverage: Currently 2015/16–2023/24
+- Coverage: Currently 2014/15–2024/25
 
 **Published by:** Personal Social Services Research Unit (PSSRU), University of Kent
 
@@ -132,7 +132,7 @@ nrow(dmd_master)
 nhscii("2015/16", "2023/24", index = "prices")
 ```
 
-**Note:** 2023/24 figures are provisional per the 2025 PSSRU manual. Later releases may revise these values.
+**Note:** 2024/25 figures are provisional per the 2025 PSSRU manual. Later releases may revise these values.
 
 ## How often should you update?
 
