@@ -9,7 +9,8 @@
 #'   project-wide default via `options(dmdprices.path = "~/dmdDataLoader")`.
 #'   If `path` has no `csv/` subfolder, `dmd_load()` signals an error of class
 #'   `dmdprices_error_missing_csv_dir` with the fields `path` (as supplied) and
-#'   `csv_dir` (the resolved `csv/` folder, with forward slashes).
+#'   `csv_dir` (the `csv/` folder after [normalizePath()], with forward
+#'   slashes; absolute when `path` exists).
 #'
 #' @return A `<dmd_db>` object: a list with the elements:
 #'   * `$master`  — a [tibble][tibble::tibble] with one row per AMPP (branded

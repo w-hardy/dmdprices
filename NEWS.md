@@ -60,8 +60,8 @@
   therefore depended on the platform and the working directory, and the
   bad-path snapshot test failed on Windows. It is now the same everywhere:
   `dmd_load("loader")` reports `'loader/csv' does not exist.` A leading `~`
-  is no longer expanded in the message; the resolved folder is kept on the
-  condition (see Behaviour changes).
+  is no longer expanded in the message; the `normalizePath()` form is kept
+  on the condition (see Behaviour changes).
 - **A periodontal gel whose name lists two strengths ("Doxycycline
   36.4mg/260mg periodontal gel cartridge") was dropped without the
   unsupported-compound warning (#27).** No strength is parsed from its name,
@@ -98,8 +98,9 @@
   costed as their first product, as before.
 - **The `dmd_load()` missing-folder error now has a class (#31).** It is
   `dmdprices_error_missing_csv_dir` and carries a `path` field (as supplied)
-  and a `csv_dir` field (the resolved `csv/` folder, written with forward
-  slashes on every platform), so it can be caught with
+  and a `csv_dir` field (the `csv/` folder after `normalizePath()`, which
+  is absolute when `path` exists, written with forward slashes on every
+  platform), so it can be caught with
   `tryCatch(..., dmdprices_error_missing_csv_dir = function(cnd) ...)`. On
   Windows the "Reading dm+d CSV files from ..." progress message now also
   uses forward slashes.
