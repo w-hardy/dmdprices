@@ -62,6 +62,7 @@ test_that("a name-flagged combination gel is flagged, never NA", {
 # ── Restated products are dosed ──────────────────────────────────────────────
 
 test_that("eptacog with a bracketed activity restatement is dosed by mass", {
+  .local_fresh_dose_cache()
   db <- .fake_multi_strength_db()
   res <- expect_no_warning(dmd_dose_optimise(
     "eptacog",
@@ -78,6 +79,7 @@ test_that("eptacog with a bracketed activity restatement is dosed by mass", {
 })
 
 test_that("a dose in the restated unit is not read as the mass strength", {
+  .local_fresh_dose_cache()
   db <- .fake_multi_strength_db()
   # 350,000 units never matches a mass row: it warns and returns nothing rather
   # than misreading the units as mg.
@@ -94,6 +96,7 @@ test_that("a dose in the restated unit is not read as the mass strength", {
 })
 
 test_that("dmd_dose_cost() costs restated products for each dose", {
+  .local_fresh_dose_cache()
   db <- .fake_multi_strength_db()
   cost <- expect_no_warning(
     dmd_dose_cost("eptacog", dose = c(7, 3), dose_unit = "mg", db = db)
@@ -104,6 +107,7 @@ test_that("dmd_dose_cost() costs restated products for each dose", {
 # ── Products that stay skipped ───────────────────────────────────────────────
 
 test_that("a same-dimension bracketed strength keeps a product skipped", {
+  .local_fresh_dose_cache()
   db <- .fake_multi_strength_db()
   expect_warning(
     res <- dmd_dose_optimise(
@@ -119,6 +123,7 @@ test_that("a same-dimension bracketed strength keeps a product skipped", {
 })
 
 test_that("packs are skipped with a multi-product pack warning", {
+  .local_fresh_dose_cache()
   db <- .fake_multi_strength_db()
   # "s and " matches only the two packs ("...tablets and ...", "...vials
   # and ..."), not eptacog's "powder and solvent".
@@ -135,6 +140,7 @@ test_that("packs are skipped with a multi-product pack warning", {
 })
 
 test_that("dmd_dose_cost_range() shows each skip warning once", {
+  .local_fresh_dose_cache()
   db <- .fake_multi_strength_db()
   # "solution" matches eptacog (dosable), iohexol (a compound) and the
   # tixagevimab co-pack. Both bounds see the same skipped rows.

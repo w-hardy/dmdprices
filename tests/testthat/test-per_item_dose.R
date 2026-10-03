@@ -7,52 +7,9 @@
 # targeting are stored per stated denominator (20 mg per 1 g), so that path
 # keeps the raw pack quantity: 20 x 60 = 1200 mg.
 #
-# The fixture is .fake_dose_db() (helper.R) plus two one-container rows and a
-# VPI table for the cream. Its `loaded_at` differs from the shared fixture's so
-# the memoised candidate table is not reused across the two databases.
-#   Delgocitinib 20mg/g cream, 60 g tube at 1000p      -> 1200 mg per tube
-#   Examplol 5mg/ml oral solution, 1 litre at 2000p    -> 5000 mg per bottle
-
-.fake_per_gram_db <- function(loaded_at = .fixed_loaded_at + 55) {
-  db <- .fake_dose_db(loaded_at = loaded_at)
-  db$master <- rbind(
-    db$master,
-    tibble::tibble(
-      medicine = c(
-        "Delgocitinib 20mg/g cream",
-        "Examplol 5mg/ml oral solution"
-      ),
-      pack_size = c(60, 1),
-      unit = c("g", "litre"),
-      vmp_snomed_code = c("V_DELGO", "V_EXAMPLOL"),
-      vmpp_snomed_code = c("VPP_DELGO", "VPP_EXAMPLOL"),
-      drug_tariff_category = rep("Part VIIIA Category C", 2),
-      basic_price = c(1000L, 2000L),
-      nhs_indicative_price = c(1000L, 2000L),
-      price_basis = rep("NHS Indicative Price", 2),
-      price_date = rep("2025-08-08", 2),
-      ampp_name = c(
-        "Delgocitinib 20mg/g cream (Brand A) 60 gram",
-        "Examplol 5mg/ml oral solution (Brand A) 1 litre"
-      ),
-      ampp_snomed_code = c("APP_DELGO", "APP_EXAMPLOL")
-    )
-  )
-  # VPI shape as in the bundled dmd_ingredients: the numerator is canonical,
-  # the denominator is as stated.
-  db$ingredients <- tibble::tibble(
-    vmp_snomed_code = "V_DELGO",
-    ingredient_snomed_code = "I_delgo",
-    ingredient_name = "Delgocitinib",
-    strength_value = 20,
-    strength_unit = "mg",
-    denominator_value = 1,
-    denominator_unit = "g",
-    strength_canonical = 20,
-    strength_unit_canon = "mg"
-  )
-  db
-}
+# The fixture is .fake_per_gram_db() (helper.R): .fake_dose_db() plus a
+# Delgocitinib 20mg/g cream in a 60 g tube and an Examplol 5mg/ml oral
+# solution in a 1-litre pack, with a VPI table for the cream.
 
 db <- .fake_per_gram_db()
 
@@ -71,6 +28,7 @@ db <- .fake_per_gram_db()
 # ── Parsed-name path ─────────────────────────────────────────────────────────
 
 test_that("a mass-per-gram cream sold as one tube is dosed per tube", {
+  .local_fresh_dose_cache()
   enriched <- .per_gram_candidates("Delgocitinib")
   expect_equal(enriched$per_item_dose, 1200)
 
@@ -92,6 +50,7 @@ test_that("a mass-per-gram cream sold as one tube is dosed per tube", {
 })
 
 test_that("vectorised costs dose a per-gram tube per tube", {
+  .local_fresh_dose_cache()
   expect_equal(
     dmd_dose_cost(
       "Delgocitinib",
@@ -104,6 +63,7 @@ test_that("vectorised costs dose a per-gram tube per tube", {
 })
 
 test_that("a mg/ml solution in a 1-litre pack is dosed per litre", {
+  .local_fresh_dose_cache()
   enriched <- .per_gram_candidates("Examplol")
   expect_equal(enriched$per_item_dose, 5000)
 
@@ -173,6 +133,7 @@ test_that(".per_item_dose() canonicalises the pack quantity only when asked", {
 # ── Ingredient-targeting path ────────────────────────────────────────────────
 
 test_that("ingredient targeting keeps dosing a per-gram tube from its VPI strength", {
+  .local_fresh_dose_cache()
   # 20 mg per 1 g x 60 g = 1200 mg per tube, so 150,000 mg is 125 tubes.
   # Canonicalising the pack quantity here as well would count each tube as
   # 1,200,000 mg and cost the dose as a single tube.
