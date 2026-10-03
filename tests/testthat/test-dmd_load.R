@@ -1,5 +1,42 @@
 test_that("dmd_load() errors informatively on bad path", {
+  # The message names `path` as supplied, not its normalizePath() form (which
+  # is absolute and backslashed on Windows), so this snapshot is identical on
+  # every platform and in every working directory (#31).
   expect_snapshot(error = TRUE, dmd_load("nonexistent/path"))
+})
+
+test_that("dmd_load() bad-path error is classed and carries both paths", {
+  missing <- file.path(withr::local_tempdir(), "no-such-loader")
+  cnd <- expect_error(
+    dmd_load(missing),
+    class = "dmdprices_error_missing_csv_dir"
+  )
+  expect_identical(cnd$path, missing)
+  expect_match(cnd$csv_dir, "no-such-loader/csv", fixed = TRUE)
+  expect_match(conditionMessage(cnd), "no-such-loader/csv", fixed = TRUE)
+
+  # An existing folder without a csv/ subdirectory raises the same class.
+  expect_error(
+    dmd_load(withr::local_tempdir()),
+    class = "dmdprices_error_missing_csv_dir"
+  )
+})
+
+test_that("dmd_load() names the missing csv/ folder as supplied, not normalised (#31)", {
+  # An existing relative folder is resolved to an absolute path by
+  # normalizePath() on every OS, so this catches the regression on Linux too.
+  withr::local_dir(withr::local_tempdir())
+  dir.create("loader")
+  cnd <- expect_error(
+    dmd_load("loader"),
+    class = "dmdprices_error_missing_csv_dir"
+  )
+  expect_match(conditionMessage(cnd), "'loader/csv' does not exist.", fixed = TRUE)
+  expect_identical(cnd$path, "loader")
+  expect_identical(
+    cnd$csv_dir,
+    file.path(normalizePath("loader", winslash = "/"), "csv")
+  )
 })
 
 test_that("dmd_load() errors when no path supplied and option unset", {

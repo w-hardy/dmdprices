@@ -39,14 +39,24 @@ dmd_load <- function(path = getOption("dmdprices.path")) {
     ))
   }
 
-  path <- normalizePath(path, mustWork = FALSE)
-  csv_dir <- file.path(path, "csv")
+  # Report the folder as the caller supplied it. normalizePath() leaves a
+  # non-existent path unchanged on Unix but makes it absolute (backslashed) on
+  # Windows, and it resolves an existing path everywhere, so interpolating the
+  # resolved path made the message depend on the OS and working directory
+  # (#31). The resolved path is kept on the condition as `csv_dir`.
+  supplied_csv_dir <- file.path(path, "csv")
+  csv_dir <- file.path(normalizePath(path, winslash = "/", mustWork = FALSE), "csv")
 
   if (!dir.exists(csv_dir)) {
-    cli::cli_abort(c(
-      "{.path {csv_dir}} does not exist.",
-      "i" = "{.arg path} should be the {.code dmdDataLoader} folder that contains a {.code csv/} subdirectory."
-    ))
+    cli::cli_abort(
+      c(
+        "{.path {supplied_csv_dir}} does not exist.",
+        "i" = "{.arg path} should be the {.code dmdDataLoader} folder that contains a {.code csv/} subdirectory."
+      ),
+      class = "dmdprices_error_missing_csv_dir",
+      path = path,
+      csv_dir = csv_dir
+    )
   }
 
   cli::cli_progress_step("Reading dm+d CSV files from {.path {csv_dir}}")
