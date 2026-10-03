@@ -501,7 +501,7 @@
 
 #' Find dose combinations for a clinical dose
 #'
-#' Given a dose (e.g. 900 mg), searches the dm+d for products matching `query`
+#' Given a dose (e.g. 1000 mg), searches the dm+d for products matching `query`
 #' and returns the cheapest, most expensive, and/or fewest-item combination of
 #' AMPPs that delivers that dose.
 #'
@@ -643,12 +643,16 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Cheapest and minimum-item combinations for a 900 mg dose of metformin
-#' dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg")
+#' # Cheapest and minimum-item combinations of immediate-release metformin
+#' # tablets for a 1000 mg dose
+#' dmd_dose_optimise(
+#'   "metformin", dose = 1000, dose_unit = "mg",
+#'   preparation = "tablet|none|oral"
+#' )
 #'
-#' # Equivalent: pass dose as a single string
-#' dmd_dose_optimise("metformin", dose = "900 mg")
-#' dmd_dose_optimise("metformin", dose = "0.9 g")   # same dose, different unit
+#' # Equivalent: pass dose as a single string, in any supported unit
+#' dmd_dose_optimise("metformin", dose = "1000 mg", preparation = "tablet|none|oral")
+#' dmd_dose_optimise("metformin", dose = "1 g", preparation = "tablet|none|oral")
 #'
 #' # Only modified-release tablets
 #' dmd_dose_optimise(

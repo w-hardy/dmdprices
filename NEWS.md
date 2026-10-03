@@ -151,7 +151,8 @@
   argument now says that the candidate cache follows the table's contents.
   The vignette's objectives example uses 1500 mg of metformin, which both
   objectives deliver exactly (no tablet combination makes the 900 mg it
-  used). The `ingredient` argument and the "No ingredient data available"
+  used), and the first `?dmd_dose_optimise` example likewise moves from
+  900 mg to 1000 mg of immediate-release tablets. The `ingredient` argument and the "No ingredient data available"
   warning now point to `as_dmd_db(ingredients = )` rather than to
   rebuilding the bundled data.
   `?as_dmd_db` describes `loaded_at` as display-only, and `?dmd_ingredients`
