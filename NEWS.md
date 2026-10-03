@@ -125,8 +125,15 @@
   deprecation uses.
 - `dplyr (>= 1.1.0)` is now required: it is the first version with
   `join_by()`, which `dmd_load()` uses; an older dplyr made installation fail
-  at lazy-load. The tests now declare `testthat (>= 3.1.7)`, the first
-  version with `local_mocked_bindings()`.
+  at lazy-load. The tests now declare `testthat (>= 3.1.9)`, the first
+  version with `expect_contains()` (`local_mocked_bindings()` arrived in
+  3.1.7).
+- `memoise (>= 2.0.0)`, `cli (>= 3.0.0)` and `readr (>= 2.0.0)` are now
+  declared. memoise 2.0.0 is the first with the `hash` argument and cachem
+  caches, which the dose cache uses (an older memoise made installation
+  fail); cli 3.0.0 is the first with `cli_abort()`, `cli_warn()`,
+  `cli_inform()` and `cli_progress_step()`; and readr 2.0.0 is the first
+  whose `read_delim()` takes `show_col_types`, which `dmd_load()` passes.
 - `citation("dmdprices")` now reports the installed package version (it said
   0.5.0).
 - README: the dose optimisation example is now 1000 mg of immediate-release
