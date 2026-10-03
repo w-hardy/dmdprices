@@ -397,6 +397,11 @@
 #   2. the frame step 3 last hashed (the slot)    -> its remembered key;
 #   3. any other frame                            -> "content:<hash>",
 #                                                    remembered in the slot.
+# Step 1 runs only once the bundled table has been loaded from the package's
+# lazy data (.bundled_is_loaded()). Until then no caller can hold it, and
+# reading it just to compare would load ~45 MB in a session that only uses
+# its own tables. A copy loaded separately, e.g. with data(dmd_master)
+# before the bundled table is first used, is keyed by content instead.
 # Step 2 assumes copy-on-modify: R cannot change an object the slot still
 # references without copying it first. data.table's `:=` and set() edit a
 # table in place by reference, so a data.table skips the slot and is hashed
@@ -417,9 +422,11 @@
 
 .db_cache_key <- function(db) {
   master <- .db_master(db)
-  bundled <- tryCatch(dmdprices::dmd_master, error = function(e) NULL)
-  if (!is.null(bundled) && identical(master, bundled)) {
-    return("bundled")
+  if (.bundled_is_loaded()) {
+    bundled <- tryCatch(dmdprices::dmd_master, error = function(e) NULL)
+    if (!is.null(bundled) && identical(master, bundled)) {
+      return("bundled")
+    }
   }
   if (!is.data.frame(master) || inherits(master, "data.table")) {
     return(paste0("content:", rlang::hash(master)))
@@ -433,8 +440,33 @@
   key
 }
 
-# Empty the candidate memo and the remembered table key. Internal; the tests
-# call it through .local_fresh_dose_cache() in tests/testthat/helper.R.
+# TRUE once the bundled dmd_master has been loaded, i.e. its binding in the
+# namespace's lazy-data environment is no longer an unforced promise (or the
+# environment cannot be inspected, as before this check). Remembered in
+# .db_key_memo once TRUE, so the bundled key stays a few identity checks.
+# `lazydata` is an argument for the tests.
+.bundled_is_loaded <- function(lazydata = NULL) {
+  if (isTRUE(.db_key_memo$bundled_loaded)) {
+    return(TRUE)
+  }
+  if (is.null(lazydata)) {
+    lazydata <- tryCatch(
+      getNamespaceInfo(asNamespace("dmdprices"), "lazydata"),
+      error = function(e) NULL
+    )
+  }
+  loaded <- !is.environment(lazydata) ||
+    !exists("dmd_master", envir = lazydata, inherits = FALSE) ||
+    !rlang::env_binding_are_lazy(lazydata, "dmd_master")
+  if (loaded) {
+    .db_key_memo$bundled_loaded <- TRUE
+  }
+  loaded
+}
+
+# Empty the candidate memo, the remembered table key and the bundled-loaded
+# flag. Internal; the tests call it through .local_fresh_dose_cache() in
+# tests/testthat/helper.R.
 .forget_dose_cache <- function() {
   memoise::forget(.dmd_prepare_candidates_memo)
   rm(list = ls(.db_key_memo, all.names = TRUE), envir = .db_key_memo)

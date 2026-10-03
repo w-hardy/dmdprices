@@ -219,6 +219,56 @@ test_that("bundled dmd_master keys by identity; a modified copy by content", {
   expect_match(.db_cache_key(m), "^content:[0-9a-f]+$")
 })
 
+test_that("an unloaded bundled table is not loaded just to key another table", {
+  # Installed, the bundled dmd_master is an unforced promise in the
+  # namespace's lazy-data environment until it is first used. Keying a
+  # custom table must not force it (about 45 MB). Under load_all() the
+  # binding is not lazy, so this builds a lazy-data environment of its own.
+  .local_fresh_dose_cache()
+  lazydata <- new.env(parent = emptyenv())
+  delayedAssign(
+    "dmd_master",
+    stop("The bundled table was loaded."),
+    assign.env = lazydata
+  )
+  expect_false(.bundled_is_loaded(lazydata))
+  expect_true(rlang::env_binding_are_lazy(lazydata, "dmd_master"))
+  expect_null(.db_key_memo$bundled_loaded)
+
+  # Until then a custom table is keyed by content, and so is a copy of the
+  # bundled table loaded separately (e.g. with data()).
+  local_mocked_bindings(.bundled_is_loaded = function(lazydata = NULL) FALSE)
+  db <- .fake_sublingual_db()
+  expect_identical(
+    .db_cache_key(db),
+    paste0("content:", rlang::hash(db$master))
+  )
+  expect_match(.db_cache_key(dmdprices::dmd_master), "^content:[0-9a-f]+$")
+})
+
+test_that("the bundled table counts as loaded once forced, and stays so", {
+  .local_fresh_dose_cache()
+  lazydata <- new.env(parent = emptyenv())
+  delayedAssign("dmd_master", data.frame(x = 1), assign.env = lazydata)
+  expect_false(.bundled_is_loaded(lazydata))
+
+  get("dmd_master", envir = lazydata)
+  expect_true(.bundled_is_loaded(lazydata))
+  expect_true(.db_key_memo$bundled_loaded)
+
+  # Remembered: an environment that still holds a promise is not inspected.
+  unforced <- new.env(parent = emptyenv())
+  delayedAssign("dmd_master", stop("Inspected."), assign.env = unforced)
+  expect_true(.bundled_is_loaded(unforced))
+
+  # No lazy-data binding (or no environment) counts as loaded.
+  .forget_dose_cache()
+  expect_null(.db_key_memo$bundled_loaded)
+  expect_true(.bundled_is_loaded(new.env(parent = emptyenv())))
+  .forget_dose_cache()
+  expect_true(.bundled_is_loaded(list()))
+})
+
 test_that("keying the bundled table leaves the remembered table in place", {
   .local_fresh_dose_cache()
   db <- .fake_sublingual_db()
