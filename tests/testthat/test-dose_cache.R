@@ -245,6 +245,40 @@ test_that("an unloaded bundled table is not loaded just to key another table", {
   expect_match(.db_cache_key(dmdprices::dmd_master), "^content:[0-9a-f]+$")
 })
 
+test_that("keying a custom table leaves the real bundled binding unforced", {
+  # The test above passes its own environment or mocks the gate, so it never
+  # runs the default lazy-data lookup or sees what the call site reads. This
+  # swaps the namespace's real dmd_master binding for a promise that records
+  # being forced. The flag lives in an environment: `<<-` inside the promise
+  # would search from the test environment's parent and write a global.
+  ld <- getNamespaceInfo(asNamespace("dmdprices"), "lazydata")
+  real <- ld$dmd_master
+  flag <- new.env(parent = emptyenv())
+  flag$forced <- FALSE
+  delayedAssign(
+    "dmd_master",
+    {
+      flag$forced <- TRUE
+      real
+    },
+    assign.env = ld
+  )
+  withr::defer(assign("dmd_master", real, envir = ld))
+  .local_fresh_dose_cache()
+
+  db <- .fake_sublingual_db()
+  expect_identical(
+    .db_cache_key(db),
+    paste0("content:", rlang::hash(db$master))
+  )
+  expect_false(flag$forced)
+  expect_true(rlang::env_binding_are_lazy(ld, "dmd_master"))
+
+  invisible(ld$dmd_master)
+  expect_true(flag$forced)
+  expect_identical(.db_cache_key(dmdprices::dmd_master), "bundled")
+})
+
 test_that("the bundled table counts as loaded once forced, and stays so", {
   .local_fresh_dose_cache()
   lazydata <- new.env(parent = emptyenv())
