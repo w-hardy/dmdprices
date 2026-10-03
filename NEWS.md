@@ -1,3 +1,149 @@
+# dmdprices 0.6.2
+
+## Bug fixes
+
+- **Dose costs could be served from the cache of a different price table
+  (#28, #29, #30).** `dmd_dose_optimise()`, `dmd_dose_cost()` and
+  `dmd_dose_cost_range()` cache their candidate search for the session, but
+  recognised a table by a label rather than by its contents. A data frame
+  carrying the `dmd_release_label` attribute was recognised by that label,
+  which survives subsetting and price edits of `dmd_master` or of
+  `dmd_price_lookup()` output. A `<dmd_db>` was recognised by its
+  `loaded_at` timestamp, which an in-place edit such as
+  `db$master$basic_price <- new_prices` leaves unchanged and which two
+  databases can share (or both lack). A second call with the same query and
+  settings against a different table could therefore silently return the
+  first table's cost. The cache now recognises a table by its contents. The
+  bundled `dmd_master` is recognised by identity. Any other table (the
+  `$master` of a `<dmd_db>`, or a plain data frame) is recognised by an
+  `rlang::hash()` of its contents, and a `<dmd_db>` shares cache entries
+  with its own `$master`. Hashing a table the size of `dmd_master` takes
+  about 50 ms. Only the most recently hashed table is remembered, so repeat
+  calls on one custom table pay this once, while alternating between two
+  large custom tables re-hashes each time. A `data.table`, which can be
+  edited in place by reference, is hashed on every call. Calls against the
+  bundled data are unaffected. `loaded_at` is now purely descriptive, so any
+  timestamp is safe in `as_dmd_db()`. This supersedes the 0.6.0
+  "Performance" note, which keyed the cache on `loaded_at` and the release
+  label.
+- **Creams, gels and ointments sold as a single tube or jar had a per-item
+  dose 1000 times too small.** For a product whose strength is stated per
+  gram (such as `20mg/g` or `50micrograms/g`) and whose pack is one
+  container measured in grams, the dose functions multiplied a strength per
+  milligram of product by the pack size in grams. A 60 g tube of a 20mg/g
+  cream therefore counted as 1.2 mg rather than 1200 mg, and dose costs used
+  up to 1000 times too many packs: `dmd_dose_cost("Delgocitinib", dose =
+  1200, dose_unit = "mg", objective = "cheapest")` costed 1000 tubes
+  (59,500,000p) and now costs one (59,500p). The pack quantity is now
+  converted to the strength's canonical unit first. Bottles, inhalers and
+  other one-container packs measured in ml or doses are unaffected, and
+  results with `ingredient =` are unchanged (see Behaviour changes).
+- **The 11 eptacog alfa/beta products whose names state the mass with a unit
+  equivalent in brackets are no longer skipped as compounds (#27).** In a
+  name such as "Eptacog alfa (activated) 1mg (50,000unit) powder and solvent
+  for solution for injection vials", a bracketed strength that stands alone
+  and is in a different unit dimension from the product's strength restates
+  that strength, so it is no longer counted as a second one. The dose
+  functions now cost these products by mass (`dmd_dose_optimise("eptacog
+  alfa", dose = 7, dose_unit = "mg")` costs 367,640p). A dose in units does
+  not match them: when no other candidate is left, `dmd_dose_optimise()`
+  warns that no candidates matched the requested dose unit and
+  `dmd_dose_cost()` returns `NA`. A bracketed strength in the same unit
+  dimension, or one that names another substance, still keeps a product
+  skipped as a compound, for example "Iohexol 755mg/ml (Iodine 350mg/ml)",
+  "Mexiletine hydrochloride 200mg (Mexiletine 167mg)" and "Factor VIII
+  Inhibitor Bypassing Fraction human 25units/ml (500unit)".
+- **`dmd_load()` names the missing `csv/` folder as you supplied it (#31).**
+  The message showed the folder in its `normalizePath()` form, which on
+  Windows is absolute and backslashed even for a folder that does not exist,
+  and which resolves an existing folder on every platform. The message
+  therefore depended on the platform and the working directory, and the
+  bad-path snapshot test failed on Windows. It is now the same everywhere:
+  `dmd_load("loader")` reports `'loader/csv' does not exist.` A leading `~`
+  is no longer expanded in the message; the resolved folder is kept on the
+  condition (see Behaviour changes).
+- **A periodontal gel whose name lists two strengths ("Doxycycline
+  36.4mg/260mg periodontal gel cartridge") was dropped without the
+  unsupported-compound warning (#27).** No strength is parsed from its name,
+  and its compound flag was `NA` rather than `TRUE`, so it was dropped with
+  no warning naming it. It is now skipped with the unsupported-compound
+  warning, like other products whose names list several strengths. The
+  bundled release has no price for it, so this shows only with
+  `active_only = FALSE` or a custom table.
+- The `dmd_load()` "No path supplied." hint now shows
+  `options(dmdprices.path = "...")` without literal backslashes, so it can be
+  copied as written.
+- `print()` of `dmd_master_info()` no longer errors ("argument is of length
+  zero") for a `<dmd_db>` whose `loaded_at` is `NULL` and that has no
+  release label. The dataset label now reads "unknown".
+
+## Behaviour changes
+
+- **Packs that hold several products get their own warning (#27).** The
+  dose functions still skip them, but now warn "N multi-product pack(s)
+  skipped during dose optimisation." instead of counting them in the
+  unsupported-compound warning. This covers multi-strength packs, such as
+  "Danicopan 50mg tablets and Danicopan 100mg tablets" or "Memantine
+  5mg/10mg/15mg/20mg orodispersible tablets initiation pack sugar free", and
+  co-packs of different products, such as "Tixagevimab ... vials and
+  Cilgavimab ... vials". The warning lists them as multi-strength packs or
+  co-packs and no longer suggests `ingredient =`; cost the products in such
+  a pack individually instead. `dmd_dose_cost_range()` shows it once per
+  call, and `quiet = TRUE` does not silence it. Code that silences these
+  warnings by matching their text should now match "multi-product pack" as
+  well as "unsupported compound product".
+- **The `dmd_load()` missing-folder error now has a class (#31).** It is
+  `dmdprices_error_missing_csv_dir` and carries a `path` field (as supplied)
+  and a `csv_dir` field (the resolved `csv/` folder, written with forward
+  slashes on every platform), so it can be caught with
+  `tryCatch(..., dmdprices_error_missing_csv_dir = function(cnd) ...)`. On
+  Windows the "Reading dm+d CSV files from ..." progress message now also
+  uses forward slashes.
+- **Dose costs fall, by up to 1000 times, for creams, gels and ointments
+  whose strength is stated per gram and that are sold as a single tube or
+  jar**, after the per-item dose fix above. In the bundled data this affects
+  19 priced medicines that the dose functions can cost (32 priced pack
+  rows), among them testosterone 20mg/g gel (an 85.5 g pack now counts as
+  1710 mg, not 1.71 mg) and delgocitinib, calcipotriol, estriol and
+  ivermectin preparations. Results with `ingredient =` are unchanged. Re-run
+  any analysis that costed these products with an earlier version.
+
+## Documentation and infrastructure
+
+- R-CMD-check (ubuntu, windows and macOS on R release, plus ubuntu on
+  R-devel) now runs on pushes to and pull requests into `develop`, as well as
+  `main`/`master`, and can be started by hand (`workflow_dispatch`). Within
+  one pull request, or one branch, a newer push cancels the run it
+  supersedes. The pkgdown site is now built on pull requests but deployed
+  only from `main`/`master`.
+- `lifecycle (>= 1.0.2)` is now required: it is the first version whose
+  `deprecate_warn()` accepts `what = I(...)`, which the `objective = "both"`
+  deprecation uses.
+- `citation("dmdprices")` now reports the installed package version (it said
+  0.5.0).
+- README: the dose optimisation example is now 1000 mg of immediate-release
+  metformin tablets (`preparation = "tablet|none|oral"`), with a note on what
+  an unfiltered call returns (a whole oral-solution bottle with `dose_exact =
+  FALSE`, and the combination-product warning), an `over_delivery =
+  "minimise"` example, the multi-product pack warning and the optional
+  `dmdDataLoader` files. Its NHS CII outputs are rerun on the current rates
+  and, like the NHS CII and data sources vignettes, it gives 2024/25 as the
+  provisional year. The NHS CII vignette's unavailable-year example now uses
+  a year that really is unavailable (2014/15 has been accepted since 0.6.0).
+- The dose optimisation vignette and `?dmd_dose_optimise` describe
+  bracketed restatements and the multi-product pack warning, and the `db`
+  argument now says that the candidate cache follows the table's contents.
+  `?as_dmd_db` describes `loaded_at` as display-only, and `?dmd_ingredients`
+  no longer says the bundled table may be empty (it has 26,667 rows).
+- The pkgdown home page links the dose optimisation article, and the news
+  menu lists 0.6.1 and 0.6.2.
+- `.Rbuildignore` now excludes `.git` (a package built from a linked git
+  worktree included its `.git` file) and Shiny app `manifest.json` files.
+  The `/Meta/` entry in `.gitignore` no longer has a typo.
+- The dose optimiser and price lookup apps' DESCRIPTION files now list
+  `dplyr`, which both apps call, and the dose optimiser app requires
+  `dmdprices (>= 0.6.0)`.
+
 # dmdprices 0.6.1
 
 ## Bug fixes
@@ -104,9 +250,11 @@ this warning and the no-exact one, leaving unrelated warnings intact.
 
 ## Behaviour changes
 
-When upgrading from the 0.3.0 release: no functions were removed or renamed and
-no argument signatures changed, so existing code continues to run. However, the
-following changes can alter **results** and are worth noting when upgrading:
+When upgrading from 0.5.0: no functions were removed or renamed, but arguments
+were added (`ingredient`, `can_split_vials`, `over_delivery`, `quiet`) and
+default results changed, above all through the new `over_delivery = "forbid"`
+default described above. The following changes can also alter **results** and
+are worth noting when upgrading:
 
 - **NHS CII 2023/24 figures revised.** Following the PSSRU 2025 manual, the
   provisional 2023/24 rates have been revised (e.g. `pay_and_prices` 2023/24
@@ -156,7 +304,8 @@ following changes can alter **results** and are worth noting when upgrading:
 - `dmd_load()` now reads the dm+d Virtual Product Ingredient (VPI) extract when
   present, exposing a `$ingredients` table of per-ingredient strengths and an
   `is_combination` flag on `$master`. A new bundled [dmd_ingredients] dataset
-  documents the schema (empty until rebuilt from a release containing VPI).
+  holds the same table for the bundled release (26,667 rows for Week 15
+  2026).
 - `dmd_dose_optimise()`, `dmd_dose_cost()`, and `dmd_dose_cost_range()` gain an
   `ingredient` argument: dose against a single named active ingredient, which
   lets combination products be optimised for one ingredient (e.g. the codeine
@@ -318,7 +467,9 @@ following changes can alter **results** and are worth noting when upgrading:
   (`dmd_db$loaded_at`, or the `dmd_release_label` attribute of the bundled
   `dmd_master`) rather than hashing the full 118k-row tibble on every call.
   This eliminates a ~10 ms per-call digest overhead for the common case where
-  the database does not change within a session.
+  the database does not change within a session. (Superseded in 0.6.2:
+  keying on these labels could serve stale costs, so the cache now keys on
+  the table's contents; #28, #29, #30.)
 - `.dose_dp()` internal DP function: the inner per-strength loop is now fully
   vectorised using `which.min()` and R vector arithmetic, replacing a pure R
   nested loop. This reduces loop overhead for the outer DP iterations and
