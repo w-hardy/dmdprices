@@ -369,6 +369,12 @@ test_that(".container_amount() reads an unambiguous container size in the right 
   expect_equal(amount("Drug 1mg/ml solution 10ml vials and Drug 1mg/ml solution 20ml vials", "ml"), 10)
   expect_equal(amount("Drug 1mg/ml solution 10ml vials and Drug 2mg/ml solution 10ml vials", "ml"), 10)
   expect_equal(amount("Normal immunoglobulin human 2.5g/25ml solution for infusion vials and Recombinant human hyaluronidase solution for infusion 1.25ml vials", "ml"), NA_real_)
+  # An "and" inside one product's name (no container word before it) does
+  # not start another product; two sizes joined by "and" are ambiguous.
+  expect_equal(amount("Bismuth subnitrate and Iodoform paste 30g sachets", "mg"), 30000)
+  expect_equal(amount("Generic Beechams Cold and Flu Hot Lemon and Honey oral powder 6g sachets", "mg"), 6000)
+  expect_equal(amount("Phenol and Glycerol injection 5ml ampoules BP 2005", "ml"), 5)
+  expect_equal(amount("Vitamins B and C injection 5ml and 2ml ampoules", "ml"), NA_real_)
   # dm+d pack brands and packaging words may sit between the size and the
   # container word; a decimal comma is not a thousands separator.
   expect_equal(amount("Generic Ionolyte infusion 500ml KabiPac bottles", "ml"), 500)

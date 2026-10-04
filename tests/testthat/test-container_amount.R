@@ -35,6 +35,9 @@ test_that("a container's dose comes from the size its name states", {
     "Heparitest 5,000units/1litre infusion bags",
     "Immunotest 2.5g/25ml solution for infusion vials and Hyalutest solution for infusion 1.25ml vials",
     "Lidotest 10mg/ml solution for injection ampoules 1/2 strength",
+    "Mixtest 0.25mg/0.37ml solution for injection 1.5ml vials",
+    "Mixtest 1mg/1ml solution for injection vials",
+    "Mixtest 2mg/2ml solution for injection vials",
     "Morphine 10mg/1ml solution for injection ampoules",
     "Morphine 10mg/5ml oral solution",
     "Morphine 10mg/ml solution for injection ampoules",
@@ -43,13 +46,50 @@ test_that("a container's dose comes from the size its name states", {
   ))
   expect_equal(enriched$dose_basis, c(
     "container", "container", "container", "container", "container",
-    "container", "container", "pack", "container", "container", "container"
+    "container", "container", "container", "container", "container", "pack",
+    "container", "container", "container"
   ))
   expect_equal(
     enriched$per_item_dose,
-    c(4, 0.45, 25000, 5000, 2500, NA_real_, 10, 200, NA_real_, 0.25 * 1.5 / 0.37, 50)
+    c(
+      4, 0.45, 25000, 5000, 2500, NA_real_, 0.25 * 1.5 / 0.37, 1, 2, 10, 200,
+      NA_real_, 0.25 * 1.5 / 0.37, 50
+    )
   )
-  expect_equal(enriched$items_per_pack, c(1, 30, 10, 10, 1, 10, 10, 1, 10, 4, 4))
+  expect_equal(
+    enriched$items_per_pack,
+    c(1, 30, 10, 10, 1, 10, 1, 1, 1, 10, 1, 10, 4, 4)
+  )
+})
+
+test_that("one off-grid container does not cost its group its exact combinations", {
+  .local_fresh_dose_cache()
+  # 1 mg and 2 mg vials (1,000p and 1,500p) beside a 1.0135 mg vial (2,000p):
+  # 3 mg is still 1 mg + 2 mg exactly, 1 mg one vial, and 1.01 mg the 2 mg
+  # vial (1,500p over-delivering) rather than the dearer off-grid one.
+  three <- dmd_dose_optimise("Mixtest", dose = 3, dose_unit = "mg", db = db, objective = "cheapest")
+  expect_true(three$dose_exact)
+  expect_equal(three$dose_cost_pence, 2500)
+  expect_equal(three$total_items, 2)
+  expect_equal(
+    dmd_dose_cost("Mixtest", dose = c(3, 1, 1.01), dose_unit = "mg", db = db),
+    c(2500, 1000, 1500)
+  )
+  expect_equal(
+    dmd_dose_cost("Mixtest", dose = c(3, 1, 1.01), dose_unit = "mg", db = db, objective = "min_items"),
+    c(2500, 1000, 1500)
+  )
+  # Only the off-grid vial reaches 1.02 mg in one container at the lowest
+  # cost per item? No: the 2 mg vial (1,500p) still wins; 2.03 mg needs two
+  # off-grid vials (4,000p) or 1 mg + 2 mg (2,500p).
+  expect_equal(
+    dmd_dose_cost("Mixtest", dose = c(1.02, 2.03), dose_unit = "mg", db = db),
+    c(1500, 2500)
+  )
+  expect_equal(
+    dmd_dose_cost("Mixtest", dose = 3, dose_unit = "mg", db = db, can_split = FALSE),
+    2500
+  )
 })
 
 test_that("a whole container whose dose is off the solver's grid still covers the dose", {

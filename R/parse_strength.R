@@ -155,16 +155,21 @@
   if (n == 0L) {
     return(out)
   }
-  # Only this product's phrase: an "and" followed by a capital or a digit
-  # starts another product (the split .pack_kind() uses).
-  phrase <- sub("\\s+and\\s+(?=[A-Z0-9]).*$", "", medicine, perl = TRUE)
+  phrase <- .own_phrase(medicine)
+  # "5ml and 2ml ampoules" names two sizes, not one.
+  and_sizes <- grepl(
+    "(?<![/\\d.,])\\d[\\d.,]*\\s?(?:ml|millilitres?|microlitres?|litres?|l|g|grams?|mg|kg)\\s+and\\s+\\d",
+    phrase,
+    perl = TRUE,
+    ignore.case = TRUE
+  )
   hits <- regmatches(
     phrase,
     gregexpr(.container_token_rx, phrase, perl = TRUE, ignore.case = TRUE)
   )
   for (i in seq_len(n)) {
     tokens <- hits[[i]]
-    if (is.na(medicine[i]) || length(tokens) == 0L) {
+    if (is.na(medicine[i]) || length(tokens) == 0L || and_sizes[i]) {
       next
     }
     parts <- regmatches(
@@ -180,6 +185,34 @@
     }
   }
   out
+}
+
+# This product's own phrase of an "and"-joined name. The split is the one
+# .pack_kind() uses (" and " before a capital or a digit), but it only counts
+# once a container word has been seen: "... vials and Recombinant ... 1.25ml
+# vials" is two products, while "Bismuth subnitrate and Iodoform paste 30g
+# sachets" is one.
+.own_phrase <- function(medicine) {
+  container <- paste0("\\b", .container_words, "\\b")
+  parts <- strsplit(medicine, "\\s+and\\s+(?=[A-Z0-9])", perl = TRUE)
+  vapply(
+    parts,
+    function(p) {
+      if (length(p) <= 1L) {
+        return(if (length(p) == 1L) p else NA_character_)
+      }
+      keep <- 1L
+      for (i in seq_along(p)[-1L]) {
+        before <- paste(p[seq_len(i - 1L)], collapse = " and ")
+        if (grepl(container, before, perl = TRUE, ignore.case = TRUE)) {
+          break
+        }
+        keep <- i
+      }
+      paste(p[seq_len(keep)], collapse = " and ")
+    },
+    character(1)
+  )
 }
 
 # The container amounts a name supports in each physical dimension: the stated
