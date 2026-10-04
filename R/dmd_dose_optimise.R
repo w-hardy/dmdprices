@@ -930,7 +930,6 @@ dmd_dose_optimise <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
-  rounded <- character()
   unresolved_precision <- character()
   unresolved_table <- character()
   for (g in seq_len(nrow(groups))) {
@@ -963,9 +962,7 @@ dmd_dose_optimise <- function(
       } else if (!is.null(row)) {
         out[[length(out) + 1L]] <- row
         if (.policy_row(row) && !row$dose_exact) {
-          if (.dose_rounded(row)) {
-            rounded <- c(rounded, groups$preparation_label[g])
-          } else if (.exact_feasible(row)) {
+          if (.exact_feasible(row)) {
             over_available <- c(over_available, groups$preparation_label[g])
           } else {
             over_impossible <- c(over_impossible, groups$preparation_label[g])
@@ -980,7 +977,6 @@ dmd_dose_optimise <- function(
   # query that matched nothing.
   .warn_no_exact(no_exact, quiet)
   .warn_over_delivery(over_impossible, over_available, quiet)
-  .warn_rounded(rounded, quiet)
   .warn_unresolved(unresolved_precision, unresolved_table, quiet)
 
   if (length(out) == 0) {
@@ -1220,7 +1216,6 @@ dmd_dose_cost <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
-  rounded <- character()
   unresolved_precision <- character()
   unresolved_table <- character()
 
@@ -1284,9 +1279,7 @@ dmd_dose_cost <- function(
             # Recorded only once the cost is usable, so the warning describes
             # numbers the caller actually receives.
             if (.policy_row(row) && !row$dose_exact) {
-              if (.dose_rounded(row)) {
-                rounded <<- c(rounded, groups$preparation_label[g])
-              } else if (.exact_feasible(row)) {
+              if (.exact_feasible(row)) {
                 over_available <<- c(over_available, groups$preparation_label[g])
               } else {
                 over_impossible <<- c(
@@ -1314,7 +1307,6 @@ dmd_dose_cost <- function(
 
   .warn_no_exact(no_exact, quiet)
   .warn_over_delivery(over_impossible, over_available, quiet)
-  .warn_rounded(rounded, quiet)
   .warn_unresolved(unresolved_precision, unresolved_table, quiet)
   costs
 }
@@ -1417,7 +1409,6 @@ dmd_dose_cost_range <- function(
     "doses per pack is unknown",
     "No exact-dose combination exists",
     "Delivering more than the requested dose",
-    "was rounded to the precision of",
     "could not be resolved"
   )
   call_cost <- function(obj) {
@@ -1466,11 +1457,8 @@ dmd_dose_cost_range <- function(
 # report their surplus in `notes` alone. `impossible` names groups with no exact
 # combination at all, `available` those where one existed but the objective
 # preferred an over-delivering combination (reachable only under "allow").
-# A dose with finer decimals than the strengths has no exact combination, so an
-# over-delivering row for it is `impossible`. A row that misses the dose only
-# because the dose was rounded to the strengths' scale goes to .warn_rounded()
-# instead, so neither bullet, nor the advice to pass "forbid", is reached under
-# "forbid".
+# A dose off the strengths' grid has no exact combination, so an
+# over-delivering row for it is `impossible`.
 .warn_over_delivery <- function(impossible, available, quiet = FALSE) {
   impossible <- unique(impossible[!is.na(impossible)])
   available <- unique(available[!is.na(available)])
@@ -1498,32 +1486,13 @@ dmd_dose_cost_range <- function(
   invisible()
 }
 
-# Warn once about returned combinations that miss the requested dose only
-# because it has finer decimals than the group's strengths: the solver works on
-# the strengths' integer scale and takes the dose to the nearest unit of it
-# (2.4 mg against 1 mg tablets delivers 2 mg; 2.6 mg delivers 3 mg). That
-# happens under every over-delivery policy, so the warning neither calls the
-# result an over-delivery nor suggests "forbid". `labels` may repeat (one per
-# objective and, in dmd_dose_cost(), per dose).
-.warn_rounded <- function(labels, quiet = FALSE) {
-  labels <- unique(labels[!is.na(labels)])
-  if (isTRUE(quiet) || length(labels) == 0L) {
-    return(invisible())
-  }
-  cli::cli_warn(c(
-    "The requested dose was rounded to the precision of the strengths for {length(labels)} preparation group{?s}: {.val {labels}}.",
-    "i" = "Its decimals are finer than the strengths resolve, so it was taken to the nearest whole unit of their scale and the combination delivers slightly less or more than requested.",
-    "i" = "Pass {.code quiet = TRUE} to silence this."
-  ))
-  invisible()
-}
-
 # Warn once about preparation groups the solver could not run for the dose:
-# `precision` names groups whose dose still rounds to zero at the capped
-# integer scale of their strengths, `table` those whose dose table would exceed
-# the cell cap. Both return no row, so a caller reading bare numbers would
-# otherwise see an NA that is indistinguishable from "no product matched".
-# `labels` may repeat (one per objective and, in dmd_dose_cost(), per dose).
+# `precision` names groups whose strengths are not whole numbers of grid units
+# at the integer scale the dose table allows for the dose, `table` those whose
+# dose table would exceed the cell cap. Both return no row, so a caller
+# reading bare numbers would otherwise see an NA that is indistinguishable
+# from "no product matched". `labels` may repeat (one per objective and, in
+# dmd_dose_cost(), per dose).
 .warn_unresolved <- function(precision, table, quiet = FALSE) {
   precision <- unique(precision[!is.na(precision)])
   # A group can hit both guards across a dose vector; name it once, under the
@@ -1537,7 +1506,7 @@ dmd_dose_cost_range <- function(
   if (length(precision) > 0L) {
     msg <- c(
       msg,
-      "*" = "{.val {precision}}: the dose is below the resolvable precision at the integer scale the group's dose table allows."
+      "*" = "{.val {precision}}: the strengths cannot be represented at the precision the group's dose table allows for this dose."
     )
   }
   if (length(table) > 0L) {

@@ -467,15 +467,33 @@ test_that("the cost range sees every preparation group for a small dose", {
 })
 
 test_that("the integer scale keeps the dose at least one unit", {
-  expect_equal(.pick_scale_safe(c(12, 20, 40), 0.1), 10)
+  expect_equal(.pick_scale_safe(c(12, 20, 40), 0.1), 1)
   expect_equal(.pick_scale_safe(c(0.5, 5), 0.1), 10)
   expect_equal(.pick_scale_safe(c(500, 1000), 750), 1)
 })
 
-test_that("a dose below the resolvable precision warns instead of vanishing", {
-  # The warning is one of the three `quiet` governs, so it is asserted with
-  # the default `quiet = FALSE`.
-  expect_warning(
+test_that("a dose below the smallest strength is covered by one container", {
+  # 5e-8 mg against a 20 mg inhaler: the smallest total at or above the dose
+  # is one whole inhaler; no exact combination exists, so dose_exact is FALSE.
+  expect_no_warning(
+    res <- dmd_dose_optimise(
+      "salbutamol",
+      dose = 5e-8,
+      dose_unit = "mg",
+      db = db,
+      preparation = "inhaler",
+      objective = "cheapest",
+      over_delivery = "minimise"
+    )
+  )
+  expect_equal(nrow(res), 1L)
+  expect_equal(res$total_items, 1)
+  expect_equal(res$cost_prorata_pence, 150)
+  expect_false(res$dose_exact)
+
+  # Whole inhalers are exempt from the over-delivery policy, so "forbid"
+  # returns the same inhaler with the exemption noted, and no warning.
+  expect_no_warning(
     res <- dmd_dose_optimise(
       "salbutamol",
       dose = 5e-8,
@@ -483,21 +501,21 @@ test_that("a dose below the resolvable precision warns instead of vanishing", {
       db = db,
       preparation = "inhaler",
       objective = "cheapest"
-    ),
-    "precision"
+    )
   )
-  expect_equal(nrow(res), 0L)
+  expect_equal(nrow(res), 1L)
+  expect_equal(res$cost_prorata_pence, 150)
+  expect_match(res$notes, "over-delivery-policy-not-applied")
 })
 
 # ── The dose never raises the scale beyond what keeps the DP small ───────────
 
 test_that("a dose with finer decimals than the strengths keeps the strengths' scale", {
   # 133.333 mg against 500 / 5000 mg tablets: the strengths need no scaling,
-  # so the dose is taken to the nearest whole unit (133 mg) exactly as 0.6.0
-  # did, and the smallest over-delivering build is one 500 mg tablet at
-  # 100p / 28 = 3.571429p. Scaling the dose to full precision instead would
-  # scale the 5000 mg coin with it, blow the DP past its 5,000,000-cell
-  # limit and return NA.
+  # and the dose sits off their grid, so the smallest total at or above it is
+  # one 500 mg tablet at 100p / 28 = 3.571429p. Scaling the dose to full
+  # precision instead would scale the 5000 mg coin with it, blow the DP past
+  # its 5,000,000-cell limit and return NA.
   master <- tibble::tibble(
     medicine = c("Testdrug 500mg tablets", "Testdrug 5000mg tablets"),
     pack_size = c(28, 28),
@@ -530,12 +548,11 @@ test_that("a dose with finer decimals than the strengths keeps the strengths' sc
   )
 })
 
-test_that("a very fine dose raises the scale only until it is one unit", {
-  # 0.25 microgram against 12 / 20 / 40 mg inhalers: the scale is raised by
-  # powers of ten until the dose is at least one unit (0.00025 * 10000 = 2.5),
-  # not until it is an exact integer (100,000), so the DP stays small and one
-  # whole inhaler is still the answer.
-  expect_equal(.pick_scale_safe(c(12, 20, 40), 0.00025), 10000)
+test_that("a very fine dose keeps the strengths' scale and one inhaler covers it", {
+  # 0.25 microgram against 12 / 20 / 40 mg inhalers: the strengths' scale is
+  # 1 and the dose is not raised onto a finer grid, so the DP stays small and
+  # one whole inhaler is the answer.
+  expect_equal(.pick_scale_safe(c(12, 20, 40), 0.00025), 1)
   res <- dmd_dose_optimise(
     "salbutamol",
     dose = 0.25,
@@ -563,13 +580,41 @@ test_that("a very fine dose raises the scale only until it is one unit", {
   list(value = value, warnings = seen)
 }
 
+# A group whose strengths the capped dose table cannot represent: 0.125 mg and
+# 1 mg need a scale of 1000, but a 6000.125 mg dose caps it at 833, where
+# 0.125 mg is 104.125 units. Two preparations (tablets, capsules) so that a
+# call can drop more than one group.
+.fake_unresolvable_db <- function() {
+  master <- tibble::tibble(
+    medicine = c(
+      "Finedrug 125microgram tablets",
+      "Finedrug 1mg tablets",
+      "Finedrug 125microgram capsules",
+      "Finedrug 1mg capsules"
+    ),
+    pack_size = rep(28, 4),
+    unit = c("tablet", "tablet", "capsule", "capsule"),
+    vmp_snomed_code = paste0("V", 1:4),
+    vmpp_snomed_code = paste0("VPP", 1:4),
+    drug_tariff_category = rep("Part VIIIA Category M", 4),
+    basic_price = c(100L, 900L, 110L, 950L),
+    nhs_indicative_price = c(100L, 900L, 110L, 950L),
+    price_basis = rep("NHS Indicative Price", 4),
+    price_date = rep("2025-08-08", 4),
+    ampp_name = paste("Finedrug", c("125microgram", "1mg", "125microgram", "1mg"), "28", c("tablet", "tablet", "capsule", "capsule")),
+    ampp_snomed_code = paste0("APP", 1:4)
+  )
+  structure(list(master = master, loaded_at = .fixed_loaded_at), class = "dmd_db")
+}
+
 test_that("the precision warning is raised exactly once by the cost range", {
   got <- .collect_warnings(dmd_dose_cost_range(
-    "salbutamol",
-    dose = 5e-8,
+    "finedrug",
+    dose = 6000.125,
     dose_unit = "mg",
-    db = db,
-    preparation = "inhaler"
+    db = .fake_unresolvable_db(),
+    preparation = "tablet",
+    over_delivery = "minimise"
   ))
   expect_length(grep("precision", got$warnings), 1L)
   expect_true(is.na(got$value$lo_pence))
@@ -577,29 +622,31 @@ test_that("the precision warning is raised exactly once by the cost range", {
 })
 
 test_that("one unresolved-dose warning per call names every dropped group", {
-  # Two groups (inhaler and injection) are both below the resolvable precision
-  # for 5e-8 mg; the default objective pair must not double the warning and
-  # the second group must not be lost from it.
+  # Two groups (tablets and capsules) cannot be represented for 6000.125 mg;
+  # the default objective pair must not double the warning and the second
+  # group must not be lost from it.
   got <- .collect_warnings(dmd_dose_optimise(
-    "salbutamol",
-    dose = 5e-8,
+    "finedrug",
+    dose = 6000.125,
     dose_unit = "mg",
-    db = db
+    db = .fake_unresolvable_db(),
+    over_delivery = "minimise"
   ))
   expect_equal(nrow(got$value), 0L)
   expect_length(grep("precision", got$warnings), 1L)
-  expect_match(got$warnings[grep("precision", got$warnings)], "inhaler")
-  expect_match(got$warnings[grep("precision", got$warnings)], "injection")
+  expect_match(got$warnings[grep("precision", got$warnings)], "tablet")
+  expect_match(got$warnings[grep("precision", got$warnings)], "capsule")
 })
 
 test_that("quiet = TRUE silences the unresolved-dose warning", {
   got <- .collect_warnings(dmd_dose_optimise(
-    "salbutamol",
-    dose = 5e-8,
+    "finedrug",
+    dose = 6000.125,
     dose_unit = "mg",
-    db = db,
-    preparation = "inhaler",
+    db = .fake_unresolvable_db(),
+    preparation = "tablet",
     objective = "cheapest",
+    over_delivery = "minimise",
     quiet = TRUE
   ))
   expect_equal(nrow(got$value), 0L)
@@ -608,22 +655,21 @@ test_that("quiet = TRUE silences the unresolved-dose warning", {
 
 test_that("a vector of unresolved doses raises the warning once", {
   got <- .collect_warnings(dmd_dose_cost(
-    "salbutamol",
-    dose = rep(5e-8, 5),
+    "finedrug",
+    dose = rep(6000.125, 5),
     dose_unit = "mg",
-    db = db,
-    preparation = "inhaler"
+    db = .fake_unresolvable_db(),
+    preparation = "tablet",
+    over_delivery = "minimise"
   ))
   expect_true(all(is.na(got$value)))
   expect_length(grep("precision", got$warnings), 1L)
 })
 
-test_that("raising the scale for a fine dose never pushes a priceable group past the DP cap", {
+test_that("a fine dose against coarse strengths is priced at the strengths' scale", {
   # Strengths 0.01 mg and 5000 mg, dose 0.006 mg. The strengths' own scale is
-  # 100 (0.01 * 100 = 1); at 100 the dose is 0.6 units, and raising to 1000
-  # would make the table 5,000 * 1,000 + 6 cells — past the 5,000,000 cap that
-  # skips the group. 0.6.0 stopped at 100, took the dose to one unit (0.01 mg)
-  # and priced one tablet at 100p / 28. That answer must survive the raise.
+  # 100 (0.01 * 100 = 1); the dose is 0.6 units, off the grid, so the smallest
+  # total at or above it is one 0.01 mg tablet at 100p / 28.
   master <- tibble::tibble(
     medicine = c("Finedrug 10microgram tablets", "Finedrug 5g tablets"),
     pack_size = c(28, 28),

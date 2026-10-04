@@ -20,31 +20,13 @@
   max_scale = 1e6,
   dp_cap = 5e6
 ) {
-  # The scale comes from the strengths, as before; it is then raised by
-  # powers of ten only until the dose is at least one unit, so a dose finer
-  # than every strength (100 micrograms against 20 mg inhalers) no longer
-  # rounds to zero and vanishes with its group. It is NOT raised to make the
-  # dose an exact integer: that would scale max_over with it and push a
-  # 133.333 mg dose against 5,000 mg tablets past the DP cell limit, where
-  # 0.6.0 simply took the dose to the nearest whole unit (133 mg).
+  # The scale comes from the strengths alone. Every combination of grid
+  # strengths lies on their grid, so a dose off it can never be delivered
+  # exactly at any finer scale, and the first grid point at or above it is
+  # the smallest acceptable total (.grid_target()); raising the scale for the
+  # dose would only enlarge the table (a 133.333 mg dose against 5,000 mg
+  # tablets would push it past the cell cap).
   s <- .pick_scale(strengths, max_scale)
-  if (!is.na(dose_canonical) && dose_canonical > 0) {
-    # Each raise scales the DP table (dose + largest strength, in scaled
-    # units) with it. A raise that would push a group past the table cap is
-    # not taken: the group then prices at the strengths' own scale, as it did
-    # before the raise existed, instead of being refused where it once priced.
-    largest <- suppressWarnings(max(strengths[!is.na(strengths) & strengths > 0]))
-    if (!is.finite(largest)) {
-      largest <- 0
-    }
-    while (
-      s < max_scale &&
-        dose_canonical * s < 1 &&
-        (dose_canonical + largest) * (s * 10) + 1 <= dp_cap
-    ) {
-      s <- s * 10
-    }
-  }
   all_vals <- c(strengths, dose_canonical)
   all_vals <- all_vals[!is.na(all_vals) & all_vals > 0]
   if (length(all_vals) == 0) {
@@ -58,11 +40,12 @@
   min(s, max(max_safe_int, 1L), max(max_safe_dp, 1L))
 }
 
-# A group the solver cannot run for this dose — the dose still rounds to zero
-# at the capped integer scale ("precision"), or the dose table would exceed
-# the cell cap ("table") — is signalled with this sentinel rather than a bare
-# NULL, so the callers can name every such group in ONE warning per call
-# (honouring `quiet`) instead of one warning per group and objective.
+# A group the solver cannot run for this dose — the group's strengths are not
+# whole numbers of grid units at the integer scale the dose table allows for
+# this dose ("precision"), or the dose table would exceed the cell cap
+# ("table") — is signalled with this sentinel rather than a bare NULL, so the
+# callers can name every such group in ONE warning per call (honouring
+# `quiet`) instead of one warning per group and objective.
 .unresolved_result <- function(reason = c("precision", "table")) {
   structure(list(), class = "dmd_unresolved", reason = match.arg(reason))
 }
@@ -89,6 +72,43 @@
     }
   }
   s
+}
+
+# Tolerance for comparing doses in canonical units: 1e-9 relative, with a
+# 1e-9 (one picogram, one nanolitre) floor. That is about six orders of
+# magnitude above double-precision arithmetic error and three below the
+# nanogram, the finest unit a dm+d strength is stated in, so floating-point
+# noise (0.3 / 0.1) is absorbed and no stated dose difference is.
+.dose_tol <- function(dose) {
+  1e-9 * max(1, dose)
+}
+
+# Where the requested dose sits on the strengths' integer grid at `scale`:
+# `on_grid` when a grid point is within tolerance of the dose, `t_exact` that
+# point (NA otherwise), and `t_lo` the smallest grid point delivering at least
+# the dose: the exact point when the dose is on the grid, else the next one
+# up. The dose itself is never replaced by a grid point: a combination's total
+# is compared with the dose, not with `t_lo`, when the result is assembled. A
+# dose below one grid unit is covered by the smallest reachable total.
+.grid_target <- function(dose_canonical, scale) {
+  x <- dose_canonical * scale
+  t_round <- round(x)
+  on_grid <- t_round >= 1 &&
+    abs(t_round / scale - dose_canonical) <= .dose_tol(dose_canonical)
+  list(
+    on_grid = on_grid,
+    t_exact = if (on_grid) t_round else NA_real_,
+    t_lo = if (on_grid) t_round else max(1, ceiling(x))
+  )
+}
+
+# TRUE when every strength is a whole number of grid units at `scale`, within
+# .pick_scale()'s tolerance. The DP sums rounded integer strengths, so a
+# strength the capped scale cannot represent would make `dose_delivered`
+# (t / scale) disagree with what the chosen items deliver.
+.strengths_on_grid <- function(strengths, scale) {
+  x <- strengths * scale
+  all(abs(x - round(x)) <= 1e-9)
 }
 
 # ── Pack-level coin builder ──────────────────────────────────────────────────
@@ -227,18 +247,14 @@
 }
 
 # Records, on a returned result row, that the over-delivery policy governed this
-# group, whether the group could have delivered the dose exactly, and whether
-# the row misses the dose only because the dose was rounded to the integer
-# scale of the group's strengths (it delivers that rounded dose, which differs
-# from the request: 2.4 mg against 1 mg tablets delivers 2 mg). Carried as
+# group and whether the group could have delivered the dose exactly. Carried as
 # attributes rather than columns: the caller reads them to build one warning per
 # call, and dplyr::bind_rows() drops them before the tibble reaches the user.
-# Groups exempt from the policy carry none, which is what keeps them out of
-# the over-delivery and rounding warnings.
-.set_policy_info <- function(res, exact_feasible, dose_rounded = FALSE) {
+# Groups exempt from the policy carry neither, which is what keeps them out of
+# the over-delivery warning.
+.set_policy_info <- function(res, exact_feasible) {
   attr(res, "policy_applied") <- TRUE
   attr(res, "exact_feasible") <- exact_feasible
-  attr(res, "dose_rounded") <- dose_rounded
   res
 }
 
@@ -250,16 +266,11 @@
   isTRUE(attr(x, "exact_feasible", exact = TRUE))
 }
 
-.dose_rounded <- function(x) {
-  isTRUE(attr(x, "dose_rounded", exact = TRUE))
-}
-
 # dplyr::bind_rows() carries the attributes of a single input through, so strip
 # them explicitly before the result reaches the user.
 .drop_policy_info <- function(x) {
   attr(x, "policy_applied") <- NULL
   attr(x, "exact_feasible") <- NULL
-  attr(x, "dose_rounded") <- NULL
   x
 }
 
@@ -587,12 +598,20 @@
   )
 
   scale <- .pick_scale_safe(strengths, dose_canonical)
-  strengths_int <- as.integer(round(strengths * scale))
-  dose_int <- as.integer(round(dose_canonical * scale))
-
-  if (dose_int <= 0) {
+  if (!.strengths_on_grid(strengths, scale)) {
     return(.unresolved_result("precision"))
   }
+  strengths_int <- as.integer(round(strengths * scale))
+
+  # The requested dose is the target; the grid only bounds the search. Off the
+  # grid, no combination of grid strengths can deliver the dose exactly, so
+  # "forbid" has nothing to return, and the other policies search from the
+  # first grid point above the dose.
+  target <- .grid_target(dose_canonical, scale)
+  if (identical(over_delivery, "forbid") && !target$on_grid) {
+    return(.no_exact_result())
+  }
+  dose_int <- as.integer(target$t_lo)
   max_strength <- max(strengths_int)
   max_over <- max_strength
 
@@ -715,7 +734,7 @@
   dose_delivered <- best$t / scale
   over_amount <- dose_delivered - dose_canonical
 
-  if (over_amount > 0) {
+  if (over_amount > .dose_tol(dose_canonical)) {
     notes <- c(notes, "over-delivery")
     if (identical(over_delivery, "minimise")) {
       notes <- c(notes, "over-delivery-minimised")
@@ -753,19 +772,13 @@
   if (!policy_applies) {
     return(res)
   }
-  # An exact target is reachable iff the dose sits on the strengths' scale and
+  # An exact target is reachable iff the dose sits on the strengths' grid and
   # the DP found any item combination summing to it, whatever this objective
-  # settled on. A dose with finer decimals than the strengths is rounded to
-  # `dose_int`, which no combination makes exactly, so a reachable `dose_int`
-  # does not count. A row that lands on that rounded target delivers the dose
-  # rounded to the strengths' scale: the only thing it misses is the requested
-  # decimals. The tolerance matches `dose_exact` in .assemble_result().
-  dose_on_scale <- abs(dose_int / scale - dose_canonical) <=
-    1e-9 * max(1, dose_canonical)
+  # settled on.
   .set_policy_info(
     res,
-    exact_feasible = dose_on_scale && is.finite(dp$min_items[dose_int + 1L]),
-    dose_rounded = best$t == dose_int && !res$dose_exact
+    exact_feasible = target$on_grid &&
+      is.finite(dp$min_items[target$t_exact + 1L])
   )
 }
 
@@ -915,12 +928,13 @@
   )
 
   scale <- .pick_scale_safe(pack_doses, dose_canonical)
-  strengths_int <- as.integer(round(pack_doses * scale))
-  dose_int <- as.integer(round(dose_canonical * scale))
-
-  if (dose_int <= 0) {
+  if (!.strengths_on_grid(pack_doses, scale)) {
     return(.unresolved_result("precision"))
   }
+  strengths_int <- as.integer(round(pack_doses * scale))
+  # Whole packs must cover the dose: the search starts from the first grid
+  # point at or above it (.grid_target()).
+  dose_int <- as.integer(.grid_target(dose_canonical, scale)$t_lo)
   max_strength <- max(strengths_int)
   max_over <- max_strength
 
@@ -1004,7 +1018,7 @@
   dose_delivered <- best$t / scale
   over_amount <- dose_delivered - dose_canonical
 
-  if (over_amount > 0) {
+  if (over_amount > .dose_tol(dose_canonical)) {
     notes <- c(notes, "over-delivery")
   }
   if (policy_exempt) {
@@ -1063,7 +1077,7 @@
   over_delivery <- dose_delivered - dose_canonical
   # Exactness is reported as a flag rather than left to the caller comparing a
   # floating-point difference to zero.
-  dose_exact <- abs(over_delivery) <= 1e-9 * max(1, dose_canonical)
+  dose_exact <- abs(over_delivery) <= .dose_tol(dose_canonical)
   if (dose_exact) {
     notes <- c(notes, "exact-dose")
   }

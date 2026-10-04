@@ -535,6 +535,39 @@
   )
 }
 
+# Fake dmd_db for the solver's grid semantics: one 1 mg strength, so every
+# dose with a decimal part sits off the strengths' integer grid.
+#   Testdrug 1mg tablets, 100 at 900p (9p each) and 10 at 100p (10p each)
+#   Testdrug 1mg/1ml solution for injection vials, 10 at 1000p (100p each)
+#   Testdrug 5mg/5ml solution for injection vials, 1 at 450p
+.fake_grid_db <- function(loaded_at = .fixed_loaded_at) {
+  master <- tibble::tibble(
+    medicine = c(
+      "Testdrug 1mg tablets",
+      "Testdrug 1mg tablets",
+      "Testdrug 1mg/1ml solution for injection vials",
+      "Testdrug 5mg/5ml solution for injection vials"
+    ),
+    pack_size = c(100, 10, 10, 1),
+    unit = c("tablet", "tablet", "vial", "vial"),
+    vmp_snomed_code = c("V_TAB", "V_TAB", "V_VIAL1", "V_VIAL5"),
+    vmpp_snomed_code = paste0("VPP", 1:4),
+    drug_tariff_category = rep("Part VIIIA Category M", 4),
+    basic_price = c(900L, 100L, 1000L, 450L),
+    nhs_indicative_price = c(900L, 100L, 1000L, 450L),
+    price_basis = rep("NHS Indicative Price", 4),
+    price_date = rep("2025-08-08", 4),
+    ampp_name = c(
+      "Testdrug 1mg 100 tablet",
+      "Testdrug 1mg 10 tablet",
+      "Testdrug 1mg/1ml vials 10 vial",
+      "Testdrug 5mg/5ml vials 1 vial"
+    ),
+    ampp_snomed_code = paste0("APP", 1:4)
+  )
+  structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
+}
+
 # Start a test with an empty dose-candidate cache (the memo and its remembered
 # table key) and empty it again when the test ends, so nothing cached carries
 # over between tests. Call it first in any test whose outcome depends on what
