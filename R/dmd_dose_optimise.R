@@ -969,12 +969,16 @@ dmd_dose_optimise <- function(
 #'   warning per call) rather than the cost of an over-delivered dose. A dose
 #'   with finer decimals than the strengths is first taken to the nearest whole
 #'   unit of their scale (see `over_delivery` in [dmd_dose_optimise()]), so its
-#'   cost can be for slightly less or more than requested; a warning says so.
+#'   cost can be for slightly less or more than requested. Where the
+#'   over-delivery policy applies, a warning says so; whole containers
+#'   (`can_split_vials = FALSE`) and whole packs (`can_split = FALSE`) are
+#'   rounded the same way without a warning.
 #'   Pass `"minimise"` or `"allow"` to cost over-delivering combinations.
 #' @param quiet As in [dmd_dose_optimise()]. Because this function returns bare
 #'   numbers, the warnings are the only signal that a cost is for an
-#'   over-delivered or rounded dose; `TRUE` silences them for bulk costing
-#'   runs.
+#'   over-delivered or rounded dose in the groups the over-delivery policy
+#'   governs (whole-container and whole-pack groups are not warned about);
+#'   `TRUE` silences them for bulk costing runs.
 #' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
 #'   or negative elements are returned as `na_value` without error.
 #' @param na_value Scalar returned for doses that are `NA`, non-positive, or for

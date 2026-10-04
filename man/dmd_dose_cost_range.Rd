@@ -36,13 +36,17 @@ doses that no combination delivers exactly return \code{na_value} (with one
 warning per call) rather than the cost of an over-delivered dose. A dose
 with finer decimals than the strengths is first taken to the nearest whole
 unit of their scale (see \code{over_delivery} in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}), so its
-cost can be for slightly less or more than requested; a warning says so.
+cost can be for slightly less or more than requested. Where the
+over-delivery policy applies, a warning says so; whole containers
+(\code{can_split_vials = FALSE}) and whole packs (\code{can_split = FALSE}) are
+rounded the same way without a warning.
 Pass \code{"minimise"} or \code{"allow"} to cost over-delivering combinations.}
 
 \item{quiet}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. Because this function returns bare
 numbers, the warnings are the only signal that a cost is for an
-over-delivered or rounded dose; \code{TRUE} silences them for bulk costing
-runs.}
+over-delivered or rounded dose in the groups the over-delivery policy
+governs (whole-container and whole-pack groups are not warned about);
+\code{TRUE} silences them for bulk costing runs.}
 
 \item{na_value}{Scalar returned for doses that are \code{NA}, non-positive, or
 for which no solution is found. Default \code{NA_real_}.}

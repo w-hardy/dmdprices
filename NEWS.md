@@ -135,7 +135,11 @@
   requested dose was rounded to the precision of the strengths ..."
   instead, once per call (and once per `dmd_dose_cost_range()` call);
   `quiet = TRUE` silences it, and `?dmd_dose_optimise` documents the
-  rounding under `over_delivery`. Under `"allow"`, a rounded dose whose
+  rounding under `over_delivery`. The warning covers groups the
+  over-delivery policy governs; whole-container groups (vials and ampoules
+  with `can_split_vials = FALSE`) and whole-pack groups (`can_split =
+  FALSE`) round the dose the same way without a warning, as in earlier
+  versions. Under `"allow"`, a rounded dose whose
   chosen combination over-delivers now gets the over-delivery warning's "no
   exact-dose combination exists" line; it used to say that an exact-dose
   combination existed. Costs are unchanged. This matters for eptacog alfa,
