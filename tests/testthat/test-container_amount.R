@@ -29,18 +29,75 @@ test_that("a container's dose comes from the size its name states", {
   enriched <- .amount_candidates("e")
   enriched <- enriched[order(enriched$medicine, method = "radix"), , drop = FALSE]
   expect_equal(enriched$medicine, c(
+    "Aflitest 4mg/100microlitres solution for injection vials",
     "Dexamethasone 1.5mg/ml eye drops 0.3ml unit dose preservative free",
     "Glucotest 50mg/ml solution for infusion 500ml bags",
+    "Heparitest 5,000units/1litre infusion bags",
+    "Immunotest 2.5g/25ml solution for infusion vials and Hyalutest solution for infusion 1.25ml vials",
+    "Lidotest 10mg/ml solution for injection ampoules 1/2 strength",
     "Morphine 10mg/1ml solution for injection ampoules",
     "Morphine 10mg/5ml oral solution",
     "Morphine 10mg/ml solution for injection ampoules",
+    "Semaglutest 0.25mg/0.37ml solution for injection 1.5ml pre-filled disposable devices",
     "Tirzepatide 12.5mg/0.6ml solution for injection 2.4ml pre-filled disposable devices"
   ))
   expect_equal(enriched$dose_basis, c(
-    "container", "container", "container", "pack", "container", "container"
+    "container", "container", "container", "container", "container",
+    "container", "container", "pack", "container", "container", "container"
   ))
-  expect_equal(enriched$per_item_dose, c(0.45, 25000, 10, 200, NA_real_, 50))
-  expect_equal(enriched$items_per_pack, c(30, 10, 10, 1, 10, 4))
+  expect_equal(
+    enriched$per_item_dose,
+    c(4, 0.45, 25000, 5000, 2500, NA_real_, 10, 200, NA_real_, 0.25 * 1.5 / 0.37, 50)
+  )
+  expect_equal(enriched$items_per_pack, c(1, 30, 10, 10, 1, 10, 10, 1, 10, 4, 4))
+})
+
+test_that("a whole container whose dose is off the solver's grid still covers the dose", {
+  .local_fresh_dose_cache()
+  # 0.25 mg per 0.37 ml in 1.5 ml devices: 1.0135... mg per device, which no
+  # integer grid represents. Whole devices are policy-exempt, so one device
+  # covers 0.25 mg, two cover 1.5 mg, one pack of four covers either, and vial
+  # sharing draws the exact fraction.
+  one <- dmd_dose_optimise("Semaglutest", dose = 0.25, dose_unit = "mg", db = db, objective = "cheapest")
+  expect_equal(one$total_items, 1)
+  expect_equal(one$dose_cost_pence, 7325)
+  expect_equal(one$dose_delivered, 0.25 * 1.5 / 0.37)
+  expect_match(one$notes, "over-delivery-policy-not-applied", fixed = TRUE)
+  expect_equal(
+    dmd_dose_cost("Semaglutest", dose = c(0.25, 1.5), dose_unit = "mg", db = db),
+    c(7325, 14650)
+  )
+  expect_equal(
+    dmd_dose_cost("Semaglutest", dose = c(0.25, 1.5), dose_unit = "mg", db = db, can_split = FALSE),
+    c(29300, 29300)
+  )
+  expect_equal(
+    dmd_dose_cost("Semaglutest", dose = 0.25, dose_unit = "mg", db = db, can_split_vials = TRUE),
+    0.25 / (0.25 * 1.5 / 0.37) * 7325
+  )
+  expect_equal(
+    dmd_dose_cost_range("Semaglutest", dose = 0.25, dose_unit = "mg", db = db)$hi_pence,
+    7325
+  )
+})
+
+test_that("a co-pack's second product does not size the first, and litre and microlitre denominators do", {
+  .local_fresh_dose_cache()
+  expect_equal(
+    dmd_dose_cost("Immunotest", dose = 2.5, dose_unit = "g", db = db),
+    17250
+  )
+  expect_equal(
+    dmd_dose_cost("Aflitest", dose = 4, dose_unit = "mg", db = db),
+    81600
+  )
+  expect_equal(
+    dmd_dose_cost("Heparitest", dose = 5000, dose_unit = "unit", db = db),
+    100
+  )
+  got <- .with_warnings(dmd_dose_cost("Lidotest", dose = 10, dose_unit = "mg", db = db))
+  expect_equal(got$value, NA_real_)
+  expect_length(.unknown_amount_warnings(got$conditions), 1L)
 })
 
 test_that("a container of unknown size returns no row and a classed warning", {

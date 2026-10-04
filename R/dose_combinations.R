@@ -102,6 +102,32 @@
   )
 }
 
+# For a group whose items are whole containers or packs and whose per-item
+# doses the capped integer grid cannot represent (1.5 / 0.37 x 0.25 mg per
+# pen), the DP is not run: the dose is covered by the one product that best
+# meets the objective, taken whole as many times as needed. Over-delivery is
+# wastage in the container there, never a dose to the patient, so the single
+# product cover is a complete answer. Returns the per-strength counts, or
+# NULL when no product is priced.
+.cover_counts <- function(strengths, prices, dose_canonical, objective) {
+  n <- pmax(1, ceiling((dose_canonical - .dose_tol(dose_canonical)) / strengths))
+  cost <- n * prices
+  usable <- is.finite(cost)
+  if (!any(usable)) {
+    return(NULL)
+  }
+  order_by <- switch(
+    objective,
+    most_expensive = order(-cost, n),
+    min_items = order(n, cost),
+    order(cost, n)
+  )
+  pick <- order_by[usable[order_by]][1L]
+  counts <- rep(0L, length(strengths))
+  counts[pick] <- as.integer(n[pick])
+  counts
+}
+
 # TRUE when every strength is a whole number of grid units at `scale`, within
 # .pick_scale()'s tolerance. The DP sums rounded integer strengths, so a
 # strength the capped scale cannot represent would make `dose_delivered`
@@ -598,43 +624,64 @@
   )
 
   scale <- .pick_scale_safe(strengths, dose_canonical)
-  if (!.strengths_on_grid(strengths, scale)) {
+  on_grid <- .strengths_on_grid(strengths, scale)
+  if (!on_grid && policy_applies) {
     return(.unresolved_result("precision"))
   }
-  strengths_int <- as.integer(round(strengths * scale))
 
-  # The requested dose is the target; the grid only bounds the search. Off the
-  # grid, no combination of grid strengths can deliver the dose exactly, so
-  # "forbid" has nothing to return, and the other policies search from the
-  # first grid point above the dose.
-  target <- .grid_target(dose_canonical, scale)
-  if (identical(over_delivery, "forbid") && !target$on_grid) {
-    return(.no_exact_result())
-  }
-  dose_int <- as.integer(target$t_lo)
-  max_strength <- max(strengths_int)
-  max_over <- max_strength
+  if (on_grid) {
+    strengths_int <- as.integer(round(strengths * scale))
 
-  if ((dose_int + max_over + 1L) > 5e6) {
-    return(.unresolved_result("table"))
-  }
-
-  dp <- .dose_dp(strengths_int, price_per_strength, dose_int, max_over)
-
-  best <- if (is_max) {
-    .best_target_max(dp, dose_int, max_over, over_delivery)
-  } else {
-    .best_target(dp, dose_int, max_over, objective, over_delivery)
-  }
-
-  if (is.null(best)) {
-    # Under "forbid" the only reason selection can fail on an otherwise usable
-    # group is that no combination lands exactly on the dose. Report that
-    # separately so callers can warn about it once.
-    if (identical(over_delivery, "forbid")) {
+    # The requested dose is the target; the grid only bounds the search. Off
+    # the grid, no combination of grid strengths can deliver the dose exactly,
+    # so "forbid" has nothing to return, and the other policies search from
+    # the first grid point above the dose.
+    target <- .grid_target(dose_canonical, scale)
+    if (identical(over_delivery, "forbid") && !target$on_grid) {
       return(.no_exact_result())
     }
-    return(NULL)
+    dose_int <- as.integer(target$t_lo)
+    max_strength <- max(strengths_int)
+    max_over <- max_strength
+
+    if ((dose_int + max_over + 1L) > 5e6) {
+      return(.unresolved_result("table"))
+    }
+
+    dp <- .dose_dp(strengths_int, price_per_strength, dose_int, max_over)
+
+    best <- if (is_max) {
+      .best_target_max(dp, dose_int, max_over, over_delivery)
+    } else {
+      .best_target(dp, dose_int, max_over, objective, over_delivery)
+    }
+
+    if (is.null(best)) {
+      # Under "forbid" the only reason selection can fail on an otherwise
+      # usable group is that no combination lands exactly on the dose. Report
+      # that separately so callers can warn about it once.
+      if (identical(over_delivery, "forbid")) {
+        return(.no_exact_result())
+      }
+      return(NULL)
+    }
+    counts <- .reconstruct(best$back, strengths_int, best$t)
+    if (is.null(counts)) {
+      return(NULL)
+    }
+    dose_delivered <- best$t / scale
+  } else {
+    # Whole containers off the grid (.cover_counts()).
+    counts <- .cover_counts(
+      strengths,
+      price_per_strength,
+      dose_canonical,
+      objective
+    )
+    if (is.null(counts)) {
+      return(NULL)
+    }
+    dose_delivered <- sum(counts * strengths)
   }
 
   # For "most_expensive" we want the most expensive AMPP per strength, not cheapest.
@@ -656,11 +703,6 @@
         priced[which.min(priced$per_item_price_pence), , drop = FALSE]
       }
     }
-  }
-
-  counts <- .reconstruct(best$back, strengths_int, best$t)
-  if (is.null(counts)) {
-    return(NULL)
   }
 
   combo_rows <- list()
@@ -731,7 +773,6 @@
   }
 
   combination <- dplyr::bind_rows(combo_rows)
-  dose_delivered <- best$t / scale
   over_amount <- dose_delivered - dose_canonical
 
   if (over_amount > .dose_tol(dose_canonical)) {
@@ -928,33 +969,45 @@
   )
 
   scale <- .pick_scale_safe(pack_doses, dose_canonical)
-  if (!.strengths_on_grid(pack_doses, scale)) {
-    return(.unresolved_result("precision"))
-  }
-  strengths_int <- as.integer(round(pack_doses * scale))
-  # Whole packs must cover the dose: the search starts from the first grid
-  # point at or above it (.grid_target()).
-  dose_int <- as.integer(.grid_target(dose_canonical, scale)$t_lo)
-  max_strength <- max(strengths_int)
-  max_over <- max_strength
+  if (.strengths_on_grid(pack_doses, scale)) {
+    strengths_int <- as.integer(round(pack_doses * scale))
+    # Whole packs must cover the dose: the search starts from the first grid
+    # point at or above it (.grid_target()).
+    dose_int <- as.integer(.grid_target(dose_canonical, scale)$t_lo)
+    max_strength <- max(strengths_int)
+    max_over <- max_strength
 
-  if ((dose_int + max_over + 1L) > 5e6) {
-    return(.unresolved_result("table"))
-  }
+    if ((dose_int + max_over + 1L) > 5e6) {
+      return(.unresolved_result("table"))
+    }
 
-  dp <- .dose_dp(strengths_int, price_per_pack_dose, dose_int, max_over)
-  best <- if (is_max) {
-    .best_target_max(dp, dose_int, max_over)
+    dp <- .dose_dp(strengths_int, price_per_pack_dose, dose_int, max_over)
+    best <- if (is_max) {
+      .best_target_max(dp, dose_int, max_over)
+    } else {
+      .best_target(dp, dose_int, max_over, objective)
+    }
+    if (is.null(best)) {
+      return(NULL)
+    }
+
+    counts <- .reconstruct(best$back, strengths_int, best$t)
+    if (is.null(counts)) {
+      return(NULL)
+    }
+    dose_delivered <- best$t / scale
   } else {
-    .best_target(dp, dose_int, max_over, objective)
-  }
-  if (is.null(best)) {
-    return(NULL)
-  }
-
-  counts <- .reconstruct(best$back, strengths_int, best$t)
-  if (is.null(counts)) {
-    return(NULL)
+    # Whole packs off the grid (.cover_counts()).
+    counts <- .cover_counts(
+      pack_doses,
+      price_per_pack_dose,
+      dose_canonical,
+      objective
+    )
+    if (is.null(counts)) {
+      return(NULL)
+    }
+    dose_delivered <- sum(counts * pack_doses)
   }
 
   combo_rows <- list()
@@ -1015,7 +1068,6 @@
   }
 
   combination <- dplyr::bind_rows(combo_rows)
-  dose_delivered <- best$t / scale
   over_amount <- dose_delivered - dose_canonical
 
   if (over_amount > .dose_tol(dose_canonical)) {

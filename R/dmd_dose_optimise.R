@@ -72,7 +72,10 @@
     enriched$denominator_value,
     enriched$denominator_unit
   )
-  multiplier <- den$value
+  # One dose per item for a per-dose strength; otherwise only a stated
+  # container size or the pack quantity, never the denominator's own value.
+  multiplier <- rep(NA_real_, nrow(enriched))
+  multiplier[den$unit %in% c("dose", "actuation")] <- 1
   container <- basis == "container"
   if (any(container)) {
     amounts <- .container_amounts(enriched)
@@ -113,10 +116,14 @@
     n <- nrow(enriched)
     return(list(ml = rep(NA_real_, n), mg = rep(NA_real_, n)))
   }
+  col <- function(name, default) {
+    if (name %in% names(enriched)) enriched[[name]] else default
+  }
   .container_quantities(
     enriched$medicine,
     enriched$denominator_value,
-    enriched$denominator_unit
+    enriched$denominator_unit,
+    den_explicit = col("denominator_explicit", NULL)
   )
 }
 
@@ -395,7 +402,8 @@
   amounts <- .container_quantities(
     enriched$medicine,
     enriched$denominator_value,
-    enriched$denominator_unit
+    enriched$denominator_unit,
+    den_explicit = enriched$denominator_explicit
   )
   enriched$container_ml <- amounts$ml
   enriched$container_mg <- amounts$mg

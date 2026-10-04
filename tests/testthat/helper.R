@@ -689,6 +689,11 @@
 #   Morphine 10mg/1ml solution for injection ampoules        -> 10 mg per ampoule
 #   Morphine 10mg/ml solution for injection ampoules         -> unknown (skipped)
 #   Morphine 10mg/5ml oral solution, 100 ml                  -> 200 mg bottle (pack)
+#   Immunotest 2.5g/25ml vials and Hyalutest 1.25ml vials    -> 2,500 mg (own phrase)
+#   Lidotest 10mg/ml ... ampoules 1/2 strength               -> unknown ("/2" is no denominator)
+#   Semaglutest 0.25mg/0.37ml ... 1.5ml devices              -> 1.0135 mg (off the solver grid)
+#   Aflitest 4mg/100microlitres vials                        -> 4 mg per vial
+#   Heparitest 5,000units/1litre infusion bags               -> 5,000 units per bag
 .fake_container_amount_db <- function(loaded_at = .fixed_loaded_at) {
   master <- tibble::tibble(
     medicine = c(
@@ -697,29 +702,49 @@
       "Glucotest 50mg/ml solution for infusion 500ml bags",
       "Morphine 10mg/1ml solution for injection ampoules",
       "Morphine 10mg/ml solution for injection ampoules",
-      "Morphine 10mg/5ml oral solution"
+      "Morphine 10mg/5ml oral solution",
+      "Immunotest 2.5g/25ml solution for infusion vials and Hyalutest solution for infusion 1.25ml vials",
+      "Lidotest 10mg/ml solution for injection ampoules 1/2 strength",
+      "Semaglutest 0.25mg/0.37ml solution for injection 1.5ml pre-filled disposable devices",
+      "Aflitest 4mg/100microlitres solution for injection vials",
+      "Heparitest 5,000units/1litre infusion bags"
     ),
-    pack_size = c(30, 4, 10, 10, 10, 100),
+    pack_size = c(30, 4, 10, 10, 10, 100, 1, 10, 4, 1, 10),
     unit = c(
       "unit dose", "pre-filled disposable injection", "bag", "ampoule",
-      "ampoule", "ml"
+      "ampoule", "ml", "vial", "ampoule",
+      "pre-filled disposable injection", "vial", "bag"
     ),
-    vmp_snomed_code = c("V_DEX", "V_TIR", "V_GLU", "V_MOR1", "V_MOR0", "V_MORO"),
-    vmpp_snomed_code = paste0("VPP", seq_len(6)),
-    drug_tariff_category = rep("Part VIIIA Category C", 6),
-    basic_price = c(600L, 40000L, 2000L, 450L, 500L, 300L),
-    nhs_indicative_price = c(600L, 40000L, 2000L, 450L, 500L, 300L),
-    price_basis = rep("NHS Indicative Price", 6),
-    price_date = rep("2025-08-08", 6),
+    vmp_snomed_code = c(
+      "V_DEX", "V_TIR", "V_GLU", "V_MOR1", "V_MOR0", "V_MORO",
+      "V_IMM", "V_LID", "V_SEM", "V_AFL", "V_HEP"
+    ),
+    vmpp_snomed_code = paste0("VPP", seq_len(11)),
+    drug_tariff_category = rep("Part VIIIA Category C", 11),
+    basic_price = c(
+      600L, 40000L, 2000L, 450L, 500L, 300L, 17250L, 500L, 29300L, 81600L,
+      1000L
+    ),
+    nhs_indicative_price = c(
+      600L, 40000L, 2000L, 450L, 500L, 300L, 17250L, 500L, 29300L, 81600L,
+      1000L
+    ),
+    price_basis = rep("NHS Indicative Price", 11),
+    price_date = rep("2025-08-08", 11),
     ampp_name = c(
       "Dexamethasone 1.5mg/ml eye drops 30 unit dose",
       "Tirzepatide 12.5mg/0.6ml 4 pre-filled disposable injection",
       "Glucotest 50mg/ml infusion 500ml 10 bag",
       "Morphine 10mg/1ml ampoules 10 ampoule",
       "Morphine 10mg/ml ampoules 10 ampoule",
-      "Morphine 10mg/5ml oral solution 100 ml"
+      "Morphine 10mg/5ml oral solution 100 ml",
+      "Immunotest 2.5g/25ml and Hyalutest 1.25ml 1 vial",
+      "Lidotest 10mg/ml ampoules 10 ampoule",
+      "Semaglutest 0.25mg/0.37ml 4 pre-filled disposable injection",
+      "Aflitest 4mg/100microlitres 1 vial",
+      "Heparitest 5,000units/1litre 10 bag"
     ),
-    ampp_snomed_code = paste0("APP", seq_len(6))
+    ampp_snomed_code = paste0("APP", seq_len(11))
   )
   structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
 }

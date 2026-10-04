@@ -16,6 +16,8 @@
   "nanogram"   , "mg"        , 1 / 1e6  ,
   "nanograms"  , "mg"        , 1 / 1e6  ,
   "ml"         , "ml"        ,        1 ,
+  "microlitre" , "ml"        , 1 / 1000 ,
+  "microlitres", "ml"        , 1 / 1000 ,
   "litre"      , "ml"        ,     1000 ,
   "litres"     , "ml"        ,     1000 ,
   "l"          , "ml"        ,     1000 ,
@@ -107,32 +109,40 @@
 # failing that from an explicit numeric strength denominator ("10mg/1ml",
 # "500mg/50ml"). An implicit "per ml" or "per g" with no size token names no
 # container, and two different sizes are ambiguous; both give NA, which the
-# dose functions treat as an unknown amount and skip with a warning.
+# dose functions treat as an unknown amount and skip with a warning. Only the
+# product's own phrase is read: in an "and"-joined pack the size after "and"
+# belongs to the other product.
 .container_words <- paste0(
   "(?:bags?|bottles?|vials?|ampoules?|cartridges?|syringes?|pens?|sachets?|",
   "cassettes?|devices?|applicators?|tubes?|pouch(?:es)?|jars?|enemas?|",
   "unit\\s+doses?|containers?|cans?|droppers?)"
 )
+# Packaging words and the dm+d pack brands that may sit between the size and
+# the container word ("500ml KabiPac bottles", "10ml amber glass bottles").
 .container_modifiers <- paste0(
-  "(?:(?:pre-?filled|disposable|plastic|polyethylene|glass|multidose|",
-  "multi-dose|single-?dose|single-?use|sterile)\\s+)*"
+  "(?:(?:pre-?filled|disposable|plastic|polyethylene|glass|amber|multidose|",
+  "multi-dose|single-?dose|single-?use|sterile|viaflo|viaflex|kabipac|",
+  "freeflex|ecoflac|ecobag|steriflex|polyfusor|excel)\\s+)*"
 )
 # A size token: a number (not part of a strength expression, so not preceded
-# by "/" or a digit) and a volume or mass unit, followed by a container word.
+# by "/" or a digit; commas only as thousands separators) and a volume or mass
+# unit, followed by a container word.
 .container_token_rx <- paste0(
-  "(?<![/\\d.,])(\\d+(?:[.,]\\d+)?)\\s?",
-  "(ml|millilitres?|litres?|l|g|grams?|mg|kg)\\s+",
+  "(?<![/\\d.,])(\\d+(?:,\\d{3})*(?:\\.\\d+)?)\\s?",
+  "(ml|millilitres?|microlitres?|litres?|l|g|grams?|mg|kg)\\s+",
   .container_modifiers,
   .container_words,
   "\\b"
 )
 .container_unit_dimension <- c(
-  ml = "ml", millilitre = "ml", millilitres = "ml", litre = "ml", litres = "ml",
-  l = "ml", g = "mg", gram = "mg", grams = "mg", mg = "mg", kg = "mg"
+  ml = "ml", millilitre = "ml", millilitres = "ml", microlitre = "ml",
+  microlitres = "ml", litre = "ml", litres = "ml", l = "ml",
+  g = "mg", gram = "mg", grams = "mg", mg = "mg", kg = "mg"
 )
 .container_unit_factor <- c(
-  ml = 1, millilitre = 1, millilitres = 1, litre = 1000, litres = 1000,
-  l = 1000, g = 1000, gram = 1000, grams = 1000, mg = 1, kg = 1e6
+  ml = 1, millilitre = 1, millilitres = 1, microlitre = 1 / 1000,
+  microlitres = 1 / 1000, litre = 1000, litres = 1000, l = 1000,
+  g = 1000, gram = 1000, grams = 1000, mg = 1, kg = 1e6
 )
 
 # Canonical amount (ml or mg) of one container as the name states it, in
@@ -145,9 +155,12 @@
   if (n == 0L) {
     return(out)
   }
+  # Only this product's phrase: an "and" followed by a capital or a digit
+  # starts another product (the split .pack_kind() uses).
+  phrase <- sub("\\s+and\\s+(?=[A-Z0-9]).*$", "", medicine, perl = TRUE)
   hits <- regmatches(
-    medicine,
-    gregexpr(.container_token_rx, medicine, perl = TRUE, ignore.case = TRUE)
+    phrase,
+    gregexpr(.container_token_rx, phrase, perl = TRUE, ignore.case = TRUE)
   )
   for (i in seq_len(n)) {
     tokens <- hits[[i]]
@@ -170,13 +183,28 @@
 }
 
 # The container amounts a name supports in each physical dimension: the stated
-# size, else the strength denominator when it is explicit and in that
-# dimension. `den_value`/`den_unit` are the parsed strength denominator.
-.container_quantities <- function(medicine, den_value, den_unit) {
+# size, else the strength denominator when the parser saw it stated
+# (`den_explicit`; "10mg/1ml" yes, "10mg/ml" no) and it is in that dimension.
+# `den_value`/`den_unit` are the parsed strength denominator. A mass before a
+# container word is the container's mass ("Imiquimod 3.75% cream 250mg
+# sachets", "Kaolin poultice 100g pouches"): dm+d names put the form between
+# the strength and the container, so a strength never sits there. Without
+# `den_explicit` (hand-built rows) a "/digit" in the name stands in for the
+# parser.
+.container_quantities <- function(
+  medicine,
+  den_value,
+  den_unit,
+  den_explicit = NULL
+) {
   n <- length(medicine)
   den_value <- rep_len(den_value, n)
   den_unit <- rep_len(den_unit, n)
-  explicit <- !is.na(medicine) & grepl("/\\s?\\d", medicine)
+  explicit <- if (is.null(den_explicit)) {
+    !is.na(medicine) & grepl("/\\s?\\d", medicine)
+  } else {
+    rep_len(den_explicit, n) %in% TRUE
+  }
   den <- .canonicalise_units(den_value, den_unit)
   fill <- function(amount, dimension) {
     use_den <- is.na(amount) & explicit & !is.na(den$unit) & den$unit == dimension
@@ -345,7 +373,7 @@
   "\\s*/\\s*",
   "(?<den_amt>(?:", .strength_num, "))?",
   "\\s*",
-  "(?<den_unit>ml|g|mg|dose|doses|actuation|actuations)",
+  "(?<den_unit>ml|litres?|microlitres?|g|mg|dose|doses|actuation|actuations)",
   ")?",
   "\\s+",
   "(?<tail>.*)$"
@@ -375,7 +403,7 @@
   .strength_num, "\\s*(?:", .mass_unit_alt, ")",
   "(?:\\s*/\\s*", .strength_num, "\\s*(?:", .mass_unit_alt, "))+",
   ")",
-  "(?:\\s*/\\s*((?:", .strength_num, "))?\\s*(ml|litres?|l|doses?|actuations?))?",
+  "(?:\\s*/\\s*((?:", .strength_num, "))?\\s*(ml|microlitres?|litres?|l|doses?|actuations?))?",
   "(?:\\s+(.*))?$"
 )
 
@@ -401,7 +429,8 @@
   strength_canonical,
   strength_unit_canon,
   is_combination = FALSE,
-  components = NULL
+  components = NULL,
+  denominator_explicit = NA
 ) {
   if (is.null(components)) {
     components <- .empty_components()
@@ -412,6 +441,7 @@
     strength_unit = strength_unit,
     denominator_value = denominator_value,
     denominator_unit = denominator_unit,
+    denominator_explicit = denominator_explicit,
     tail = tail,
     strength_canonical = strength_canonical,
     strength_unit_canon = strength_unit_canon,
@@ -468,11 +498,13 @@
   }
   components <- dplyr::bind_rows(comps)
 
+  den_explicit <- NA
   if (is.na(den_unit) || !nzchar(den_unit)) {
     den_unit <- NA_character_
     den_amt <- NA_real_
   } else {
     den_unit <- tolower(den_unit)
+    den_explicit <- !is.na(den_amt)
     if (is.na(den_amt)) {
       den_amt <- 1
     }
@@ -484,6 +516,7 @@
     strength_unit = NA_character_,
     denominator_value = den_amt,
     denominator_unit = den_unit,
+    denominator_explicit = den_explicit,
     tail = if (is.na(tail)) NA_character_ else trimws(tail),
     strength_canonical = NA_real_,
     strength_unit_canon = NA_character_,
@@ -497,7 +530,7 @@
 .segment_strength_regex <- paste0(
   "(?i)(", .strength_num, ")\\s*(",
   .mass_unit_alt,
-  ")(?:\\s*/\\s*((?:", .strength_num, "))?\\s*(ml|litres?|l|doses?|actuations?|g))?"
+  ")(?:\\s*/\\s*((?:", .strength_num, "))?\\s*(ml|microlitres?|litres?|l|doses?|actuations?|g))?"
 )
 
 # Returns a strength row for a multi-ingredient product that lists each
@@ -516,6 +549,7 @@
   comps <- list()
   den_unit <- NA_character_
   den_amt <- NA_real_
+  den_explicit <- NA
   drug_stem <- NA_character_
   tail <- NA_character_
 
@@ -540,7 +574,8 @@
     # segment that carries one.
     if (is.na(den_unit) && !is.na(m[5]) && nzchar(m[5])) {
       den_unit <- tolower(m[5])
-      den_amt <- if (is.na(m[4]) || !nzchar(m[4])) 1 else .strength_amount(m[4])
+      den_explicit <- !(is.na(m[4]) || !nzchar(m[4]))
+      den_amt <- if (den_explicit) .strength_amount(m[4]) else 1
     }
 
     if (k == 1L) {
@@ -570,6 +605,7 @@
     strength_canonical = NA_real_,
     strength_unit_canon = NA_character_,
     is_combination = TRUE,
+    denominator_explicit = den_explicit,
     components = dplyr::bind_rows(comps)
   )
 }
@@ -619,12 +655,16 @@
   den_unit <- unname(m[6])
   tail <- unname(m[7])
 
+  den_explicit <- NA
   if (is.na(den_unit) || !nzchar(den_unit)) {
     den_unit <- NA_character_
     den_amt <- NA_real_
   } else if (is.na(den_amt)) {
     # e.g. "100units/ml" with implicit denominator of 1
     den_amt <- 1
+    den_explicit <- FALSE
+  } else {
+    den_explicit <- TRUE
   }
 
   can_num <- .canonicalise_unit(amt, unit)
@@ -657,6 +697,7 @@
     strength_canonical = strength_canonical,
     strength_unit_canon = strength_unit_canon,
     is_combination = FALSE,
+    denominator_explicit = den_explicit,
     components = component
   )
 }

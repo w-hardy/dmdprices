@@ -363,9 +363,18 @@ test_that(".container_amount() reads an unambiguous container size in the right 
   expect_equal(amount("Rituximab 500mg/50ml solution for infusion vials", "ml"), NA_real_)
   expect_equal(amount("Meropenem 1g powder for solution for injection vials", "mg"), NA_real_)
   expect_equal(amount("Morphine 10mg/ml solution for injection ampoules", "ml"), NA_real_)
-  # Two different sizes are ambiguous; the same size twice is not.
-  expect_equal(amount("Drug 1mg/ml solution 10ml vials and Drug 1mg/ml solution 20ml vials", "ml"), NA_real_)
+  # Two different sizes in one product's phrase are ambiguous; a size in the
+  # second product of an "and"-joined pack belongs to that product, not this.
+  expect_equal(amount("Drug 1mg/ml solution 10ml vials with 20ml vials", "ml"), NA_real_)
+  expect_equal(amount("Drug 1mg/ml solution 10ml vials and Drug 1mg/ml solution 20ml vials", "ml"), 10)
   expect_equal(amount("Drug 1mg/ml solution 10ml vials and Drug 2mg/ml solution 10ml vials", "ml"), 10)
+  expect_equal(amount("Normal immunoglobulin human 2.5g/25ml solution for infusion vials and Recombinant human hyaluronidase solution for infusion 1.25ml vials", "ml"), NA_real_)
+  # dm+d pack brands and packaging words may sit between the size and the
+  # container word; a decimal comma is not a thousands separator.
+  expect_equal(amount("Generic Ionolyte infusion 500ml KabiPac bottles", "ml"), 500)
+  expect_equal(amount("Generic Maintelyte infusion 1litre Viaflo bags", "ml"), 1000)
+  expect_equal(amount("Drug 1mg/ml solution 10ml amber glass bottles", "ml"), 10)
+  expect_equal(amount("Drug 1mg/ml solution 1,5ml vials", "ml"), NA_real_)
   expect_equal(amount(c("Drug 1mg/ml 5ml vials", NA), "ml"), c(5, NA_real_))
   expect_equal(amount(character(), "ml"), numeric())
 })
@@ -386,6 +395,71 @@ test_that(".container_quantities() falls back to an explicit strength denominato
   expect_equal(q, list(ml = NA_real_, mg = 250))
   q <- .container_quantities(c("A 5mg/ml 2ml vials", "B 5mg/2ml vials"), c(1, 2), c("ml", "ml"))
   expect_equal(q$ml, c(2, 2))
+
+  # The parser says whether the denominator was stated; another "/digit" in
+  # the name does not make an implicit "per ml" explicit.
+  implicit <- "Lidotest 10mg/ml solution for injection ampoules 1/2 strength"
+  expect_equal(.container_quantities(implicit, 1, "ml", den_explicit = FALSE)$ml, NA_real_)
+  expect_equal(.container_quantities("Drug 10mg/1ml solution for injection ampoules", 1, "ml", den_explicit = TRUE)$ml, 1)
+  # A product's own explicit denominator is not displaced by the other
+  # product's size in an "and"-joined pack.
+  hyq <- "Normal immunoglobulin human 2.5g/25ml solution for infusion vials and Recombinant human hyaluronidase solution for infusion 1.25ml vials"
+  expect_equal(.container_quantities(hyq, 25, "ml", den_explicit = TRUE)$ml, 25)
+  # Litre and microlitre denominators are sizes in the ml dimension.
+  expect_equal(.container_quantities("Heparin sodium 5,000units/1litre infusion bags", 1, "litre", den_explicit = TRUE)$ml, 1000)
+  expect_equal(.container_quantities("Aflibercept 4mg/100microlitres solution for injection vials", 100, "microlitres", den_explicit = TRUE)$ml, 0.1)
+  # A mass before a container word is the container's mass (a sachet of
+  # cream, a pouch of poultice); a strength before the form is not a size.
+  expect_equal(.container_quantities("Imiquimod 3.75% cream 250mg sachets", NA_real_, NA_character_, den_explicit = NA)$mg, 250)
+  expect_equal(.container_quantities("Kaolin poultice 100g pouches", NA_real_, NA_character_, den_explicit = NA)$mg, 100000)
+  expect_equal(.container_amount("Drug 500mg powder for solution for injection vials", "mg"), NA_real_)
+})
+
+test_that("the parser records whether a strength denominator was stated", {
+  parsed <- dmd_parse_strength(c(
+    "Drug 10mg/ml solution for injection ampoules",
+    "Drug 10mg/1ml solution for injection ampoules",
+    "Drug 500mg/50ml solution for infusion vials",
+    "Drug 100micrograms/dose inhaler",
+    "Drug 500mg tablets",
+    "Heparin sodium 5,000units/1litre infusion bags",
+    "Aflibercept 4mg/100microlitres solution for injection vials",
+    "Netilmicin 3mg/ml / Dexamethasone 1mg/ml eye gel 0.4ml unit dose",
+    "Caffeine 250mg/2ml / Sodium benzoate 250mg/2ml solution for injection ampoules",
+    "Co-trimoxazole 80mg/400mg/ml solution for infusion ampoules"
+  ))
+  expect_equal(
+    parsed$denominator_explicit,
+    c(FALSE, TRUE, TRUE, FALSE, NA, TRUE, TRUE, FALSE, TRUE, FALSE)
+  )
+  expect_equal(parsed$denominator_value, c(1, 1, 50, 1, NA, 1, 100, 1, 2, 1))
+  expect_equal(
+    parsed$denominator_unit,
+    c("ml", "ml", "ml", "dose", NA, "litre", "microlitres", "ml", "ml", "ml")
+  )
+  expect_equal(parsed$strength_canonical, c(10, 10, 10, 0.1, 500, 5, 40, NA, NA, NA))
+  expect_equal(
+    parsed$strength_unit_canon,
+    c("mg/ml", "mg/ml", "mg/ml", "mg/dose", "mg", "unit/ml", "mg/ml", NA, NA, NA)
+  )
+  expect_equal(parsed$is_combination, c(rep(FALSE, 7), TRUE, TRUE, TRUE))
+})
+
+test_that(".per_item_dose() multiplies by one dose, a stated container or a pack, never a stray denominator", {
+  enriched <- tibble::tibble(
+    medicine = c(
+      "Drug 100micrograms/dose capsules",
+      "Drug 10units/unit vials",
+      "Drug 10mg/ml solution for injection ampoules"
+    ),
+    strength_canonical = c(0.1, 10, 10),
+    denominator_value = c(NA_real_, 3, 1),
+    denominator_unit = c("dose", "unit", "ml"),
+    denominator_explicit = c(FALSE, TRUE, FALSE),
+    pack_size = c(30, 5, 10),
+    unit = c("capsule", "vial", "ampoule")
+  )
+  expect_equal(.per_item_dose(enriched), c(0.1, NA_real_, NA_real_))
 })
 
 test_that(".canonical_strength() canonicalises each side and rejects what it cannot", {

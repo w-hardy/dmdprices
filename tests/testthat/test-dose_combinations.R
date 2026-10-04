@@ -331,9 +331,12 @@ test_that("strengths the dose table cannot represent are refused, not mis-costed
   expect_length(grep("No exact-dose combination exists", got$warnings), 0L)
 })
 
-test_that("whole packs whose doses the capped table cannot represent are refused", {
+test_that("whole packs whose doses the capped table cannot represent are covered pack by pack", {
   # Pack doses of 3.5 mg and 28 mg need a scale of 10; a 1,600,000 mg dose
-  # caps it at 3, where 3.5 mg is 10.5 units.
+  # caps it at 3, where 3.5 mg is 10.5 units. Whole packs are policy-exempt,
+  # so instead of a refusal the dose is covered by whole packs of the one
+  # product that best meets the objective: 457,143 packs of 125 microgram
+  # tablets (100p) beat 57,143 packs of 1 mg tablets (900p).
   .local_fresh_dose_cache()
   got <- .with_warnings(dmd_dose_optimise(
     "finedrug",
@@ -345,9 +348,27 @@ test_that("whole packs whose doses the capped table cannot represent are refused
     can_split = FALSE,
     over_delivery = "minimise"
   ))
-  expect_equal(nrow(got$value), 0L)
-  expect_length(grep("could not be resolved", got$warnings), 1L)
-  expect_match(got$warnings, "tablet", all = FALSE)
+  expect_length(got$warnings, 0L)
+  expect_equal(nrow(got$value), 1L)
+  expect_equal(got$value$total_items, 457143)
+  expect_equal(got$value$dose_cost_pence, 45714300)
+  expect_equal(got$value$dose_delivered, 457143 * 3.5)
+  expect_match(got$value$notes, "over-delivery-policy-not-applied", fixed = TRUE)
+
+  # The fewest packs is the 1 mg product, which is also the dearest cover
+  # (57,143 x 900p; the 950p capsules are another preparation group).
+  few <- dmd_dose_optimise(
+    "finedrug",
+    dose = 1.6e6,
+    dose_unit = "mg",
+    db = .fake_unresolvable_db(),
+    preparation = "tablet",
+    objective = c("min_items", "most_expensive"),
+    can_split = FALSE,
+    quiet = TRUE
+  )
+  expect_equal(few$total_items[few$objective == "min_items"], 57143)
+  expect_equal(few$dose_cost_pence[few$objective == "most_expensive"], 57143 * 900)
 })
 
 test_that("a dose table past the cell cap is refused as such", {

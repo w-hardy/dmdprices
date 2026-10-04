@@ -408,13 +408,15 @@ term matches several distinct ingredients or a non-mass strength.
 - The amount of drug in one container of a concentration (a vial, bag,
   bottle, unit dose or pre-filled device) is read from the product name: a
   stated container size in the strength's dimension ("500ml bags", "0.25g
-  unit dose", "2.4ml pre-filled disposable devices"), else a numeric strength
-  denominator ("500mg/50ml", "10mg/1ml"). A name that states neither
-  ("10mg/ml ... ampoules"), or two different sizes, gives no amount: the
-  product is skipped on both paths with a warning of class
+  unit dose", "2.4ml pre-filled disposable devices"; in an "and"-joined pack
+  only this product's own phrase counts), else a numeric strength
+  denominator ("500mg/50ml", "10mg/1ml", "4mg/100microlitres"). A name that
+  states neither ("10mg/ml ... ampoules"), or two different sizes, gives no
+  amount: the product is skipped on both paths with a warning of class
   `dmdprices_warning_unknown_container_amount`, never taken to hold one
   millilitre or one gram. Cost such products as whole packs with
-  `dmd_price_lookup()`.
+  `dmd_price_lookup()`. A multi-dose pen or cartridge is one container, so a
+  labelled dose draws a whole one unless `can_split_vials = TRUE`.
 - Combination products (multiple active ingredients in one VMP) are skipped
   with a warning unless an `ingredient` is named — see "Combination products"
   above. Packs holding several products are skipped with a warning of their
