@@ -51,16 +51,17 @@
   rituximab is 62,866p on both paths, 1200 mg of delgocitinib 59,500p);
   they still differ where the dm+d rounds a concentration (a 128mg/0.36ml
   syringe is recorded as 355.56 mg/ml, so the ingredient path sees
-  128.0016 mg): in the bundled release 219 of 26,237 single-ingredient pack rows costable
-  both ways still differ, 166 of them by under 1% and most of the rest by
-  1-2% from such rounding, and the remainder (bone cement, imiquimod and
-  kaolin sachets, progesterone applicators, glycerol suppositories) because
-  the name's figure is the product's mass rather than the ingredient's,
-  which the ingredient path now gets right. In the bundled release this changes the per-item
-  dose of 14,110 product-ingredient pairs and removes 885 (see the next two
-  entries). Re-run any analysis that used `ingredient =` with an earlier
-  version. This corrects the 0.6.2 notes that said results with
-  `ingredient =` were unchanged by the cream fix.
+  128.0016 mg) or where the name's figure is the product's mass rather than
+  the ingredient's (bone cement, imiquimod and kaolin sachets, progesterone
+  applicators, glycerol suppositories), which the ingredient path now gets
+  right: in the bundled release 221 of 26,277
+  single-ingredient pack rows costable both ways still differ,
+  168 of them by under 1% from such rounding. In the bundled
+  release this changes the per-item dose of 14,168
+  product-ingredient pairs and removes 827 (see the next two entries).
+  Re-run any analysis that used `ingredient =` with an earlier version. This
+  corrects the 0.6.2 notes that said results with `ingredient =` were
+  unchanged by the cream fix.
 - **The amount of drug in one container is read from the product name,
   never assumed to be one millilitre or one gram.** A container-count pack
   of a concentration (vials, bags, bottles, unit doses, pre-filled devices)
@@ -71,24 +72,34 @@
   recorded per litre a whole litre, and a 0.25 g unit dose of a 15mg/g eye
   drop a whole gram. The container's size is now taken from the name: a
   stated size in the strength's dimension ("500ml bags", "0.25g unit dose",
-  "3ml pre-filled pens"), else an explicit numeric strength denominator
-  ("500mg/50ml", "10mg/1ml"). A name that states neither ("10mg/ml ...
-  ampoules"), or two different sizes, gives no amount, and the product is
-  skipped with a warning of class
+  "3ml pre-filled pens", "1litre Viaflo bags"), read from the product's own
+  phrase only, so in an "and"-joined pack the other product's size does not
+  count; else the strength denominator where the name states it with a
+  number ("500mg/50ml", "10mg/1ml", "4mg/100microlitres", "5,000units/1litre",
+  which the strength grammar now parses). A name that states neither
+  ("10mg/ml ... ampoules"), or two different sizes, gives no amount, and the
+  product is skipped with a warning of class
   `dmdprices_warning_unknown_container_amount` (its `medicines` field names
   them; `quiet = TRUE` does not silence it; `dmd_dose_cost_range()` shows it
-  once per call), on both the name-parsed and the `ingredient =` paths. In
-  the bundled release the name-parsed path resizes 242 pack rows (126
-  medicines, 69 priced: unit-dose eye drops and multi-dose pens and
-  devices) and skips 4 medicines (3 priced); the `ingredient =` path skips
-  297 product-ingredient pairs (107 medicines, 39 priced) whose container
-  size the name does not state, among them per-litre infusions in bags of
-  unstated size, medicated plasters and dressings, and products recorded per
-  gram but sold in millilitre unit doses. Of the 8,041 product-ingredient pairs that 0.6.2 dosed 1000 times too
-  high, 6,193 are now sized by the container the name states, 1,124 keep
-  one litre or one gram because that is the container, 217 are skipped for
-  an unstated size, and 507 are skipped for an unknown dose count or
-  mismatched units.
+  once per call), on both the name-parsed and the `ingredient =` paths. A
+  multi-dose pen, cartridge or device is one container: a labelled dose
+  draws a whole one unless `can_split_vials = TRUE`, and where the
+  container's content is not a whole number of the solver's grid units
+  (1.5 ml of 0.25mg/0.37ml is 1.0135 mg) the dose is covered by whole
+  containers of the one product that best meets the objective instead of
+  being refused. In the bundled release the name-parsed path resizes
+  189 pack rows (90 medicines, 61
+  priced: unit-dose eye drops and multi-dose pens and devices) and skips
+  4 medicines (3 priced); the `ingredient =`
+  path skips 239 product-ingredient pairs (81
+  medicines, 30 priced) whose container size the name does
+  not state, among them medicated plasters and dressings, nebuliser ampoules
+  of unstated size and products recorded per gram but sold in millilitre
+  unit doses. Of the 8,041 product-ingredient pairs that 0.6.2 dosed
+  1000 times too high, 6,193 are now sized by the container the name
+  states, 1,142 keep one litre or one gram because that is the
+  container, 199 are skipped for an unstated size, and 507
+  for an unknown dose count or mismatched units.
 - **Packs whose number of doses is unknown are skipped with a warning
   instead of being costed as one dose per millilitre or gram.** For a
   product whose strength is per dose or actuation but whose pack is measured
@@ -138,9 +149,10 @@
   per one canonical denominator unit and `strength_unit_canon` names both
   ("mg/mg", "mg/ml", "unit/ml"). For an ingredient recorded as 20 mg per 1 g
   the columns were 20 and "mg" and are now 0.02 and "mg/mg". In the bundled
-  `dmd_ingredients` 6,598 of 26,667 rows change value, and 81 rows whose
-  denominator has no canonical form (per hour, per square centimetre, per
-  drop, per application, per microlitre) are now `NA`; when targeted with
+  `dmd_ingredients` 6,517 of 26,667 rows change value, 81
+  rows whose denominator has no canonical form (per hour, per square
+  centimetre, per drop, per application) are now `NA`, and 148
+  rows stated in microlitres gain a value; when targeted with
   `ingredient =` such ingredients are skipped with the non-mass-strength
   warning, which now names the denominator unit. Ingredient tables loaded
   with `dmd_load()` or passed to `as_dmd_db()` are read from their raw
