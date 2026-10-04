@@ -9,17 +9,6 @@
   )
 }
 
-# Convert a value/unit pair to a canonical value.
-.canonicalise_unit_value <- function(value, unit) {
-  mapply(
-    function(v, u) .canonicalise_unit(v, u)$value,
-    value,
-    unit,
-    SIMPLIFY = TRUE,
-    USE.NAMES = FALSE
-  )
-}
-
 # TRUE for a concentration row whose pack quantity is expressed in the
 # strength's own denominator unit (a 100 ml bottle of a mg/ml liquid, a
 # 200-dose inhaler of a microgram/dose aerosol): the whole pack is one
@@ -39,50 +28,31 @@
     pack_unit_canon == den_unit_canon
 }
 
-# Total dose represented by one discrete optimisation item. For a concentration
-# sold as one container (pack unit matching the denominator unit: a 100 ml
-# bottle, a 60 g tube, a 200-dose inhaler), use the pack quantity. For vials
-# and other container-count packs, use the concentration denominator quantity.
-# `canonical_pack_quantity` is TRUE when strength_canonical is per canonical
-# denominator unit (parsed names; the default) and FALSE when it is per stated
-# denominator (VPI strengths such as 20 mg per 1 g, from
-# .apply_ingredient_targeting()).
-.per_item_dose <- function(enriched, canonical_pack_quantity = TRUE) {
+# Total dose represented by one discrete optimisation item: the strength times
+# the item quantity, both in canonical units. `strength_canonical` is the
+# canonical numerator per one canonical denominator unit whatever its source
+# (.canonical_strength()), so the item quantity must be canonical too. For a
+# concentration sold as one container (pack unit matching the denominator
+# unit: a 100 ml bottle, a 60 g tube, a 200-dose inhaler) the item is the
+# whole pack, "60 g" -> 60000 mg. For vials and other container-count packs
+# the item is one denominator quantity, "500mg/50ml" -> 50 ml.
+.per_item_dose <- function(enriched) {
   out <- enriched$strength_canonical
   is_concentration <- !is.na(enriched$denominator_unit)
   if (!any(is_concentration)) {
     return(out)
   }
 
-  den_value_canon <- .canonicalise_unit_value(
+  multiplier <- .canonicalise_units(
     enriched$denominator_value,
     enriched$denominator_unit
-  )
+  )$value
 
   use_pack_quantity <- .pack_is_one_container(enriched)
-
-  multiplier <- den_value_canon
-  pack_quantity <- enriched$pack_size
-  # Parsed strengths are per canonical denominator unit ("20mg/g" -> 0.02
-  # mg/mg), so a one-container pack's quantity must be canonical too ("60 g" ->
-  # 60000 mg). VPI strengths (ingredient targeting) are per stated denominator;
-  # that caller keeps the raw quantity until VPI strengths are normalised
-  # (follow-up issue). Known gaps in that convention, unchanged from 0.6.1:
-  # the raw quantity is exact only when the pack is measured in the VPI
-  # denominator's own unit (a 250 g tub of a "1 mg per 1 mg" powder counts as
-  # 250 mg), and a container-count item whose VPI denominator is in g or
-  # litres is 1000x too large, because the canonical denominator quantity
-  # multiplies a strength that is per stated denominator (Azyter 15mg/g unit
-  # doses count as 15000 mg).
-  # The any() guard matters: a zero-length mapply() returns list(), and
-  # assigning list() into a numeric vector turns it into a list.
-  if (canonical_pack_quantity && any(use_pack_quantity)) {
-    pack_quantity[use_pack_quantity] <- .canonicalise_unit_value(
-      enriched$pack_size[use_pack_quantity],
-      enriched$unit[use_pack_quantity]
-    )
-  }
-  multiplier[use_pack_quantity] <- pack_quantity[use_pack_quantity]
+  multiplier[use_pack_quantity] <- .canonicalise_units(
+    enriched$pack_size[use_pack_quantity],
+    enriched$unit[use_pack_quantity]
+  )$value
 
   out[is_concentration] <-
     enriched$strength_canonical[is_concentration] *
@@ -356,32 +326,77 @@
     return(enriched)
   }
 
-  enriched$strength_value <- matches$strength_value[idx]
-  enriched$strength_unit <- matches$strength_unit[idx]
-  enriched$denominator_value <- matches$denominator_value[idx]
-  enriched$denominator_unit <- matches$denominator_unit[idx]
-  enriched$strength_canonical <- matches$strength_canonical[idx]
-  enriched$strength_unit_canon <- matches$strength_unit_canon[idx]
-  enriched$targeted_ingredient <- matches$ingredient_name[idx]
+  vpi <- matches[idx, , drop = FALSE]
+
+  # The VPI strength is taken from its raw fields and brought to the one
+  # convention (.canonical_strength()), never from the table's own canonical
+  # columns, so an `ingredients` table built to any convention targets alike.
+  can <- .canonical_strength(
+    vpi$strength_value,
+    vpi$strength_unit,
+    vpi$denominator_value,
+    vpi$denominator_unit
+  )
+
+  # The item quantity is the container volume the product name states
+  # ("500mg/50ml" vials hold 50 ml) when that is in the VPI denominator's
+  # canonical unit; otherwise it is the VPI's own denominator, one stated unit
+  # (1 ml, 1 g), as the dm+d records it.
+  row_den_canon <- unname(.canonicalise_unit_name(enriched$denominator_unit))
+  vpi_den_canon <- unname(.canonicalise_unit_name(vpi$denominator_unit))
+  keep_row_den <- !is.na(enriched$denominator_value) &
+    !is.na(row_den_canon) &
+    !is.na(vpi_den_canon) &
+    row_den_canon == vpi_den_canon
+  enriched$denominator_value <- ifelse(
+    keep_row_den,
+    enriched$denominator_value,
+    vpi$denominator_value
+  )
+  enriched$denominator_unit <- ifelse(
+    keep_row_den,
+    enriched$denominator_unit,
+    vpi$denominator_unit
+  )
+  enriched$strength_value <- vpi$strength_value
+  enriched$strength_unit <- vpi$strength_unit
+  enriched$strength_canonical <- can$value
+  enriched$strength_unit_canon <- can$unit
+  enriched$targeted_ingredient <- vpi$ingredient_name
 
   # The named ingredient gives an unambiguous dose, so these rows are now
   # optimisable even when the product is a combination.
   enriched$unsupported_compound <- FALSE
-  enriched$per_item_dose <- .per_item_dose(
-    enriched,
-    canonical_pack_quantity = FALSE
-  )
+  enriched$per_item_dose <- .per_item_dose(enriched)
 
-  # Some ingredients are recorded in non-mass units (e.g. GBq, mmol, vaccine
-  # units) that cannot be canonicalised to a mass dose. Those rows yield an NA
-  # per-item dose and are dropped downstream; warn instead of failing silently.
+  # Some ingredients are recorded in units that cannot be canonicalised to a
+  # mass dose: a non-mass numerator (GBq, mmol, vaccine units) or a denominator
+  # with no canonical form (per hour for a patch, per square centimetre). Those
+  # rows yield an NA per-item dose and are dropped downstream; warn instead of
+  # failing silently, naming the unit at fault.
   na_canon <- is.na(enriched$strength_canonical)
   if (any(na_canon)) {
-    bad_units <- sort(unique(stats::na.omit(enriched$strength_unit[na_canon])))
-    cli::cli_warn(c(
-      "{sum(na_canon)} candidate{?s} for {.val {ingredient}} ha{?s/ve} a non-mass strength and cannot be dosed by mass; skipped.",
-      "i" = "Strength unit{?s}: {.val {bad_units}}."
-    ))
+    num_na <- is.na(.canonicalise_units(
+      enriched$strength_value,
+      enriched$strength_unit
+    )$unit)
+    bad_num <- sort(unique(stats::na.omit(
+      enriched$strength_unit[na_canon & num_na]
+    )))
+    bad_den <- sort(unique(stats::na.omit(
+      enriched$denominator_unit[na_canon & !num_na]
+    )))
+    msg <- "{sum(na_canon)} candidate{?s} for {.val {ingredient}} ha{?s/ve} a non-mass strength and cannot be dosed by mass; skipped."
+    if (length(bad_num) > 0L) {
+      msg <- c(msg, "i" = "Strength unit{?s}: {.val {bad_num}}.")
+    }
+    if (length(bad_den) > 0L) {
+      msg <- c(
+        msg,
+        "i" = "Strength denominator unit{?s} with no canonical form: {.val {bad_den}}."
+      )
+    }
+    cli::cli_warn(msg)
   }
 
   .container_pricing(enriched)

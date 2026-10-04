@@ -350,8 +350,9 @@
       ampp_snomed_code = c("APP_DELGO", "APP_EXAMPLOL")
     )
   )
-  # VPI shape as in the bundled dmd_ingredients: the numerator is canonical,
-  # the denominator is as stated.
+  # VPI shape as in the bundled dmd_ingredients: raw numerator and denominator
+  # fields, plus the canonical columns in the one convention (canonical
+  # numerator per one canonical denominator unit).
   db$ingredients <- tibble::tibble(
     vmp_snomed_code = "V_DELGO",
     ingredient_snomed_code = "I_delgo",
@@ -360,8 +361,87 @@
     strength_unit = "mg",
     denominator_value = 1,
     denominator_unit = "g",
-    strength_canonical = 20,
-    strength_unit_canon = "mg"
+    strength_canonical = 0.02,
+    strength_unit_canon = "mg/mg"
+  )
+  db
+}
+
+# Fake dmd_db for the unit handling of the ingredient-targeting path:
+# .fake_dose_db() (its two rituximab infusion vials get VPI rows) plus products
+# whose VPI denominator or pack unit has a non-unit canonical factor (g, litre)
+# or no canonical form at all (hour). Names without a parseable strength stand
+# for products the parser cannot dose (percentage strengths, no strength
+# token), so ingredient targeting is their only route. The VPI table is in the
+# dmd_ingredients shape, its canonical columns in the one convention: canonical
+# numerator per one canonical denominator unit, slash form.
+#   Rituximab 500mg/50ml and 100mg/10ml vials: VPI 10 mg per 1 ml
+#     -> 500 and 100 mg per vial (the container volume comes from the name)
+#   Azythro 15mg/g eye drops, 6 unit doses at 699p: VPI 15 mg per 1 g
+#     -> 15 mg per unit dose (one stated denominator, 1 g)
+#   Exsaline 0.9% infusion, 10 bags: VPI 9 g per 1 litre -> 9000 mg per bag
+#   Exspirit cutaneous solution, 200 ml: VPI 5 ml per 1 litre -> 1 ml per bottle
+#   Exornithine powder, 100 g: VPI 1 mg per 1 mg -> 100000 mg per tub
+#   Exoxygen medical gas, 2130 litre: VPI 1 ml per 1 ml -> 2130000 ml
+#   Expatch transdermal patches, 4 patches: VPI 5 microgram per 1 hour
+#     -> no mass dose (the denominator has no canonical unit)
+.fake_vpi_units_db <- function(loaded_at = .fixed_loaded_at) {
+  db <- .fake_dose_db(loaded_at = loaded_at)
+  db$master <- rbind(
+    db$master,
+    tibble::tibble(
+      medicine = c(
+        "Azythro 15mg/g eye drops unit dose preservative free",
+        "Exsaline 0.9% infusion bags",
+        "Exspirit cutaneous solution",
+        "Exornithine powder",
+        "Exoxygen medical gas",
+        "Expatch transdermal patches"
+      ),
+      pack_size = c(6, 10, 200, 100, 2130, 4),
+      unit = c("unit dose", "bag", "ml", "g", "litre", "patch"),
+      vmp_snomed_code = c("V_AZY", "V_SAL", "V_SPI", "V_ORN", "V_OXY", "V_PAT"),
+      vmpp_snomed_code = c(
+        "VPP_AZY", "VPP_SAL", "VPP_SPI", "VPP_ORN", "VPP_OXY", "VPP_PAT"
+      ),
+      drug_tariff_category = rep("Part VIIIA Category C", 6),
+      basic_price = c(699L, 1890L, 300L, 6292L, 1000L, 2000L),
+      nhs_indicative_price = c(699L, 1890L, 300L, 6292L, 1000L, 2000L),
+      price_basis = rep("NHS Indicative Price", 6),
+      price_date = rep("2025-08-08", 6),
+      ampp_name = c(
+        "Azythro 15mg/g eye drops 6 unit dose",
+        "Exsaline 0.9% infusion 10 bag",
+        "Exspirit cutaneous solution 200 ml",
+        "Exornithine powder 100 gram",
+        "Exoxygen medical gas 2130 litre",
+        "Expatch transdermal patches 4 patch"
+      ),
+      ampp_snomed_code = c(
+        "APP_AZY", "APP_SAL", "APP_SPI", "APP_ORN", "APP_OXY", "APP_PAT"
+      )
+    )
+  )
+  db$ingredients <- tibble::tibble(
+    vmp_snomed_code = c(
+      "11", "12", "V_AZY", "V_SAL", "V_SPI", "V_ORN", "V_OXY", "V_PAT"
+    ),
+    ingredient_snomed_code = c(
+      "I_rit", "I_rit", "I_azy", "I_nacl", "I_msal", "I_orn", "I_oxy", "I_pat"
+    ),
+    ingredient_name = c(
+      "Rituximab", "Rituximab", "Azythro substance", "Sodium chloride",
+      "Methyl salicylate", "Ornithine", "Oxygen", "Expatchine"
+    ),
+    strength_value = c(10, 10, 15, 9, 5, 1, 1, 5),
+    strength_unit = c("mg", "mg", "mg", "g", "ml", "mg", "ml", "microgram"),
+    denominator_value = c(1, 1, 1, 1, 1, 1, 1, 1),
+    denominator_unit = c("ml", "ml", "g", "litre", "litre", "mg", "ml", "hour"),
+    strength_canonical = c(10, 10, 0.015, 9, 0.005, 1, 1, NA_real_),
+    strength_unit_canon = c(
+      "mg/ml", "mg/ml", "mg/mg", "mg/ml", "ml/ml", "mg/mg", "ml/ml",
+      NA_character_
+    )
   )
   db
 }

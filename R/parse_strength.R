@@ -46,6 +46,53 @@
   )
 }
 
+# Vectorised .canonicalise_unit(): `value` and `unit` are parallel vectors.
+# Returns the canonical values and unit labels, NA where the unit has no
+# canonical form.
+.canonicalise_units <- function(value, unit) {
+  n <- length(value)
+  out_value <- rep(NA_real_, n)
+  out_unit <- rep(NA_character_, n)
+  if (n == 0L) {
+    return(list(value = out_value, unit = out_unit))
+  }
+  idx <- match(tolower(as.character(unit)), .unit_table$input)
+  ok <- !is.na(idx)
+  out_value[ok] <- value[ok] * .unit_table$factor[idx[ok]]
+  out_unit[ok] <- .unit_table$canonical[idx[ok]]
+  list(value = out_value, unit = out_unit)
+}
+
+# The one convention for `strength_canonical` / `strength_unit_canon`, whether
+# a strength comes from a parsed product name or from the dm+d VPI data: the
+# canonical numerator per ONE canonical denominator unit, in slash form
+# ("20mg/g" is 0.02 "mg/mg"; "500mg/50ml" is 10 "mg/ml"; "100units/ml" is 100
+# "unit/ml"), or the canonical numerator alone when there is no denominator
+# ("500mg" is 500 "mg"). A denominator unit with no stated value means one of
+# it. A numerator or denominator unit with no canonical form gives NA for both,
+# so a strength per hour or per square centimetre is never mistaken for a
+# mass. Vectorised over parallel inputs; the denominator arguments recycle.
+.canonical_strength <- function(
+  value,
+  unit,
+  den_value = NA_real_,
+  den_unit = NA_character_
+) {
+  n <- length(value)
+  den_value <- rep_len(den_value, n)
+  den_unit <- rep_len(den_unit, n)
+  has_den <- !is.na(den_unit)
+  den_value[has_den & is.na(den_value)] <- 1
+  num <- .canonicalise_units(value, unit)
+  den <- .canonicalise_units(den_value, den_unit)
+  out_value <- ifelse(has_den, num$value / den$value, num$value)
+  out_unit <- ifelse(has_den, paste0(num$unit, "/", den$unit), num$unit)
+  bad <- is.na(num$unit) | (has_den & is.na(den$unit))
+  out_value[bad] <- NA_real_
+  out_unit[bad] <- NA_character_
+  list(value = out_value, unit = out_unit)
+}
+
 # ── Numeric strength grammar ─────────────────────────────────────────────────
 
 # Numeric strength token: digits with optional comma thousands groups and an
@@ -485,14 +532,9 @@
   }
 
   can_num <- .canonicalise_unit(amt, unit)
-  if (!is.na(den_unit)) {
-    can_den <- .canonicalise_unit(den_amt, den_unit)
-    strength_canonical <- can_num$value / can_den$value
-    strength_unit_canon <- paste0(can_num$unit, "/", can_den$unit)
-  } else {
-    strength_canonical <- can_num$value
-    strength_unit_canon <- can_num$unit
-  }
+  can <- .canonical_strength(amt, unit, den_amt, den_unit)
+  strength_canonical <- can$value
+  strength_unit_canon <- can$unit
 
   component <- if (is.na(amt)) {
     .empty_components()
