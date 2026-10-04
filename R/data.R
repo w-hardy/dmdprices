@@ -60,6 +60,10 @@
 #' NHS Dictionary of Medicines and Devices (dm+d), Week 15 2026 release
 #' (06 April 2026). Published by the NHS Business Services Authority (NHSBSA).
 #'
+#' Prices are **derived from dm+d**; the column layout mirrors the NHS Drug
+#' Tariff Part VIIIA CSV for interoperability, but that published CSV is not the
+#' source of these values.
+#'
 #' © Crown copyright. Contains public sector information licensed under the
 #' **Open Government Licence v3.0**.\cr
 #' <https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/>
@@ -83,12 +87,18 @@
 #' `$master` table.
 #'
 #' @details
-#' The version bundled with the package may be **empty**: the VPI extract is an
-#' optional part of a dm+d release and is not always present. Rebuild the
-#' bundled data from a release that includes
-#' `f_vmp_VpiType.csv` (see `data-raw/dmd_master.R`), or
-#' load a full release with [dmd_load()], to populate it. Check with
-#' `nrow(dmd_ingredients)`.
+#' The bundled table is built from the same Week 15 2026 release as
+#' [dmd_master] and has 26,667 rows (`nrow(dmd_ingredients)`).
+#' `data-raw/dmd_master.R` rebuilds both datasets.
+#'
+#' A database loaded with [dmd_load()] carries its own `$ingredients` table,
+#' which is used in place of this one. That table depends on optional files of
+#' the `dmdDataLoader` export. Without `f_vmp_VpiType.csv` it is `NULL`, and
+#' the `ingredient` argument of [dmd_dose_optimise()] returns no results, with
+#' a warning. Without `f_ingredient.csv` it is built but `ingredient_name` is
+#' `NA`, so `ingredient` matches nothing. Without
+#' `f_lookup_UoMHistoryInfoType.csv` its strength units are `NA`, so
+#' `ingredient` skips every candidate as having a non-mass strength.
 #'
 #' @format A tibble with one row per VMP/ingredient and 9 columns:
 #' \describe{
@@ -103,14 +113,21 @@
 #'     concentrations, else `NA`.}
 #'   \item{denominator_unit}{`character`. Strength denominator unit
 #'     (e.g. `"ml"`), else `NA`.}
-#'   \item{strength_canonical}{`numeric`. Strength in canonical units
-#'     (mass in mg, volume in ml, or biological activity as `"unit"`), for
-#'     cross-product comparison. `NA` for strengths recorded in units that have
-#'     no mass equivalent (e.g. radioactivity in GBq/MBq, amount of substance in
-#'     mmol, vaccine antigen units, or volumes such as microlitre). Such
+#'   \item{strength_canonical}{`numeric`. Strength in canonical units: the
+#'     canonical numerator (mass in mg, volume in ml, or biological activity
+#'     as `"unit"`) per **one canonical denominator unit** for a
+#'     concentration, or the canonical numerator alone otherwise. This is the
+#'     same convention as [dmd_parse_strength()] applies to product names, so
+#'     "20 mg per 1 g" is `0.02` (mg per mg) and "500 mg per 50 ml" is `10`
+#'     (mg per ml). `NA` for strengths recorded in units that have no mass
+#'     equivalent (e.g. radioactivity in GBq/MBq, amount of substance in mmol,
+#'     vaccine antigen units, or volumes such as microlitre) or whose
+#'     denominator has no canonical unit (e.g. per hour for a patch). Such
 #'     ingredients cannot be dose-optimised by mass via [dmd_dose_optimise()].}
-#'   \item{strength_unit_canon}{`character`. Canonical strength unit, or `NA`
-#'     when the strength has no mass/volume/activity equivalent.}
+#'   \item{strength_unit_canon}{`character`. Canonical strength unit in slash
+#'     form for a concentration (`"mg/mg"`, `"mg/ml"`, `"unit/ml"`), or the
+#'     canonical numerator unit alone (`"mg"`); `NA` when the strength has no
+#'     mass/volume/activity equivalent.}
 #' }
 #'
 #' @source

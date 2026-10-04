@@ -57,8 +57,8 @@ test_that("per-dose concentration parses (inhaler)", {
 
 test_that("unparseable names return NAs", {
   res <- dmd_parse_strength("Gauze dressing sterile")
-  expect_true(is.na(res$strength_value))
-  expect_true(is.na(res$strength_canonical))
+  expect_equal(res$strength_value, NA_real_)
+  expect_equal(res$strength_canonical, NA_real_)
   expect_false(res$is_combination)
   expect_equal(res$n_components, 0L)
 })
@@ -78,11 +78,11 @@ test_that("two-ingredient combinations parse into components, not a ratio", {
     "Co-codamol 8mg/500mg tablets",
     "Co-amilofruse 5mg/40mg tablets"
   ))
-  expect_true(all(res$is_combination))
+  expect_equal(res$is_combination, c(TRUE, TRUE))
   expect_equal(res$n_components, c(2L, 2L))
   # The mass/mass ratio must NOT be treated as a concentration
-  expect_true(all(is.na(res$strength_canonical)))
-  expect_true(all(is.na(res$denominator_unit)))
+  expect_equal(res$strength_canonical, c(NA_real_, NA_real_))
+  expect_equal(res$denominator_unit, c(NA_character_, NA_character_))
   expect_equal(res$drug_stem, c("Co-codamol", "Co-amilofruse"))
 
   cocodamol <- res$components[[1]]
@@ -144,7 +144,7 @@ test_that("mass-per-volume concentrations are not treated as combinations", {
     "Morphine 10mg/5ml oral solution",
     "Heparin 100units/ml solution for injection ampoules"
   ))
-  expect_false(any(res$is_combination))
+  expect_equal(res$is_combination, c(FALSE, FALSE))
   expect_equal(res$strength_canonical, c(2, 100))
   expect_equal(res$strength_unit_canon, c("mg/ml", "unit/ml"))
 })
@@ -160,4 +160,162 @@ test_that(".classify_preparation distinguishes IR vs MR tablets", {
                            "oral solution", "solution for injection"))
   expect_equal(res$modifier, c("none", "modified-release", "none", "none"))
   expect_equal(res$route, c("oral", "oral", "oral", "injection"))
+})
+
+# ── Comma thousands separators (issue #22) ───────────────────────────────────
+
+test_that("comma-formatted strengths parse identically to plain forms", {
+  res <- dmd_parse_strength(c(
+    "Nystatin 100,000units/ml oral suspension",
+    "Nystatin 100000units/ml oral suspension"
+  ))
+  expect_equal(res$strength_value, c(100000, 100000))
+  expect_equal(res$strength_unit, c("units", "units"))
+  expect_equal(res$denominator_value, c(1, 1))
+  expect_equal(res$denominator_unit, c("ml", "ml"))
+  expect_equal(res$strength_canonical, c(100000, 100000))
+  expect_equal(res$strength_unit_canon, c("unit/ml", "unit/ml"))
+  expect_equal(res$drug_stem, c("Nystatin", "Nystatin"))
+})
+
+test_that("multi-group and decimal comma strengths parse", {
+  res <- dmd_parse_strength(c(
+    "Testdrug 1,234,567units powder for solution vials",
+    "Testdrug 1,234.5mg tablets"
+  ))
+  expect_equal(res$strength_value, c(1234567, 1234.5))
+  expect_equal(res$strength_unit, c("units", "mg"))
+})
+
+test_that("malformed comma groups do not parse as strengths", {
+  # A comma group must be exactly three digits; "1,00" is not a strength and
+  # must not be misread as 1 or 100.
+  res <- dmd_parse_strength("Testdrug 1,00mg tablets")
+  expect_true(is.na(res$strength_value))
+  expect_true(is.na(res$strength_unit))
+})
+
+test_that("comma numbers without a unit stay unparsed", {
+  # Real bundled name: the number is a product name token, not a strength.
+  res <- dmd_parse_strength("Generic Pangrol 10,000 capsules")
+  expect_true(is.na(res$strength_value))
+  expect_true(is.na(res$denominator_unit))
+})
+
+test_that("spaced-slash combinations with comma strengths parse all components", {
+  # Regression: "1,000unit" previously matched from "000unit", producing a
+  # zero-strength component and drug_stem "Colecalciferol 1,".
+  res <- dmd_parse_strength(
+    "Colecalciferol 1,000unit / Menaquinone-7 45microgram capsules"
+  )
+  expect_true(res$is_combination)
+  expect_equal(res$drug_stem, "Colecalciferol")
+  comps <- res$components[[1]]
+  expect_equal(comps$value, c(1000, 45))
+  expect_equal(comps$unit, c("unit", "microgram"))
+  expect_false(any(comps$value == 0))
+})
+
+test_that("bare-slash combinations with comma strengths parse all components", {
+  res <- dmd_parse_strength("Testdrug 1,000mg/500mg tablets")
+  expect_true(res$is_combination)
+  comps <- res$components[[1]]
+  expect_equal(comps$value, c(1000, 500))
+  expect_equal(comps$unit, c("mg", "mg"))
+})
+
+# ── Bracketed restatements and multi-product packs (#27) ─────────────────────
+
+test_that(".strength_token_count returns 0 for names without a strength", {
+  expect_equal(
+    dmdprices:::.strength_token_count(c(
+      "Gauze dressing sterile",
+      "Metformin 500mg tablets",
+      "Co-codamol 8mg/500mg tablets",
+      NA
+    )),
+    c(0L, 1L, 2L, 0L)
+  )
+  expect_identical(dmdprices:::.strength_token_count(character()), integer())
+})
+
+test_that("bracketed text after the strength stays in the tail", {
+  res <- dmd_parse_strength(c(
+    "Eptacog beta (activated) 1mg (45,000unit) powder and solvent for solution for injection vials",
+    "Iohexol 755mg/ml (Iodine 350mg/ml) solution for injection 700ml plastic bottles"
+  ))
+  expect_equal(res$drug_stem, c("Eptacog beta (activated)", "Iohexol"))
+  expect_equal(res$strength_value, c(1, 755))
+  expect_equal(res$strength_unit_canon, c("mg", "mg/ml"))
+  expect_equal(
+    res$tail,
+    c(
+      "(45,000unit) powder and solvent for solution for injection vials",
+      "(Iodine 350mg/ml) solution for injection 700ml plastic bottles"
+    )
+  )
+})
+
+test_that(".dose_strength_count ignores restatements in another unit dimension", {
+  nm <- c(
+    # mass restated as activity: one dose basis
+    "Eptacog beta (activated) 1mg (45,000unit) powder and solvent for solution for injection vials",
+    # same-dimension bracketed strengths: competing bases, still counted
+    "Iohexol 755mg/ml (Iodine 350mg/ml) solution for injection 700ml plastic bottles",
+    "Mexiletine hydrochloride 200mg (Mexiletine 167mg) capsules",
+    "Factor VIII Inhibitor Bypassing Fraction human 25units/ml (500unit) powder and 20ml solvent for solution for infusion vials",
+    "Testosterone 20mg/g transdermal gel (23mg per actuation) refill",
+    # nested brackets; the parsed strength is itself inside a bracket
+    "Magnesium glycerophosphate (magnesium 97.2mg (4mmol)) tablets",
+    # a bracket naming a substance, with no parsed strength
+    "Ferric maltol (iron 30mg) capsules",
+    # no parsed strength, so a bare bracketed strength restates nothing
+    "Trichloroacetic acid 80% (800mg/1ml) solution",
+    # an unbalanced bracket is not a bare bracketed strength
+    "Testdrug 10mg (Otherdrug 5mg tablets",
+    # a different-dimension strength that names another substance is not a
+    # bare restatement, so it still counts
+    "Testdrug 10mg (Otherdrug 1,000unit) tablets",
+    # a bare different-dimension restatement with a denominator
+    "Testdrug 1,000units/ml (10mg/ml) solution for injection 5ml ampoules",
+    "Gauze dressing sterile",
+    NA
+  )
+  unit <- dmd_parse_strength(ifelse(is.na(nm), "", nm))$strength_unit
+  expect_equal(
+    dmdprices:::.dose_strength_count(nm, unit),
+    c(1L, 2L, 2L, 2L, 2L, 1L, 1L, 1L, 2L, 2L, 1L, 0L, 0L)
+  )
+  expect_identical(
+    dmdprices:::.dose_strength_count(character(), character()),
+    integer()
+  )
+})
+
+test_that(".pack_kind labels multi-strength packs and co-packs", {
+  nm <- c(
+    "Danicopan 50mg tablets and Danicopan 100mg tablets",
+    "Mitapivat 20mg tablets and Mitapivat 5mg tablets",
+    "Mirikizumab 100mg/1ml solution for injection pre-filled disposable devices and Mirikizumab 200mg/2ml solution for injection pre-filled disposable devices",
+    "Memantine 5mg/10mg/15mg/20mg tablets treatment initiation pack",
+    "Tixagevimab 150mg/1.5ml solution for injection vials and Cilgavimab 150mg/1.5ml solution for injection vials",
+    "Generic Actonel Combi 35mg tablets and 1000mg/880unit effervescent granules sachets",
+    # one chewable tablet holding two ingredients: a combination, not a pack
+    "Generic LipoSil Liposomal Iron 15mg and Active folate 173.88microgram chewable tablets",
+    # dm+d's "powder and solvent" idiom is not a second product
+    "Eptacog beta (activated) 1mg (45,000unit) powder and solvent for solution for injection vials",
+    "Factor VIII Inhibitor Bypassing Fraction human 25units/ml (500unit) powder and 20ml solvent for solution for infusion vials",
+    "Galactose 2.49g / Palmitic acid 2.5mg powder and solvent for suspension for injection 2.5g vials",
+    "Co-codamol 8mg/500mg tablets",
+    NA
+  )
+  expect_equal(
+    dmdprices:::.pack_kind(nm),
+    c(
+      rep("multi_strength_pack", 4),
+      rep("co_pack", 2),
+      rep(NA_character_, 6)
+    )
+  )
+  expect_identical(dmdprices:::.pack_kind(character()), character())
 })

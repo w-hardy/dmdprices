@@ -35,24 +35,12 @@ test_that("inflate_nhscii multiplies by nhscii factor", {
 })
 
 test_that("input validation fails gracefully", {
-  expect_error(
-    nhscii("2020-21", "2021/22"),
-    "must be in 'YYYY/YY' format or a numeric end-year"
-  )
-
-  expect_error(
-    nhscii("2010/11", "2021/22"),
-    "from_year must be one of"
-  )
-
-  expect_error(
-    nhscii("2020/21", "2021/22", index = "unknown"),
-    "should be one of"
-  )
-
-  expect_error(
-    inflate_nhscii(c(100, NA_real_), "2020/21", "2021/22"),
-    "cost must be a numeric vector of finite values"
+  expect_snapshot(error = TRUE, nhscii("2020-21", "2021/22"))
+  expect_snapshot(error = TRUE, nhscii("2010/11", "2021/22"))
+  expect_snapshot(error = TRUE, nhscii("2020/21", "2021/22", index = "unknown"))
+  expect_snapshot(
+    error = TRUE,
+    inflate_nhscii(c(100, NA_real_), "2020/21", "2021/22")
   )
 })
 

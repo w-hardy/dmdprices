@@ -1,5 +1,5 @@
 Package: dmdDoseOptimiseApp
 Title: dm+d Dose Optimiser
 Version: 0.0.1
-Imports: shiny, dmdprices, DT, bslib
+Imports: shiny, dmdprices (>= 0.6.0), DT, bslib, dplyr
 Remotes: w-hardy/dmdprices

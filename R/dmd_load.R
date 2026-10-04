@@ -7,6 +7,10 @@
 #' @param path Path to the `dmdDataLoader` folder (the parent of `csv/`).
 #'   Defaults to `getOption("dmdprices.path")`, allowing you to set a
 #'   project-wide default via `options(dmdprices.path = "~/dmdDataLoader")`.
+#'   If `path` has no `csv/` subfolder, `dmd_load()` signals an error of class
+#'   `dmdprices_error_missing_csv_dir` with the fields `path` (as supplied) and
+#'   `csv_dir` (the `csv/` folder after [normalizePath()], with forward
+#'   slashes; absolute when `path` exists).
 #'
 #' @return A `<dmd_db>` object: a list with the elements:
 #'   * `$master`  — a [tibble][tibble::tibble] with one row per AMPP (branded
@@ -21,6 +25,9 @@
 #'     `denominator_unit`, `strength_canonical`, `strength_unit_canon`.
 #'   * `$loaded_at` — a `POSIXct` timestamp recording when the data was loaded.
 #'
+#' @seealso [as_dmd_db()] to build a `<dmd_db>` from an in-memory table (e.g.
+#'   external Drug-Tariff data); [dmd_price_lookup()], [dmd_dose_optimise()].
+#'
 #' @export
 #'
 #' @examples
@@ -32,18 +39,28 @@ dmd_load <- function(path = getOption("dmdprices.path")) {
   if (is.null(path)) {
     cli::cli_abort(c(
       "No path supplied.",
-      "i" = "Provide {.arg path} or set {.code options(dmdprices.path = \\\"...\\\")}"
+      "i" = "Provide {.arg path} or set {.code options(dmdprices.path = \"...\")}"
     ))
   }
 
-  path <- normalizePath(path, mustWork = FALSE)
-  csv_dir <- file.path(path, "csv")
+  # Report the folder as the caller supplied it. normalizePath() leaves a
+  # non-existent path unchanged on Unix but makes it absolute (backslashed) on
+  # Windows, and it resolves an existing path everywhere, so interpolating the
+  # resolved path made the message depend on the OS and working directory
+  # (#31). The resolved path is kept on the condition as `csv_dir`.
+  supplied_csv_dir <- file.path(path, "csv")
+  csv_dir <- file.path(normalizePath(path, winslash = "/", mustWork = FALSE), "csv")
 
   if (!dir.exists(csv_dir)) {
-    cli::cli_abort(c(
-      "{.path {csv_dir}} does not exist.",
-      "i" = "{.arg path} should be the {.code dmdDataLoader} folder that contains a {.code csv/} subdirectory."
-    ))
+    cli::cli_abort(
+      c(
+        "{.path {supplied_csv_dir}} does not exist.",
+        "i" = "{.arg path} should be the {.code dmdDataLoader} folder that contains a {.code csv/} subdirectory."
+      ),
+      class = "dmdprices_error_missing_csv_dir",
+      path = path,
+      csv_dir = csv_dir
+    )
   }
 
   cli::cli_progress_step("Reading dm+d CSV files from {.path {csv_dir}}")
@@ -110,14 +127,7 @@ dmd_load <- function(path = getOption("dmdprices.path")) {
     )
   }
 
-  structure(
-    list(
-      master = master,
-      ingredients = ingredients,
-      loaded_at = Sys.time()
-    ),
-    class = "dmd_db"
-  )
+  .new_dmd_db(master, ingredients = ingredients, loaded_at = Sys.time())
 }
 
 # ── S3 methods for dmd_db ─────────────────────────────────────────────────────
@@ -247,7 +257,7 @@ dmd_master_info <- function(db = dmdprices::dmd_master) {
 print.dmd_db_info <- function(x, ...) {
   label <- if (!is.na(x$release_label)) {
     x$release_label
-  } else if (!is.na(x$loaded_at[[1]])) {
+  } else if (length(x$loaded_at) && !is.na(x$loaded_at[[1]])) {
     paste0("loaded at ", format(x$loaded_at, "%Y-%m-%d %H:%M"))
   } else {
     "unknown"

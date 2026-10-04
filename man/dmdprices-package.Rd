@@ -54,12 +54,7 @@ research or clinical decision-making. Use at your own risk.
 \url{https://w-hardy.github.io/dmdprices/}
 }
 \author{
-\strong{Maintainer}: Will Hardy \email{w.hardy@bangor.ac.uk}
-
-Authors:
-\itemize{
-  \item Will Hardy \email{w.hardy@bangor.ac.uk}
-}
+\strong{Maintainer}: Will Hardy \email{w.hardy@bangor.ac.uk} [copyright holder]
 
 }
 \keyword{internal}

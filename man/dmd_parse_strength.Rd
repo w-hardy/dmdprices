@@ -25,6 +25,10 @@ Extracts a numeric strength and optional per-denominator concentration
 form (mass in mg, volume in ml, biological activity as \code{"unit"}).
 }
 \details{
+Strengths written with comma thousands separators, as dm+d does for large
+biological-activity values (e.g. nystatin \code{"100,000units/ml"}), parse
+identically to their plain forms.
+
 Combination (multi-ingredient) products such as co-codamol
 (\code{"8mg/500mg"}) or co-careldopa (\code{"25mg/100mg"}) are detected and their
 individual ingredient strengths returned in the \code{components} list-column,
@@ -36,7 +40,8 @@ trailing volume/dose denominator on a combination liquid (e.g. co-trimoxazole
 dmd_parse_strength(c(
   "Metformin 500mg tablets",
   "Morphine 10mg/5ml oral solution",
-  "Salbutamol 100micrograms/dose inhaler CFC free"
+  "Salbutamol 100micrograms/dose inhaler CFC free",
+  "Nystatin 100,000units/ml oral suspension"
 ))
 
 # Combination products expose per-ingredient strengths

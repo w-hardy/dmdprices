@@ -125,6 +125,15 @@ ui <- fluidPage(
       ),
       checkboxInput("can_split", "Allow pack splitting (hospital)", value = TRUE),
       checkboxInput("can_split_vials", "Allow vial sharing (concentration preps)", value = FALSE),
+      selectInput(
+        "over_delivery", "Over-delivery",
+        choices  = c(
+          "Exact dose only"       = "forbid",
+          "Minimise over-delivery" = "minimise",
+          "Allow over-delivery"    = "allow"
+        ),
+        selected = "forbid"
+      ),
       textInput(
         "preparation", "Filter by preparation (optional)",
         placeholder = "e.g. tablet|modified-release|oral"
@@ -201,7 +210,8 @@ server <- function(input, output, session) {
         objective      = objs,
         preparation    = prep_filter,
         can_split      = input$can_split,
-        can_split_vials = input$can_split_vials
+        can_split_vials = input$can_split_vials,
+        over_delivery  = input$over_delivery
       )
     )
   })
@@ -259,6 +269,7 @@ server <- function(input, output, session) {
         "Dose delivered"    = dose_delivered,
         "Unit"              = dose_delivered_unit,
         "Over-delivery"     = over_delivery,
+        "Exact"             = dose_exact,
         "Items"             = total_items,
         "Cost (pence)"      = dose_cost_pence,
         "Price field"       = price_field_used,
@@ -278,7 +289,8 @@ server <- function(input, output, session) {
         pageLength = 15,
         scrollX    = TRUE,
         columnDefs = list(
-          list(className = "dt-center", targets = c(3, 4, 5, 6, 7))
+          # Dose delivered, Unit, Over-delivery, Exact, Items, Cost (0-based)
+          list(className = "dt-center", targets = c(3, 4, 5, 6, 7, 8))
         )
       )
     ) |>

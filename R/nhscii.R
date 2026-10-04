@@ -17,6 +17,7 @@
 #' manual.
 #'
 #' @keywords internal
+#' @noRd
 .nhscii_rates <- list(
   pay_and_prices = stats::setNames(
     c(NA_real_, 0.40, 2.09, 1.24, 1.60, 2.14, 2.49, 2.58, 7.32, 2.47, 4.02),
@@ -68,18 +69,27 @@
   )
 )
 
-validate_scalar <- function(x, arg) {
+.validate_scalar <- function(x, arg, call = rlang::caller_env()) {
   if (length(x) != 1L || is.na(x)) {
-    stop(arg, " must be a single non-missing value.", call. = FALSE)
+    cli::cli_abort(
+      "{.arg {arg}} must be a single, non-missing value.",
+      call = call
+    )
   }
 }
 
-normalize_fin_year <- function(x, arg = "year") {
-  validate_scalar(x, arg)
+.normalize_fin_year <- function(x, arg = "year", call = rlang::caller_env()) {
+  .validate_scalar(x, arg, call = call)
 
   if (is.numeric(x)) {
     if (!is.finite(x) || x %% 1 != 0 || x < 1900 || x > 3000) {
-      stop(arg, " numeric input must be a whole year like 2025.", call. = FALSE)
+      cli::cli_abort(
+        c(
+          "{.arg {arg}} must be a whole calendar year.",
+          "i" = "Pass a four-digit end-year such as {.val {2025}}."
+        ),
+        call = call
+      )
     }
 
     # Numeric input is interpreted as end-year:
@@ -91,17 +101,20 @@ normalize_fin_year <- function(x, arg = "year") {
   x <- as.character(x)
 
   if (!grepl("^\\d{4}/\\d{2}$", x)) {
-    stop(
-      arg,
-      " must be in 'YYYY/YY' format or a numeric end-year (e.g. 2025).",
-      call. = FALSE
+    cli::cli_abort(
+      c(
+        "{.arg {arg}} is not a valid financial year.",
+        "i" = "Use {.val YYYY/YY} format (e.g. {.val 2019/20}) or a numeric \\
+               end-year (e.g. {.val {2025}})."
+      ),
+      call = call
     )
   }
 
   x
 }
 
-build_index_levels <- function(rates) {
+.build_index_levels <- function(rates) {
   years <- names(rates)
 
   # Rates are interpreted as changes into each named year.
@@ -151,34 +164,32 @@ nhscii <- function(
   index = "pay_and_prices",
   output_type = c("factor", "percent")
 ) {
-  validate_scalar(index, "index")
+  .validate_scalar(index, "index")
 
   output_type <- match.arg(output_type, c("factor", "percent"))
   index <- match.arg(index, names(.nhscii_rates))
 
-  from_year <- normalize_fin_year(from_year, "from_year")
-  to_year <- normalize_fin_year(to_year, "to_year")
+  from_year <- .normalize_fin_year(from_year, "from_year")
+  to_year <- .normalize_fin_year(to_year, "to_year")
 
   rates <- .nhscii_rates[[index]]
   valid_years <- names(rates)
 
   if (!from_year %in% valid_years) {
-    stop(
-      "from_year must be one of: ",
-      paste(valid_years, collapse = ", "),
-      call. = FALSE
-    )
+    cli::cli_abort(c(
+      "{.arg from_year} ({.val {from_year}}) is not a known financial year.",
+      "i" = "Use one of {.val {valid_years}}."
+    ))
   }
 
   if (!to_year %in% valid_years) {
-    stop(
-      "to_year must be one of: ",
-      paste(valid_years, collapse = ", "),
-      call. = FALSE
-    )
+    cli::cli_abort(c(
+      "{.arg to_year} ({.val {to_year}}) is not a known financial year.",
+      "i" = "Use one of {.val {valid_years}}."
+    ))
   }
 
-  levels <- build_index_levels(rates)
+  levels <- .build_index_levels(rates)
   factor <- unname(levels[[to_year]] / levels[[from_year]])
 
   if (identical(output_type, "percent")) {
@@ -212,7 +223,7 @@ inflate_nhscii <- function(
   index = "pay_and_prices"
 ) {
   if (!is.numeric(cost) || any(!is.finite(cost))) {
-    stop("cost must be a numeric vector of finite values.", call. = FALSE)
+    cli::cli_abort("{.arg cost} must be a numeric vector of finite values.")
   }
 
   factor <- nhscii(

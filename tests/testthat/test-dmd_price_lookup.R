@@ -36,7 +36,7 @@ test_that("partial match returns correct rows", {
   res <- dmd_price_lookup("metformin", db = db)
   expect_s3_class(res, "tbl_df")
   expect_equal(nrow(res), 2)
-  expect_true(all(grepl("metformin", res$medicine, ignore.case = TRUE)))
+  expect_match(res$medicine, "metformin", ignore.case = TRUE, all = TRUE)
 })
 
 test_that("partial match treats regex metacharacters literally", {
@@ -65,7 +65,7 @@ test_that("partial match treats regex metacharacters literally", {
   # A query containing "[" used to error with U_REGEX_INVALID_RANGE.
   res <- expect_no_error(dmd_price_lookup("[I-131]", db = db_rx))
   expect_equal(nrow(res), 1L)
-  expect_true(grepl("Sodium iodide", res$medicine))
+  expect_match(res$medicine, "Sodium iodide")
 })
 
 test_that("partial match finds a brand only present in ampp_name", {
@@ -79,7 +79,7 @@ test_that("partial match finds a brand only present in ampp_name", {
 test_that("searching the generic still returns the generic rows", {
   res <- dmd_price_lookup("metformin", db = db)
   expect_equal(nrow(res), 2L)
-  expect_true(all(grepl("metformin", res$medicine, ignore.case = TRUE)))
+  expect_match(res$medicine, "metformin", ignore.case = TRUE, all = TRUE)
 })
 
 test_that("exact match works against the full branded pack name", {
@@ -102,7 +102,7 @@ test_that("fuzzy match tolerates a typo in a branded pack name", {
       max_dist = 2
     )
   )
-  expect_true(any(grepl("Brand B", res$ampp_name)))
+  expect_match(res$ampp_name, "Brand B", all = FALSE)
 })
 
 test_that("brand search is skipped gracefully when ampp_name is absent", {
@@ -133,9 +133,8 @@ test_that("exact match is case-insensitive", {
 })
 
 test_that("exact match returns nothing for non-matching query", {
-  expect_warning(
-    res <- dmd_price_lookup("aspirin 75mg tablets", db = db, method = "exact"),
-    regexp = "No medicines found"
+  expect_snapshot(
+    res <- dmd_price_lookup("aspirin 75mg tablets", db = db, method = "exact")
   )
   expect_equal(nrow(res), 0)
 })
@@ -149,7 +148,7 @@ test_that("fuzzy match tolerates a single typo", {
       max_dist = 2
     )
   )
-  expect_true(nrow(res) >= 1)
+  expect_gte(nrow(res), 1)
 })
 
 test_that("active_only = FALSE keeps NA-price rows", {
@@ -179,9 +178,9 @@ test_that("output has correct snake_case column names", {
 })
 
 test_that("dmd_price_lookup() errors on non-dmd_db / non-tibble input", {
-  expect_error(dmd_price_lookup("metformin", db = "bad"), class = "rlang_error")
+  expect_snapshot(error = TRUE, dmd_price_lookup("metformin", db = "bad"))
 })
 
 test_that("dmd_price_lookup() errors on empty query", {
-  expect_error(dmd_price_lookup("  ", db = db), class = "rlang_error")
+  expect_snapshot(error = TRUE, dmd_price_lookup("  ", db = db))
 })

@@ -1,5 +1,5 @@
 Package: dmdPriceLookupApp
 Title: dm+d Price Lookup
 Version: 0.0.1
-Imports: shiny, dmdprices, DT, bslib
+Imports: shiny, dmdprices, DT, bslib, dplyr
 Remotes: w-hardy/dmdprices

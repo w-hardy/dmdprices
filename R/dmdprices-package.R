@@ -53,7 +53,8 @@
 #' @importFrom stringdist stringdist
 #' @importFrom tibble tibble tribble
 #' @importFrom cachem cache_mem
-#' @importFrom memoise memoise cache_memory
+#' @importFrom memoise memoise
 #' @importFrom bslib bs_theme
+#' @importFrom DT datatable
 ## usethis namespace: end
 NULL
