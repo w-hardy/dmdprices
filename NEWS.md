@@ -57,8 +57,8 @@
   right: in the bundled release 221 of 26,277
   single-ingredient pack rows costable both ways still differ,
   168 of them by under 1% from such rounding. In the bundled
-  release this changes the per-item dose of 14,168
-  product-ingredient pairs and removes 827 (see the next two entries).
+  release this changes the per-item dose of 14,176
+  product-ingredient pairs and removes 819 (see the next two entries).
   Re-run any analysis that used `ingredient =` with an earlier version. This
   corrects the 0.6.2 notes that said results with `ingredient =` were
   unchanged by the cream fix.
@@ -73,8 +73,10 @@
   drop a whole gram. The container's size is now taken from the name: a
   stated size in the strength's dimension ("500ml bags", "0.25g unit dose",
   "3ml pre-filled pens", "1litre Viaflo bags"), read from the product's own
-  phrase only, so in an "and"-joined pack the other product's size does not
-  count; else the strength denominator where the name states it with a
+  phrase only, so in a pack of two products joined by "and" the other
+  product's size does not count ("Bismuth subnitrate and Iodoform paste 30g
+  sachets" is one product and keeps its 30 g); else the strength denominator
+  where the name states it with a
   number ("500mg/50ml", "10mg/1ml", "4mg/100microlitres", "5,000units/1litre",
   which the strength grammar now parses). A name that states neither
   ("10mg/ml ... ampoules"), or two different sizes, gives no amount, and the
@@ -83,22 +85,24 @@
   them; `quiet = TRUE` does not silence it; `dmd_dose_cost_range()` shows it
   once per call), on both the name-parsed and the `ingredient =` paths. A
   multi-dose pen, cartridge or device is one container: a labelled dose
-  draws a whole one unless `can_split_vials = TRUE`, and where the
+  draws a whole one unless `can_split_vials = TRUE`, and where a
   container's content is not a whole number of the solver's grid units
-  (1.5 ml of 0.25mg/0.37ml is 1.0135 mg) the dose is covered by whole
-  containers of the one product that best meets the objective instead of
-  being refused. In the bundled release the name-parsed path resizes
+  (1.5 ml of 0.25mg/0.37ml is 1.0135 mg) the dose is still solved: the
+  group's other products keep their exact combinations, and that container
+  is costed whole as many times as needed when it is the better answer,
+  instead of the group being refused. In the bundled release the name-parsed
+  path resizes
   189 pack rows (90 medicines, 61
   priced: unit-dose eye drops and multi-dose pens and devices) and skips
   4 medicines (3 priced); the `ingredient =`
-  path skips 239 product-ingredient pairs (81
-  medicines, 30 priced) whose container size the name does
+  path skips 231 product-ingredient pairs (79
+  medicines, 29 priced) whose container size the name does
   not state, among them medicated plasters and dressings, nebuliser ampoules
   of unstated size and products recorded per gram but sold in millilitre
   unit doses. Of the 8,041 product-ingredient pairs that 0.6.2 dosed
-  1000 times too high, 6,193 are now sized by the container the name
+  1000 times too high, 6,201 are now sized by the container the name
   states, 1,142 keep one litre or one gram because that is the
-  container, 199 are skipped for an unstated size, and 507
+  container, 191 are skipped for an unstated size, and 507
   for an unknown dose count or mismatched units.
 - **Packs whose number of doses is unknown are skipped with a warning
   instead of being costed as one dose per millilitre or gram.** For a
