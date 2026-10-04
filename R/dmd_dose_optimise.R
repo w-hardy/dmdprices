@@ -485,19 +485,20 @@
   invisible(TRUE)
 }
 
-# The cache is capped at 1 GiB. Key fields are joined with the ASCII unit
-# separator ("\x1f") so adjacent arguments cannot run together.
+# The cache is capped at 1 GiB. The key hashes the arguments as a list, so
+# each keeps its type and full precision. A pasted string would write
+# `max_dist = 0.3 / 0.1` as "3" and could not tell the string "3" from the
+# number 3, yet dmd_price_lookup() filters differently for each of the three.
 .dmd_prepare_candidates_memo <- memoise::memoise(
   .dmd_prepare_candidates,
   hash = function(args) {
-    rlang::hash(paste(
+    rlang::hash(list(
       args$query,
       .db_cache_key(args$db),
       args$method,
       args$max_dist,
       args$active_only,
-      args$price,
-      sep = "\x1f"
+      args$price
     ))
   },
   cache = cachem::cache_mem(max_size = 1024 * 1024^2)

@@ -26,6 +26,12 @@
   timestamp is safe in `as_dmd_db()`. This supersedes the 0.6.0
   "Performance" note, which keyed the cache on `loaded_at` and the release
   label.
+- **The dose cache no longer confuses `max_dist` values that print alike.**
+  Its key pasted the arguments into one string, so `max_dist = 0.3 / 0.1`
+  (2.9999999999999996, which prints as 3) and the string `"3"` shared the
+  cache entry of `max_dist = 3`, and a fuzzy search could be served the
+  other value's candidates. The key now keeps each argument's type and full
+  precision.
 - **Creams, gels and ointments sold as a single tube or jar had a per-item
   dose 1000 times too small.** For a product whose strength is stated per
   gram (such as `20mg/g` or `50micrograms/g`) and whose pack is one

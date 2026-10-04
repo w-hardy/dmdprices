@@ -158,6 +158,58 @@ test_that("fixtures sharing .fixed_loaded_at do not share candidates (#30)", {
   expect_equal(n_wide, n_base + 1L)
 })
 
+# ── Arguments keep their type and precision in the key ────────────────────────
+
+test_that("a max_dist that prints like another keeps its own candidates", {
+  # 0.3 / 0.1 is 2.9999999999999996, which paste() writes as "3". The query
+  # is at osa distance 3 from "Metformin 500mg tablets", so a fuzzy lookup
+  # finds it with max_dist = 3 and finds nothing with 0.3 / 0.1.
+  medicine <- c("Metformin 500mg tablets", "Metformin 1g tablets")
+  db <- as_dmd_db(data.frame(
+    medicine = medicine,
+    pack_size = 28,
+    unit = "tablet",
+    basic_price = c(58L, 180L),
+    nhs_indicative_price = c(63L, 190L),
+    ampp_name = medicine,
+    ampp_snomed_code = c("APP_MET500", "APP_MET1G")
+  ))
+  q <- "Metformin 5000mg tablets x"
+  cost <- function(max_dist) {
+    dmd_dose_cost(
+      q,
+      dose = 1000,
+      dose_unit = "mg",
+      db = db,
+      method = "fuzzy",
+      max_dist = max_dist,
+      quiet = TRUE
+    )
+  }
+  has_candidates <- function(max_dist) {
+    memoise::has_cache(.dmd_prepare_candidates_memo)(
+      query = q,
+      db = db,
+      method = "fuzzy",
+      max_dist = max_dist,
+      active_only = TRUE,
+      price = "basic_price"
+    )
+  }
+
+  .local_fresh_dose_cache()
+  expect_equal(cost(3), 2 * 58 / 28)
+  expect_false(has_candidates(0.3 / 0.1))
+  expect_false(has_candidates("3"))
+  expect_warning(miss <- cost(0.3 / 0.1), "No medicines found")
+  expect_identical(miss, NA_real_)
+
+  .forget_dose_cache()
+  expect_warning(miss <- cost(0.3 / 0.1), "No medicines found")
+  expect_identical(miss, NA_real_)
+  expect_equal(cost(3), 2 * 58 / 28)
+})
+
 # ── Equal content still shares the cache ──────────────────────────────────────
 
 test_that("equal content shares a key across loaded_at values and wrappers", {
