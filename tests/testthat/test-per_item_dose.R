@@ -96,10 +96,12 @@ test_that("a mg/ml bottle priced per ml is unchanged", {
 # ── .per_item_dose() directly ────────────────────────────────────────────────
 
 test_that(".per_item_dose() without one-container rows returns a numeric vector", {
-  # A container-count vial and a tablet: no row takes the pack-quantity
-  # branch, so the canonicalisation step must be skipped rather than assign
-  # a zero-length mapply() result (a list) into the multiplier.
+  # A container-count vial (its name states the 1 ml container) and a tablet:
+  # no row takes the pack-quantity branch, so the canonicalisation step must
+  # be skipped rather than assign a zero-length mapply() result (a list) into
+  # the multiplier.
   enriched <- tibble::tibble(
+    medicine = c("Drug 10mg/1ml solution for injection vials", "Drug 500mg tablets"),
     strength_canonical = c(10, 500),
     denominator_value = c(1, NA_real_),
     denominator_unit = c("ml", NA_character_),
@@ -115,8 +117,13 @@ test_that(".per_item_dose() without one-container rows returns a numeric vector"
 
 test_that(".per_item_dose() measures a one-container pack in the strength's canonical unit", {
   # 0.02 mg per mg in a 60 g tube; 5 mg per ml in a 1 litre pack; 10 mg per
-  # ml in a container-count pack of 50 ml vials.
+  # ml in a container-count pack of 50 ml vials (the name states the volume).
   enriched <- tibble::tibble(
+    medicine = c(
+      "Drug 20mg/g cream",
+      "Drug 5mg/ml solution",
+      "Drug 500mg/50ml solution for infusion vials"
+    ),
     strength_canonical = c(0.02, 5, 10),
     denominator_value = c(1, 1, 50),
     denominator_unit = c("g", "ml", "ml"),
@@ -211,12 +218,13 @@ test_that("a targeted vial keeps the container volume stated in its name", {
   )
 })
 
-test_that("a per-gram unit dose targeted by ingredient is dosed per gram, not per milligram", {
+test_that("a per-gram unit dose targeted by ingredient holds the mass its name states", {
   .local_fresh_dose_cache()
+  # 15 mg per g, in 0.25 g unit doses: 3.75 mg each, not 15 mg (one gram).
   targeted <- .targeted("Azythro", "Azythro substance")
   expect_equal(targeted$strength_canonical, 0.015)
   expect_equal(targeted$strength_unit_canon, "mg/mg")
-  expect_equal(targeted$per_item_dose, 15)
+  expect_equal(targeted$per_item_dose, 3.75)
   res <- dmd_dose_optimise(
     "Azythro",
     dose = 15,
@@ -227,17 +235,45 @@ test_that("a per-gram unit dose targeted by ingredient is dosed per gram, not pe
   )
   expect_equal(nrow(res), 1L)
   expect_true(res$dose_exact)
-  expect_equal(res$total_items, 1)
-  expect_equal(res$dose_cost_pence, 699 / 6)
+  expect_equal(res$total_items, 4)
+  expect_equal(res$dose_cost_pence, 4 * 699 / 6)
 })
 
-test_that("a VPI denominator in grams or litres does not scale a container-count item by 1000", {
+test_that("a container of a per-litre ingredient holds the volume its name states", {
   .local_fresh_dose_cache()
+  # 9 g per litre: a 500 ml bag holds 4,500 mg, a 1 litre bag 9,000 mg, and a
+  # bag of unstated size has no known amount.
   bags <- .targeted("Exsaline", "Sodium chloride")
-  expect_equal(bags$strength_canonical, 9)
-  expect_equal(bags$strength_unit_canon, "mg/ml")
-  expect_equal(bags$per_item_dose, 9000)
-  expect_equal(bags$items_per_pack, 10)
+  bags <- bags[order(bags$medicine, method = "radix"), , drop = FALSE]
+  expect_equal(bags$medicine, c(
+    "Exsaline 0.9% infusion 1litre bags",
+    "Exsaline 0.9% infusion 500ml bags",
+    "Exsaline 0.9% infusion bags"
+  ))
+  expect_equal(bags$strength_canonical, c(9, 9, 9))
+  expect_equal(bags$strength_unit_canon, c("mg/ml", "mg/ml", "mg/ml"))
+  expect_equal(bags$per_item_dose, c(9000, 4500, NA_real_))
+  expect_equal(bags$items_per_pack, c(10, 10, 10))
+
+  # 4.5 g: one 500 ml bag (189p) beats one 1 litre bag (300p); the bag of
+  # unstated size is skipped with a warning.
+  got <- .with_warnings(dmd_dose_optimise(
+    "Exsaline",
+    dose = 4.5,
+    dose_unit = "g",
+    db = vpi_db,
+    ingredient = "Sodium chloride",
+    objective = "cheapest"
+  ))
+  expect_equal(got$value$combination[[1]]$medicine, "Exsaline 0.9% infusion 500ml bags")
+  expect_equal(got$value$dose_cost_pence, 189)
+  expect_true(got$value$dose_exact)
+  unknown <- Filter(
+    function(w) inherits(w, "dmdprices_warning_unknown_container_amount"),
+    got$conditions
+  )
+  expect_length(unknown, 1L)
+  expect_equal(unknown[[1]]$medicines, "Exsaline 0.9% infusion bags")
 })
 
 test_that("ingredient targeting never reads the stored canonical columns", {
@@ -248,8 +284,8 @@ test_that("ingredient targeting never reads the stored canonical columns", {
   azy <- .targeted("Azythro", "Azythro substance", db = poisoned)
   expect_equal(azy$strength_canonical, 0.015)
   expect_equal(azy$strength_unit_canon, "mg/mg")
-  expect_equal(azy$per_item_dose, 15)
-  bags <- .targeted("Exsaline", "Sodium chloride", db = poisoned)
+  expect_equal(azy$per_item_dose, 3.75)
+  bags <- .targeted("Exsaline 0.9% infusion 1litre", "Sodium chloride", db = poisoned)
   expect_equal(bags$strength_canonical, 9)
   expect_equal(bags$per_item_dose, 9000)
 })
@@ -310,6 +346,46 @@ test_that(".per_item_dose() has one convention and no flag", {
   # (0.6.2's `canonical_pack_quantity`): the behaviour it stood for is
   # asserted above by the targeted and parsed rows agreeing.
   expect_named(formals(.per_item_dose), "enriched")
+})
+
+test_that(".container_amount() reads an unambiguous container size in the right dimension", {
+  amount <- function(name, dim) .container_amount(name, dim)
+  expect_equal(amount("Sodium chloride 0.9% infusion 500ml bags", "ml"), 500)
+  expect_equal(amount("Generic Aminoplasmal 15% solution for infusion 1litre bottles", "ml"), 1000)
+  expect_equal(amount("Drug 2mg/ml solution for infusion 1,000ml bags", "ml"), 1000)
+  expect_equal(amount("Insulin 100units/ml solution for injection 3ml pre-filled pens", "ml"), 3)
+  expect_equal(amount("Tirzepatide 12.5mg/0.6ml solution for injection 2.4ml pre-filled disposable devices", "ml"), 2.4)
+  expect_equal(amount("Sodium phosphate 2.875g/500ml infusion 500ml polyethylene bottles", "ml"), 500)
+  expect_equal(amount("Azithromycin 15mg/g eye drops 0.25g unit dose preservative free", "mg"), 250)
+  # The wrong dimension, a strength denominator, a strength numerator and a
+  # size with no container word are not container sizes.
+  expect_equal(amount("Azithromycin 15mg/g eye drops 0.25g unit dose preservative free", "ml"), NA_real_)
+  expect_equal(amount("Rituximab 500mg/50ml solution for infusion vials", "ml"), NA_real_)
+  expect_equal(amount("Meropenem 1g powder for solution for injection vials", "mg"), NA_real_)
+  expect_equal(amount("Morphine 10mg/ml solution for injection ampoules", "ml"), NA_real_)
+  # Two different sizes are ambiguous; the same size twice is not.
+  expect_equal(amount("Drug 1mg/ml solution 10ml vials and Drug 1mg/ml solution 20ml vials", "ml"), NA_real_)
+  expect_equal(amount("Drug 1mg/ml solution 10ml vials and Drug 2mg/ml solution 10ml vials", "ml"), 10)
+  expect_equal(amount(c("Drug 1mg/ml 5ml vials", NA), "ml"), c(5, NA_real_))
+  expect_equal(amount(character(), "ml"), numeric())
+})
+
+test_that(".container_quantities() falls back to an explicit strength denominator only", {
+  q <- .container_quantities("Rituximab 500mg/50ml solution for infusion vials", 50, "ml")
+  expect_equal(q, list(ml = 50, mg = NA_real_))
+  q <- .container_quantities("Salbutamol 500micrograms/1ml solution for injection ampoules", 1, "ml")
+  expect_equal(q$ml, 1)
+  q <- .container_quantities("Morphine 10mg/ml solution for injection ampoules", 1, "ml")
+  expect_equal(q$ml, NA_real_)
+  # A stated container size wins over the strength's own denominator.
+  q <- .container_quantities("Tirzepatide 12.5mg/0.6ml solution for injection 2.4ml pre-filled disposable devices", 0.6, "ml")
+  expect_equal(q$ml, 2.4)
+  q <- .container_quantities("Sodium chloride 0.9% infusion 500ml bags", NA_real_, NA_character_)
+  expect_equal(q, list(ml = 500, mg = NA_real_))
+  q <- .container_quantities("Azithromycin 15mg/g eye drops 0.25g unit dose preservative free", 1, "g")
+  expect_equal(q, list(ml = NA_real_, mg = 250))
+  q <- .container_quantities(c("A 5mg/ml 2ml vials", "B 5mg/2ml vials"), c(1, 2), c("ml", "ml"))
+  expect_equal(q$ml, c(2, 2))
 })
 
 test_that(".canonical_strength() canonicalises each side and rejects what it cannot", {

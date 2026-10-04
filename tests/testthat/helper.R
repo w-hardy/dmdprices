@@ -391,31 +391,42 @@
     db$master,
     tibble::tibble(
       medicine = c(
-        "Azythro 15mg/g eye drops unit dose preservative free",
+        "Azythro 15mg/g eye drops 0.25g unit dose preservative free",
         "Exsaline 0.9% infusion bags",
+        "Exsaline 0.9% infusion 500ml bags",
+        "Exsaline 0.9% infusion 1litre bags",
         "Exspirit cutaneous solution",
         "Exornithine powder",
         "Exoxygen medical gas",
         "Expatch transdermal patches",
         "Expatch radio injection vials"
       ),
-      pack_size = c(6, 10, 200, 100, 2130, 4, 1),
-      unit = c("unit dose", "bag", "ml", "g", "litre", "patch", "vial"),
+      pack_size = c(6, 10, 10, 10, 200, 100, 2130, 4, 1),
+      unit = c(
+        "unit dose", "bag", "bag", "bag", "ml", "g", "litre", "patch", "vial"
+      ),
       vmp_snomed_code = c(
-        "V_AZY", "V_SAL", "V_SPI", "V_ORN", "V_OXY", "V_PAT", "V_RAD"
+        "V_AZY", "V_SAL", "V_SAL5", "V_SAL1", "V_SPI", "V_ORN", "V_OXY",
+        "V_PAT", "V_RAD"
       ),
       vmpp_snomed_code = c(
-        "VPP_AZY", "VPP_SAL", "VPP_SPI", "VPP_ORN", "VPP_OXY", "VPP_PAT",
-        "VPP_RAD"
+        "VPP_AZY", "VPP_SAL", "VPP_SAL5", "VPP_SAL1", "VPP_SPI", "VPP_ORN",
+        "VPP_OXY", "VPP_PAT", "VPP_RAD"
       ),
-      drug_tariff_category = rep("Part VIIIA Category C", 7),
-      basic_price = c(699L, 1890L, 300L, 6292L, 1000L, 2000L, 5000L),
-      nhs_indicative_price = c(699L, 1890L, 300L, 6292L, 1000L, 2000L, 5000L),
-      price_basis = rep("NHS Indicative Price", 7),
-      price_date = rep("2025-08-08", 7),
+      drug_tariff_category = rep("Part VIIIA Category C", 9),
+      basic_price = c(
+        699L, 1890L, 1890L, 3000L, 300L, 6292L, 1000L, 2000L, 5000L
+      ),
+      nhs_indicative_price = c(
+        699L, 1890L, 1890L, 3000L, 300L, 6292L, 1000L, 2000L, 5000L
+      ),
+      price_basis = rep("NHS Indicative Price", 9),
+      price_date = rep("2025-08-08", 9),
       ampp_name = c(
         "Azythro 15mg/g eye drops 6 unit dose",
         "Exsaline 0.9% infusion 10 bag",
+        "Exsaline 0.9% infusion 500ml 10 bag",
+        "Exsaline 0.9% infusion 1litre 10 bag",
         "Exspirit cutaneous solution 200 ml",
         "Exornithine powder 100 gram",
         "Exoxygen medical gas 2130 litre",
@@ -423,8 +434,8 @@
         "Expatch radio injection 1 vial"
       ),
       ampp_snomed_code = c(
-        "APP_AZY", "APP_SAL", "APP_SPI", "APP_ORN", "APP_OXY", "APP_PAT",
-        "APP_RAD"
+        "APP_AZY", "APP_SAL", "APP_SAL5", "APP_SAL1", "APP_SPI", "APP_ORN",
+        "APP_OXY", "APP_PAT", "APP_RAD"
       )
     )
   )
@@ -432,28 +443,33 @@
   # mass: per hour for the patch, and in GBq for the radio injection.
   db$ingredients <- tibble::tibble(
     vmp_snomed_code = c(
-      "11", "12", "V_AZY", "V_SAL", "V_SPI", "V_ORN", "V_OXY", "V_PAT", "V_RAD"
+      "11", "12", "V_AZY", "V_SAL", "V_SAL5", "V_SAL1", "V_SPI", "V_ORN",
+      "V_OXY", "V_PAT", "V_RAD"
     ),
     ingredient_snomed_code = c(
-      "I_rit", "I_rit", "I_azy", "I_nacl", "I_msal", "I_orn", "I_oxy",
-      "I_pat", "I_pat"
+      "I_rit", "I_rit", "I_azy", "I_nacl", "I_nacl", "I_nacl", "I_msal",
+      "I_orn", "I_oxy", "I_pat", "I_pat"
     ),
     ingredient_name = c(
       "Rituximab", "Rituximab", "Azythro substance", "Sodium chloride",
-      "Methyl salicylate", "Ornithine", "Oxygen", "Expatchine", "Expatchine"
+      "Sodium chloride", "Sodium chloride", "Methyl salicylate", "Ornithine",
+      "Oxygen", "Expatchine", "Expatchine"
     ),
-    strength_value = c(10, 10, 15, 9, 5, 1, 1, 5, 5),
+    strength_value = c(10, 10, 15, 9, 9, 9, 5, 1, 1, 5, 5),
     strength_unit = c(
-      "mg", "mg", "mg", "g", "ml", "mg", "ml", "microgram", "GBq"
+      "mg", "mg", "mg", "g", "g", "g", "ml", "mg", "ml", "microgram", "GBq"
     ),
-    denominator_value = c(1, 1, 1, 1, 1, 1, 1, 1, 1),
+    denominator_value = rep(1, 11),
     denominator_unit = c(
-      "ml", "ml", "g", "litre", "litre", "mg", "ml", "hour", "ml"
+      "ml", "ml", "g", "litre", "litre", "litre", "litre", "mg", "ml", "hour",
+      "ml"
     ),
-    strength_canonical = c(10, 10, 0.015, 9, 0.005, 1, 1, NA_real_, NA_real_),
+    strength_canonical = c(
+      10, 10, 0.015, 9, 9, 9, 0.005, 1, 1, NA_real_, NA_real_
+    ),
     strength_unit_canon = c(
-      "mg/ml", "mg/ml", "mg/mg", "mg/ml", "ml/ml", "mg/mg", "ml/ml",
-      NA_character_, NA_character_
+      "mg/ml", "mg/ml", "mg/mg", "mg/ml", "mg/ml", "mg/ml", "ml/ml", "mg/mg",
+      "ml/ml", NA_character_, NA_character_
     )
   )
   db
@@ -659,4 +675,51 @@
     conditions = conditions,
     warnings = vapply(conditions, conditionMessage, character(1))
   )
+}
+
+# Fake dmd_db for the amount of drug per container (name-parsed path). A
+# container-count pack of a concentration is dosed per container only when the
+# name states the container's size: as a bare token in the denominator's
+# dimension ("0.3ml unit dose", "2.4ml pre-filled disposable devices", "500ml
+# bags"), or as an explicit numeric strength denominator ("10mg/1ml"). An
+# implicit "per ml" with no token ("10mg/ml ... ampoules") has no known amount.
+#   Dexamethasone 1.5mg/ml eye drops 0.3ml unit dose          -> 0.45 mg per unit
+#   Tirzepatide 12.5mg/0.6ml ... 2.4ml pre-filled devices    -> 50 mg per device
+#   Glucotest 50mg/ml solution for infusion 500ml bags       -> 25,000 mg per bag
+#   Morphine 10mg/1ml solution for injection ampoules        -> 10 mg per ampoule
+#   Morphine 10mg/ml solution for injection ampoules         -> unknown (skipped)
+#   Morphine 10mg/5ml oral solution, 100 ml                  -> 200 mg bottle (pack)
+.fake_container_amount_db <- function(loaded_at = .fixed_loaded_at) {
+  master <- tibble::tibble(
+    medicine = c(
+      "Dexamethasone 1.5mg/ml eye drops 0.3ml unit dose preservative free",
+      "Tirzepatide 12.5mg/0.6ml solution for injection 2.4ml pre-filled disposable devices",
+      "Glucotest 50mg/ml solution for infusion 500ml bags",
+      "Morphine 10mg/1ml solution for injection ampoules",
+      "Morphine 10mg/ml solution for injection ampoules",
+      "Morphine 10mg/5ml oral solution"
+    ),
+    pack_size = c(30, 4, 10, 10, 10, 100),
+    unit = c(
+      "unit dose", "pre-filled disposable injection", "bag", "ampoule",
+      "ampoule", "ml"
+    ),
+    vmp_snomed_code = c("V_DEX", "V_TIR", "V_GLU", "V_MOR1", "V_MOR0", "V_MORO"),
+    vmpp_snomed_code = paste0("VPP", seq_len(6)),
+    drug_tariff_category = rep("Part VIIIA Category C", 6),
+    basic_price = c(600L, 40000L, 2000L, 450L, 500L, 300L),
+    nhs_indicative_price = c(600L, 40000L, 2000L, 450L, 500L, 300L),
+    price_basis = rep("NHS Indicative Price", 6),
+    price_date = rep("2025-08-08", 6),
+    ampp_name = c(
+      "Dexamethasone 1.5mg/ml eye drops 30 unit dose",
+      "Tirzepatide 12.5mg/0.6ml 4 pre-filled disposable injection",
+      "Glucotest 50mg/ml infusion 500ml 10 bag",
+      "Morphine 10mg/1ml ampoules 10 ampoule",
+      "Morphine 10mg/ml ampoules 10 ampoule",
+      "Morphine 10mg/5ml oral solution 100 ml"
+    ),
+    ampp_snomed_code = paste0("APP", seq_len(6))
+  )
+  structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
 }

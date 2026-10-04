@@ -98,6 +98,97 @@
   list(value = out_value, unit = out_unit)
 }
 
+# ── Container size stated in the name ────────────────────────────────────────
+
+# The amount of one container of a concentration (a vial, bag, bottle, unit
+# dose, pre-filled device) is never assumed: it is read from the product name
+# as a bare size token in the strength denominator's physical dimension
+# ("500ml bags", "0.25g unit dose", "2.4ml pre-filled disposable devices"), or
+# failing that from an explicit numeric strength denominator ("10mg/1ml",
+# "500mg/50ml"). An implicit "per ml" or "per g" with no size token names no
+# container, and two different sizes are ambiguous; both give NA, which the
+# dose functions treat as an unknown amount and skip with a warning.
+.container_words <- paste0(
+  "(?:bags?|bottles?|vials?|ampoules?|cartridges?|syringes?|pens?|sachets?|",
+  "cassettes?|devices?|applicators?|tubes?|pouch(?:es)?|jars?|enemas?|",
+  "unit\\s+doses?|containers?|cans?|droppers?)"
+)
+.container_modifiers <- paste0(
+  "(?:(?:pre-?filled|disposable|plastic|polyethylene|glass|multidose|",
+  "multi-dose|single-?dose|single-?use|sterile)\\s+)*"
+)
+# A size token: a number (not part of a strength expression, so not preceded
+# by "/" or a digit) and a volume or mass unit, followed by a container word.
+.container_token_rx <- paste0(
+  "(?<![/\\d.,])(\\d+(?:[.,]\\d+)?)\\s?",
+  "(ml|millilitres?|litres?|l|g|grams?|mg|kg)\\s+",
+  .container_modifiers,
+  .container_words,
+  "\\b"
+)
+.container_unit_dimension <- c(
+  ml = "ml", millilitre = "ml", millilitres = "ml", litre = "ml", litres = "ml",
+  l = "ml", g = "mg", gram = "mg", grams = "mg", mg = "mg", kg = "mg"
+)
+.container_unit_factor <- c(
+  ml = 1, millilitre = 1, millilitres = 1, litre = 1000, litres = 1000,
+  l = 1000, g = 1000, gram = 1000, grams = 1000, mg = 1, kg = 1e6
+)
+
+# Canonical amount (ml or mg) of one container as the name states it, in
+# `dimension` ("ml" or "mg"); NA when the name states no size in that
+# dimension or states two different ones. Vectorised over `medicine`.
+.container_amount <- function(medicine, dimension) {
+  n <- length(medicine)
+  dimension <- rep_len(dimension, n)
+  out <- rep(NA_real_, n)
+  if (n == 0L) {
+    return(out)
+  }
+  hits <- regmatches(
+    medicine,
+    gregexpr(.container_token_rx, medicine, perl = TRUE, ignore.case = TRUE)
+  )
+  for (i in seq_len(n)) {
+    tokens <- hits[[i]]
+    if (is.na(medicine[i]) || length(tokens) == 0L) {
+      next
+    }
+    parts <- regmatches(
+      tokens,
+      regexec(.container_token_rx, tokens, perl = TRUE, ignore.case = TRUE)
+    )
+    unit <- tolower(vapply(parts, `[`, character(1), 3L))
+    value <- as.numeric(gsub(",", "", vapply(parts, `[`, character(1), 2L)))
+    keep <- .container_unit_dimension[unit] %in% dimension[i]
+    amounts <- unique(value[keep] * unname(.container_unit_factor[unit[keep]]))
+    if (length(amounts) == 1L) {
+      out[i] <- amounts
+    }
+  }
+  out
+}
+
+# The container amounts a name supports in each physical dimension: the stated
+# size, else the strength denominator when it is explicit and in that
+# dimension. `den_value`/`den_unit` are the parsed strength denominator.
+.container_quantities <- function(medicine, den_value, den_unit) {
+  n <- length(medicine)
+  den_value <- rep_len(den_value, n)
+  den_unit <- rep_len(den_unit, n)
+  explicit <- !is.na(medicine) & grepl("/\\s?\\d", medicine)
+  den <- .canonicalise_units(den_value, den_unit)
+  fill <- function(amount, dimension) {
+    use_den <- is.na(amount) & explicit & !is.na(den$unit) & den$unit == dimension
+    amount[use_den] <- den$value[use_den]
+    amount
+  }
+  list(
+    ml = fill(.container_amount(medicine, "ml"), "ml"),
+    mg = fill(.container_amount(medicine, "mg"), "mg")
+  )
+}
+
 # ── Numeric strength grammar ─────────────────────────────────────────────────
 
 # Numeric strength token: digits with optional comma thousands groups and an

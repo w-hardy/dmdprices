@@ -75,13 +75,13 @@ used and a warning lists them. Ingredients recorded in non-mass units
 no canonical form (per hour, per square centimetre), cannot be converted
 to a mass dose; such candidates are skipped with a warning. The
 ingredient's strength is applied to the same item the product's own
-strength would be: the container volume the name states ("500mg/50ml"
-vials hold 50 ml), the whole pack for a single bottle or tube, or
-otherwise one unit of the ingredient's stated denominator, which
-over-credits a container whose size appears in the name only as a bare
-token ("500ml bags" of a strength recorded per litre count as one litre
-each; see the limitations in \code{vignette("dose_optimisation")}). The
-ingredient table must carry the raw dm+d strength fields
+strength would be: the whole pack for a single bottle or tube, and for a
+pack of containers the size the name states for one container, as a bare
+size ("500ml bags", "0.25g unit dose", "3ml pre-filled pens") or as a
+numeric strength denominator ("500mg/50ml" vials hold 50 ml). A container
+whose size the name does not state is skipped with a warning rather than
+taken to hold one denominator unit (see \code{vignette("dose_optimisation")}).
+The ingredient table must carry the raw dm+d strength fields
 (\code{strength_value}, \code{strength_unit}, \code{denominator_value},
 \code{denominator_unit}); its canonical columns are not read. Requires ingredient
 (VPI) data: the bundled \link{dmd_ingredients} (used when \code{db} is not a
@@ -150,8 +150,8 @@ more than the requested dose — saying whether an exact combination existed
 cannot be represented at the precision the dose table allows for this
 dose, or the dose table would exceed its cell cap) and so returns no row.
 \code{TRUE} silences all three. Unrelated warnings (unsupported compounds,
-multi-product packs, unknown dose counts, ingredient matching) are not
-affected.}
+multi-product packs, unknown dose counts or container amounts, ingredient
+matching) are not affected.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per
