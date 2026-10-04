@@ -626,7 +626,8 @@
 #'   against 1 mg tablets is costed as 2 mg, and 2.6 mg as 3 mg), so the
 #'   returned combination can deliver slightly less or more than requested;
 #'   `dose_exact` is then `FALSE` and `over_delivery` shows the difference.
-#'   Where the policy applies, a warning also says that the dose was rounded.
+#'   Where the policy applies and the combination delivers that rounded dose,
+#'   a warning also says that the dose was rounded.
 #' @param quiet Logical. `FALSE` (default) warns, once per call, when a
 #'   preparation group cannot deliver the dose exactly (and is therefore dropped
 #'   under `over_delivery = "forbid"`), when a returned combination delivers
@@ -1379,9 +1380,11 @@ dmd_dose_cost_range <- function(
 # report their surplus in `notes` alone. `impossible` names groups with no exact
 # combination at all, `available` those where one existed but the objective
 # preferred an over-delivering combination (reachable only under "allow").
-# A row that misses the dose only because the dose was rounded to the
-# strengths' scale goes to .warn_rounded() instead, so neither bullet, nor the
-# advice to pass "forbid", is reached under "forbid".
+# A dose with finer decimals than the strengths has no exact combination, so an
+# over-delivering row for it is `impossible`. A row that misses the dose only
+# because the dose was rounded to the strengths' scale goes to .warn_rounded()
+# instead, so neither bullet, nor the advice to pass "forbid", is reached under
+# "forbid".
 .warn_over_delivery <- function(impossible, available, quiet = FALSE) {
   impossible <- unique(impossible[!is.na(impossible)])
   available <- unique(available[!is.na(available)])

@@ -125,7 +125,8 @@ is first taken to the nearest whole unit of the strengths' scale (2.4 mg
 against 1 mg tablets is costed as 2 mg, and 2.6 mg as 3 mg), so the
 returned combination can deliver slightly less or more than requested;
 \code{dose_exact} is then \code{FALSE} and \code{over_delivery} shows the difference.
-Where the policy applies, a warning also says that the dose was rounded.}
+Where the policy applies and the combination delivers that rounded dose,
+a warning also says that the dose was rounded.}
 
 \item{quiet}{Logical. \code{FALSE} (default) warns, once per call, when a
 preparation group cannot deliver the dose exactly (and is therefore dropped

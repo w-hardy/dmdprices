@@ -2090,7 +2090,9 @@ test_that("a dose finer than the strengths warns that it was rounded", {
   expect_no_warning(do.call(dmd_dose_cost, c(shared, list(dose = 300.4, quiet = TRUE))))
 
   # A genuine over-delivery under "allow" still gets the over-delivery
-  # warning: one 500 mg tablet is cheaper than three 100 mg tablets.
+  # warning: one 500 mg tablet is cheaper than three 100 mg tablets. No
+  # combination makes 300.4 mg itself, so the warning must not say that an
+  # exact-dose combination exists.
   out <- collect(dmd_dose_optimise(
     "metformin",
     dose = 300.4,
@@ -2102,6 +2104,8 @@ test_that("a dose finer than the strengths warns that it was rounded", {
   ))
   expect_equal(out$value$dose_delivered, 500)
   expect_equal(sum(grepl("Delivering more", out$warnings, fixed = TRUE)), 1L)
+  expect_true(any(grepl("no exact-dose combination exists", out$warnings, fixed = TRUE)))
+  expect_false(any(grepl("an exact-dose combination exists", out$warnings, fixed = TRUE)))
   expect_false(any(grepl(rounded_msg, out$warnings, fixed = TRUE)))
 })
 

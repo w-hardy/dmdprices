@@ -753,13 +753,18 @@
   if (!policy_applies) {
     return(res)
   }
-  # An exact target is reachable iff the DP found any item combination summing
-  # to the dose itself, whatever this objective settled on. A row that lands on
-  # that target yet is not exact delivers the dose rounded to the strengths'
-  # scale: the only thing it misses is the requested decimals.
+  # An exact target is reachable iff the dose sits on the strengths' scale and
+  # the DP found any item combination summing to it, whatever this objective
+  # settled on. A dose with finer decimals than the strengths is rounded to
+  # `dose_int`, which no combination makes exactly, so a reachable `dose_int`
+  # does not count. A row that lands on that rounded target delivers the dose
+  # rounded to the strengths' scale: the only thing it misses is the requested
+  # decimals. The tolerance matches `dose_exact` in .assemble_result().
+  dose_on_scale <- abs(dose_int / scale - dose_canonical) <=
+    1e-9 * max(1, dose_canonical)
   .set_policy_info(
     res,
-    exact_feasible = is.finite(dp$min_items[dose_int + 1L]),
+    exact_feasible = dose_on_scale && is.finite(dp$min_items[dose_int + 1L]),
     dose_rounded = best$t == dose_int && !res$dose_exact
   )
 }
