@@ -8,7 +8,9 @@
 #   (Rituximab 1400mg/11.7ml) to regression-test the per_item_dose fix
 #
 # `loaded_at` defaults to a fixed timestamp so print/format methods and any
-# whole-<dmd_db> output can be snapshot-tested deterministically.
+# whole-<dmd_db> output can be snapshot-tested deterministically. It is
+# display-only: the dose-candidate cache keys on the content of `$master`, so
+# fixtures can share this timestamp without sharing cached results (#30).
 .fixed_loaded_at <- as.POSIXct("2025-08-08 09:00:00", tz = "UTC")
 
 .fake_dose_db <- function(loaded_at = .fixed_loaded_at) {
@@ -275,4 +277,101 @@
     ampp_snomed_code = c("APP_SYR40", "APP_SYR20", "APP_VIAL300", "APP_INH", "APP_AMP")
   )
   structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
+}
+
+# Fake dmd_db for #27: names that carry more than one strength token. Names
+# are real dm+d VMP names; rows and prices are fake.
+# - eptacog alfa: a mass strength restated in activity units in brackets, as
+#   1 / 2 / 5 mg syringes at 500 / 1000 / 2500 pence (a flat 500p per mg);
+# - iohexol: a per-ml strength with the iodine content in brackets, a
+#   competing same-dimension basis, so it stays skipped as a compound;
+# - a titration pack and a co-pack, which stay skipped as multi-product packs.
+.fake_multi_strength_db <- function(loaded_at = .fixed_loaded_at) {
+  master <- tibble::tibble(
+    medicine = c(
+      "Eptacog alfa (activated) 1mg (50,000unit) powder and solvent for solution for injection pre-filled syringes",
+      "Eptacog alfa (activated) 2mg (100,000unit) powder and solvent for solution for injection pre-filled syringes",
+      "Eptacog alfa (activated) 5mg (250,000unit) powder and solvent for solution for injection pre-filled syringes",
+      "Iohexol 755mg/ml (Iodine 350mg/ml) solution for injection 50ml bottles",
+      "Danicopan 50mg tablets and Danicopan 100mg tablets",
+      "Tixagevimab 150mg/1.5ml solution for injection vials and Cilgavimab 150mg/1.5ml solution for injection vials"
+    ),
+    pack_size = c(1, 1, 1, 10, 84, 1),
+    unit = c(
+      "pre-filled disposable injection",
+      "pre-filled disposable injection",
+      "pre-filled disposable injection",
+      "bottle",
+      "tablet",
+      "pack"
+    ),
+    vmp_snomed_code = paste0("V", 1:6),
+    vmpp_snomed_code = paste0("VPP", 1:6),
+    drug_tariff_category = rep("Part VIIIA Category M", 6),
+    basic_price = c(500L, 1000L, 2500L, 30000L, 900L, 1000L),
+    nhs_indicative_price = c(500L, 1000L, 2500L, 30000L, 900L, 1000L),
+    price_basis = rep("NHS Indicative Price", 6),
+    price_date = rep("2025-08-08", 6),
+    ampp_name = paste("Fake AMPP", 1:6),
+    ampp_snomed_code = paste0("APP", 1:6),
+    is_combination = rep(FALSE, 6)
+  )
+  structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
+}
+
+# Fake dmd_db for the per-item dose of concentration products sold as one
+# container whose pack quantity is in a unit with a non-unit canonical factor
+# (g -> mg, litre -> ml): .fake_dose_db() plus two one-container rows and a VPI
+# table for the cream.
+#   Delgocitinib 20mg/g cream, 60 g tube at 1000p      -> 1200 mg per tube
+#   Examplol 5mg/ml oral solution, 1 litre at 2000p    -> 5000 mg per bottle
+.fake_per_gram_db <- function(loaded_at = .fixed_loaded_at) {
+  db <- .fake_dose_db(loaded_at = loaded_at)
+  db$master <- rbind(
+    db$master,
+    tibble::tibble(
+      medicine = c(
+        "Delgocitinib 20mg/g cream",
+        "Examplol 5mg/ml oral solution"
+      ),
+      pack_size = c(60, 1),
+      unit = c("g", "litre"),
+      vmp_snomed_code = c("V_DELGO", "V_EXAMPLOL"),
+      vmpp_snomed_code = c("VPP_DELGO", "VPP_EXAMPLOL"),
+      drug_tariff_category = rep("Part VIIIA Category C", 2),
+      basic_price = c(1000L, 2000L),
+      nhs_indicative_price = c(1000L, 2000L),
+      price_basis = rep("NHS Indicative Price", 2),
+      price_date = rep("2025-08-08", 2),
+      ampp_name = c(
+        "Delgocitinib 20mg/g cream (Brand A) 60 gram",
+        "Examplol 5mg/ml oral solution (Brand A) 1 litre"
+      ),
+      ampp_snomed_code = c("APP_DELGO", "APP_EXAMPLOL")
+    )
+  )
+  # VPI shape as in the bundled dmd_ingredients: the numerator is canonical,
+  # the denominator is as stated.
+  db$ingredients <- tibble::tibble(
+    vmp_snomed_code = "V_DELGO",
+    ingredient_snomed_code = "I_delgo",
+    ingredient_name = "Delgocitinib",
+    strength_value = 20,
+    strength_unit = "mg",
+    denominator_value = 1,
+    denominator_unit = "g",
+    strength_canonical = 20,
+    strength_unit_canon = "mg"
+  )
+  db
+}
+
+# Start a test with an empty dose-candidate cache (the memo and its remembered
+# table key) and empty it again when the test ends, so nothing cached carries
+# over between tests. Call it first in any test whose outcome depends on what
+# the cache holds.
+.local_fresh_dose_cache <- function(env = parent.frame()) {
+  .forget_dose_cache()
+  withr::defer(.forget_dose_cache(), envir = env)
+  invisible()
 }

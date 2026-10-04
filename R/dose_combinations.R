@@ -227,14 +227,18 @@
 }
 
 # Records, on a returned result row, that the over-delivery policy governed this
-# group and whether the group could have delivered the dose exactly. Carried as
+# group, whether the group could have delivered the dose exactly, and whether
+# the row misses the dose only because the dose was rounded to the integer
+# scale of the group's strengths (it delivers that rounded dose, which differs
+# from the request: 2.4 mg against 1 mg tablets delivers 2 mg). Carried as
 # attributes rather than columns: the caller reads them to build one warning per
 # call, and dplyr::bind_rows() drops them before the tibble reaches the user.
-# Groups exempt from the policy carry neither, which is what keeps them out of
-# the over-delivery warning.
-.set_policy_info <- function(res, exact_feasible) {
+# Groups exempt from the policy carry none, which is what keeps them out of
+# the over-delivery and rounding warnings.
+.set_policy_info <- function(res, exact_feasible, dose_rounded = FALSE) {
   attr(res, "policy_applied") <- TRUE
   attr(res, "exact_feasible") <- exact_feasible
+  attr(res, "dose_rounded") <- dose_rounded
   res
 }
 
@@ -246,11 +250,16 @@
   isTRUE(attr(x, "exact_feasible", exact = TRUE))
 }
 
+.dose_rounded <- function(x) {
+  isTRUE(attr(x, "dose_rounded", exact = TRUE))
+}
+
 # dplyr::bind_rows() carries the attributes of a single input through, so strip
 # them explicitly before the result reaches the user.
 .drop_policy_info <- function(x) {
   attr(x, "policy_applied") <- NULL
   attr(x, "exact_feasible") <- NULL
+  attr(x, "dose_rounded") <- NULL
   x
 }
 
@@ -744,9 +753,20 @@
   if (!policy_applies) {
     return(res)
   }
-  # An exact target is reachable iff the DP found any item combination summing
-  # to the dose itself, whatever this objective settled on.
-  .set_policy_info(res, is.finite(dp$min_items[dose_int + 1L]))
+  # An exact target is reachable iff the dose sits on the strengths' scale and
+  # the DP found any item combination summing to it, whatever this objective
+  # settled on. A dose with finer decimals than the strengths is rounded to
+  # `dose_int`, which no combination makes exactly, so a reachable `dose_int`
+  # does not count. A row that lands on that rounded target delivers the dose
+  # rounded to the strengths' scale: the only thing it misses is the requested
+  # decimals. The tolerance matches `dose_exact` in .assemble_result().
+  dose_on_scale <- abs(dose_int / scale - dose_canonical) <=
+    1e-9 * max(1, dose_canonical)
+  .set_policy_info(
+    res,
+    exact_feasible = dose_on_scale && is.finite(dp$min_items[dose_int + 1L]),
+    dose_rounded = best$t == dose_int && !res$dose_exact
+  )
 }
 
 # ── Vial-sharing optimisation (can_split_vials = TRUE, concentration only) ────

@@ -117,7 +117,7 @@ test_that("as_dmd_db() output round-trips through dmd_price_lookup()", {
 })
 
 test_that("as_dmd_db() output round-trips through dmd_dose_optimise()", {
-  withr::defer(memoise::forget(.dmd_prepare_candidates_memo))
+  .local_fresh_dose_cache()
   db <- suppressWarnings(as_dmd_db(.viiia_frame()))
   res <- dmd_dose_optimise(
     "metformin",

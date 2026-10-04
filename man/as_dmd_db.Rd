@@ -16,7 +16,9 @@ per-ingredient strengths in the \link{dmd_ingredients} shape, enabling
 ingredient-targeted dose optimisation.}
 
 \item{loaded_at}{A length-1 \code{POSIXct} timestamp recording when the data was
-assembled. Defaults to \code{\link[=Sys.time]{Sys.time()}}.}
+assembled, shown by \code{print()} and \code{\link[=dmd_master_info]{dmd_master_info()}}. Defaults to
+\code{\link[=Sys.time]{Sys.time()}}. It is descriptive only: results and caching depend on the
+content of \verb{$master}, never on this value.}
 }
 \value{
 A \verb{<dmd_db>} object: a list with \verb{$master} (a \link[tibble:tibble]{tibble}
@@ -50,9 +52,18 @@ only); without \code{ampp_snomed_code}, pack identifiers are \code{NA} and
 optimisation is unavailable or degraded.
 
 Unlike \code{\link[=dmd_load]{dmd_load()}}, prices are trusted as given — a \code{0} price stays \code{0}
-(it is not treated as missing). Leave \code{loaded_at} at its default: the dose
-optimiser's session cache keys on it, so a fixed value shared across two
-different tables could return a stale cached result.
+(it is not treated as missing).
+
+\code{loaded_at} is descriptive: it is shown by \code{print()} and \code{\link[=dmd_master_info]{dmd_master_info()}}
+and changes no result, so any timestamp is safe, including one shared by
+several databases. \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}, \code{\link[=dmd_dose_cost]{dmd_dose_cost()}} and
+\code{\link[=dmd_dose_cost_range]{dmd_dose_cost_range()}} cache their candidate search for the session by the
+\emph{content} of \verb{$master}, so a database whose \verb{$master} holds different rows
+or prices, including one edited in place (for example
+\code{db$master$basic_price <- new_prices}), is not served another table's
+cached results. The exception is an edit made by reference from compiled
+code to a table that is not a data.table, such as \code{data.table::set()} on a
+data frame (see the \code{db} argument of \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}).
 }
 \examples{
 # A minimal Drug-Tariff-shaped table (prices in pence).

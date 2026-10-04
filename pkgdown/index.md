@@ -66,6 +66,7 @@ run_inflate_nhscii()
 |---|---|
 | Getting started | [Introduction to dmdprices](articles/dmdprices.html) |
 | Interactive apps | [Apps](articles/apps.html) |
+| Dose optimisation | [Dose optimisation](articles/dose_optimisation.html) |
 | NHS Cost Inflation Index | [NHS CII adjustment](articles/nhscii.html) |
 | Cost analysis in practice | [Cost analysis workflows](articles/cost_analysis_workflows.html) |
 | Drug Tariff matching | [Drug Tariff matching](articles/drug_tariff_matching.html) |

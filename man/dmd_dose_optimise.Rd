@@ -35,7 +35,12 @@ When a string is supplied \code{dose_unit} may be omitted.}
 string that already contains a unit.}
 
 \item{db}{A \verb{<dmd_db>} object from \code{\link[=dmd_load]{dmd_load()}} or a tibble in the
-same shape as \link{dmd_master}. Default: bundled \link{dmd_master}.}
+same shape as \link{dmd_master}. Default: bundled \link{dmd_master}. Candidate
+searches are cached for the session by the content of this table, so
+editing it between calls with ordinary R code is safe (for example
+\code{db$basic_price <- new_prices}, or \code{db$master$basic_price <- new_prices}
+for a \verb{<dmd_db>}). An edit made in place by reference to a table that is
+not a data.table (for example with \code{data.table::set()}) is not detected.}
 
 \item{method, max_dist, active_only}{Passed through to \code{\link[=dmd_price_lookup]{dmd_price_lookup()}}.}
 
@@ -68,8 +73,11 @@ If the term still resolves to more than one distinct ingredient, all are
 used and a warning lists them. Ingredients recorded in non-mass units
 (e.g. radioactivity in GBq, electrolytes in mmol) cannot be converted to a
 mass dose; such candidates are skipped with a warning. Requires ingredient
-(VPI) data: a \code{\link[=dmd_load]{dmd_load()}} database that includes it, or a rebuilt bundled
-\link{dmd_ingredients}. With no ingredient data, returns no results and warns.}
+(VPI) data: the bundled \link{dmd_ingredients} (used when \code{db} is not a
+\verb{<dmd_db>}, including the default), the \verb{$ingredients} table of a
+\code{\link[=dmd_load]{dmd_load()}} database built with \code{f_vmp_VpiType.csv}, or the \code{ingredients}
+argument of \code{\link[=as_dmd_db]{as_dmd_db()}}. With no ingredient data, returns no results and
+warns.}
 
 \item{can_split}{Logical. \code{TRUE} (default) assumes that individual items
 (tablets, capsules) can be taken from a part-pack, as is normal in
@@ -110,17 +118,27 @@ whole-container preparations (vials and ampoules with
 pack or the vial, so the cheapest pack/container covering the dose remains
 the costing answer and an \code{"over-delivery-policy-not-applied"} note is
 added. Exact delivery from a container is available via
-\code{can_split_vials = TRUE}.}
+\code{can_split_vials = TRUE}.
+
+Under every policy, a dose with finer decimals than the group's strengths
+is first taken to the nearest whole unit of the strengths' scale (2.4 mg
+against 1 mg tablets is costed as 2 mg, and 2.6 mg as 3 mg), so the
+returned combination can deliver slightly less or more than requested;
+\code{dose_exact} is then \code{FALSE} and \code{over_delivery} shows the difference.
+Where the policy applies and the combination delivers that rounded dose,
+a warning also says that the dose was rounded.}
 
 \item{quiet}{Logical. \code{FALSE} (default) warns, once per call, when a
 preparation group cannot deliver the dose exactly (and is therefore dropped
 under \code{over_delivery = "forbid"}), when a returned combination delivers
 more than the requested dose — saying whether an exact combination existed
-— and when a group could not be solved for the dose at all (the dose is
-below the resolvable precision of the group's strengths, or the dose table
-would exceed its cell cap) and so returns no row. \code{TRUE} silences all
-three. Unrelated warnings (unsupported compounds, ingredient matching) are
-not affected.}
+— when a returned combination delivers the dose rounded to the precision
+of the group's strengths (see \code{over_delivery}), and when a group could not
+be solved for the dose at all (the dose is below the resolvable precision
+of the group's strengths, or the dose table would exceed its cell cap) and
+so returns no row. \code{TRUE} silences all four. Unrelated warnings
+(unsupported compounds, multi-product packs, ingredient matching) are not
+affected.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per
@@ -136,7 +154,7 @@ containers when \code{can_split = TRUE}, whole packs when \code{can_split = FALS
 or a fractional container when \code{can_split_vials = TRUE}.
 }
 \description{
-Given a dose (e.g. 900 mg), searches the dm+d for products matching \code{query}
+Given a dose (e.g. 1000 mg), searches the dm+d for products matching \code{query}
 and returns the cheapest, most expensive, and/or fewest-item combination of
 AMPPs that delivers that dose.
 }
@@ -150,17 +168,34 @@ Combination (multi-ingredient) products are skipped with a warning rather
 than optimised against an ambiguous dose. A product counts as a combination
 when the dm+d \code{is_combination} flag says so (authoritative, covering e.g.
 allergen mixes and factor concentrates whose names show a single number) or
-when its name lists multiple active strengths. Supply \code{ingredient} to dose
-such a product against one named active ingredient instead.
+when its name lists multiple active strengths. A bracketed strength that
+only restates the product's strength in another unit dimension (eptacog
+alfa "1mg (50,000unit)") is the same dose and does not count; one in the
+same dimension, or one naming another substance ("Iohexol 755mg/ml (Iodine
+350mg/ml)"), still does. Supply \code{ingredient} to dose a combination product
+against one named active ingredient instead. Packs holding several products
+whose name gives a mass or unit strength for each one — titration packs
+("Danicopan 50mg tablets and Danicopan 100mg tablets") and co-packs of
+different products — have no single per-item strength either; they are
+skipped with a separate "multi-product pack" warning, and their products
+should be costed individually. A pack that states a product's strength only
+as a percentage ("Fluconazole 150mg capsule and Clotrimazole 2\% cream") is
+not recognised and is costed as its first product. A pack whose name gives
+no strength ("Generic Otezla tablets treatment initiation pack") is dropped
+like any other product without a parsed strength, with no warning naming it.
 }
 \examples{
 \dontrun{
-# Cheapest and minimum-item combinations for a 900 mg dose of metformin
-dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg")
+# Cheapest and minimum-item combinations of immediate-release metformin
+# tablets for a 1000 mg dose
+dmd_dose_optimise(
+  "metformin", dose = 1000, dose_unit = "mg",
+  preparation = "tablet|none|oral"
+)
 
-# Equivalent: pass dose as a single string
-dmd_dose_optimise("metformin", dose = "900 mg")
-dmd_dose_optimise("metformin", dose = "0.9 g")   # same dose, different unit
+# Equivalent: pass dose as a single string, in any supported unit
+dmd_dose_optimise("metformin", dose = "1000 mg", preparation = "tablet|none|oral")
+dmd_dose_optimise("metformin", dose = "1 g", preparation = "tablet|none|oral")
 
 # Only modified-release tablets
 dmd_dose_optimise(

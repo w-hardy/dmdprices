@@ -82,7 +82,7 @@ dmd_price_lookup <- function(
 
   # Accept either a dmd_db object (from dmd_load()) or a plain tibble
   # (e.g. the bundled dmd_master)
-  master <- if (inherits(db, "dmd_db")) db$master else db
+  master <- .db_master(db)
 
   if (!is.data.frame(master) || !"medicine" %in% names(master)) {
     cli::cli_abort(c(
@@ -151,4 +151,11 @@ dmd_price_lookup <- function(
   }
 
   dplyr::arrange(results, .data$medicine, .data$pack_size)
+}
+
+# The table dmd_price_lookup() searches: `$master` for a <dmd_db>, otherwise
+# `db` itself. The dose optimiser's cache key (.db_cache_key()) goes through
+# the same accessor, so the key always describes exactly the searched table.
+.db_master <- function(db) {
+  if (inherits(db, "dmd_db")) db$master else db
 }

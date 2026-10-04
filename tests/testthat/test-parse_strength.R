@@ -223,3 +223,99 @@ test_that("bare-slash combinations with comma strengths parse all components", {
   expect_equal(comps$value, c(1000, 500))
   expect_equal(comps$unit, c("mg", "mg"))
 })
+
+# ── Bracketed restatements and multi-product packs (#27) ─────────────────────
+
+test_that(".strength_token_count returns 0 for names without a strength", {
+  expect_equal(
+    dmdprices:::.strength_token_count(c(
+      "Gauze dressing sterile",
+      "Metformin 500mg tablets",
+      "Co-codamol 8mg/500mg tablets",
+      NA
+    )),
+    c(0L, 1L, 2L, 0L)
+  )
+  expect_identical(dmdprices:::.strength_token_count(character()), integer())
+})
+
+test_that("bracketed text after the strength stays in the tail", {
+  res <- dmd_parse_strength(c(
+    "Eptacog beta (activated) 1mg (45,000unit) powder and solvent for solution for injection vials",
+    "Iohexol 755mg/ml (Iodine 350mg/ml) solution for injection 700ml plastic bottles"
+  ))
+  expect_equal(res$drug_stem, c("Eptacog beta (activated)", "Iohexol"))
+  expect_equal(res$strength_value, c(1, 755))
+  expect_equal(res$strength_unit_canon, c("mg", "mg/ml"))
+  expect_equal(
+    res$tail,
+    c(
+      "(45,000unit) powder and solvent for solution for injection vials",
+      "(Iodine 350mg/ml) solution for injection 700ml plastic bottles"
+    )
+  )
+})
+
+test_that(".dose_strength_count ignores restatements in another unit dimension", {
+  nm <- c(
+    # mass restated as activity: one dose basis
+    "Eptacog beta (activated) 1mg (45,000unit) powder and solvent for solution for injection vials",
+    # same-dimension bracketed strengths: competing bases, still counted
+    "Iohexol 755mg/ml (Iodine 350mg/ml) solution for injection 700ml plastic bottles",
+    "Mexiletine hydrochloride 200mg (Mexiletine 167mg) capsules",
+    "Factor VIII Inhibitor Bypassing Fraction human 25units/ml (500unit) powder and 20ml solvent for solution for infusion vials",
+    "Testosterone 20mg/g transdermal gel (23mg per actuation) refill",
+    # nested brackets; the parsed strength is itself inside a bracket
+    "Magnesium glycerophosphate (magnesium 97.2mg (4mmol)) tablets",
+    # a bracket naming a substance, with no parsed strength
+    "Ferric maltol (iron 30mg) capsules",
+    # no parsed strength, so a bare bracketed strength restates nothing
+    "Trichloroacetic acid 80% (800mg/1ml) solution",
+    # an unbalanced bracket is not a bare bracketed strength
+    "Testdrug 10mg (Otherdrug 5mg tablets",
+    # a different-dimension strength that names another substance is not a
+    # bare restatement, so it still counts
+    "Testdrug 10mg (Otherdrug 1,000unit) tablets",
+    # a bare different-dimension restatement with a denominator
+    "Testdrug 1,000units/ml (10mg/ml) solution for injection 5ml ampoules",
+    "Gauze dressing sterile",
+    NA
+  )
+  unit <- dmd_parse_strength(ifelse(is.na(nm), "", nm))$strength_unit
+  expect_equal(
+    dmdprices:::.dose_strength_count(nm, unit),
+    c(1L, 2L, 2L, 2L, 2L, 1L, 1L, 1L, 2L, 2L, 1L, 0L, 0L)
+  )
+  expect_identical(
+    dmdprices:::.dose_strength_count(character(), character()),
+    integer()
+  )
+})
+
+test_that(".pack_kind labels multi-strength packs and co-packs", {
+  nm <- c(
+    "Danicopan 50mg tablets and Danicopan 100mg tablets",
+    "Mitapivat 20mg tablets and Mitapivat 5mg tablets",
+    "Mirikizumab 100mg/1ml solution for injection pre-filled disposable devices and Mirikizumab 200mg/2ml solution for injection pre-filled disposable devices",
+    "Memantine 5mg/10mg/15mg/20mg tablets treatment initiation pack",
+    "Tixagevimab 150mg/1.5ml solution for injection vials and Cilgavimab 150mg/1.5ml solution for injection vials",
+    "Generic Actonel Combi 35mg tablets and 1000mg/880unit effervescent granules sachets",
+    # one chewable tablet holding two ingredients: a combination, not a pack
+    "Generic LipoSil Liposomal Iron 15mg and Active folate 173.88microgram chewable tablets",
+    # dm+d's "powder and solvent" idiom is not a second product
+    "Eptacog beta (activated) 1mg (45,000unit) powder and solvent for solution for injection vials",
+    "Factor VIII Inhibitor Bypassing Fraction human 25units/ml (500unit) powder and 20ml solvent for solution for infusion vials",
+    "Galactose 2.49g / Palmitic acid 2.5mg powder and solvent for suspension for injection 2.5g vials",
+    "Co-codamol 8mg/500mg tablets",
+    NA
+  )
+  expect_equal(
+    dmdprices:::.pack_kind(nm),
+    c(
+      rep("multi_strength_pack", 4),
+      rep("co_pack", 2),
+      rep(NA_character_, 6)
+    )
+  )
+  expect_identical(dmdprices:::.pack_kind(character()), character())
+})

@@ -54,7 +54,7 @@ attr(dmd_master, "dmd_release_label")
 
 ## Dose optimisation
 
-Given a clinical dose (e.g. 900 mg) `dmd_dose_optimise()` returns the cheapest
+Given a clinical dose (e.g. 1000 mg) `dmd_dose_optimise()` returns the cheapest
 and/or minimum-item combination of AMPPs from the dm+d that deliver it. It can
 also return the most expensive achievable combination for upper-bound costing.
 Preparations are segregated automatically so that immediate-release tablets,
@@ -62,12 +62,33 @@ modified-release tablets, oral solutions, and injections are never mixed in a
 single combination.
 
 ```r
-# Cheapest and min-items combinations for a 900 mg metformin dose
-dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg")
+# Cheapest and min-items combinations of immediate-release metformin tablets
+# for a 1000 mg dose
+dmd_dose_optimise(
+  "metformin", dose = 1000, dose_unit = "mg",
+  preparation = "tablet|none|oral"
+)
 
-# Equivalent: pass dose as a self-contained string
-dmd_dose_optimise("metformin", dose = "900 mg")
-dmd_dose_optimise("metformin", dose = "0.9 g")   # same dose, different unit
+# Equivalent: pass dose as a self-contained string, in either unit
+dmd_dose_optimise("metformin", dose = "1000 mg", preparation = "tablet|none|oral")
+dmd_dose_optimise("metformin", dose = "1 g", preparation = "tablet|none|oral")
+```
+
+Without a `preparation` filter the result has one group per preparation, and
+the oral-solution group returns a whole bottle with `dose_exact = FALSE`:
+whole containers are exempt from the over-delivery policy, so the cheapest
+container that covers the dose is the costing answer. Each of these calls also
+warns that it skipped the metformin combination products (for example
+alogliptin with metformin); pass `ingredient = "metformin"` to dose them too.
+
+```r
+# No combination of 500 mg, 850 mg and 1 g tablets delivers exactly 900 mg,
+# so the default (over_delivery = "forbid") returns no rows and warns.
+# "minimise" returns the smallest over-delivery instead (1000 mg here).
+dmd_dose_optimise(
+  "metformin", dose = "900 mg", preparation = "tablet|none|oral",
+  over_delivery = "minimise"
+)
 
 # Restrict to modified-release tablets
 dmd_dose_optimise(
@@ -79,13 +100,13 @@ dmd_dose_optimise(
 dmd_dose_optimise("metformin", dose = "1500 mg", can_split = FALSE)
 
 # Worst-case cost
-dmd_dose_optimise("metformin", dose = "900 mg", objective = "most_expensive")
+dmd_dose_optimise("metformin", dose = "1000 mg", objective = "most_expensive")
 ```
 
 Each row includes a `combination` list-column of specific branded products:
 
 ```r
-res <- dmd_dose_optimise("metformin", dose = "900 mg")
+res <- dmd_dose_optimise("metformin", dose = "1000 mg")
 res$combination[[1]]
 ```
 
@@ -93,8 +114,14 @@ See `vignette("dose_optimisation")` for a full walkthrough.
 
 For high-volume costing, use `dmd_dose_cost()` for a numeric vector of doses or
 `dmd_dose_cost_range()` to return cheapest and most-expensive costs together.
-Unsupported compound products with multiple active strengths in one name are
-skipped with a warning rather than optimised against an ambiguous dose.
+Unsupported compound products (several active strengths in one name) are
+skipped with a warning rather than optimised against an ambiguous dose; pass
+`ingredient = "<name>"` to dose one of their active ingredients instead. Packs
+holding several products whose name gives each product's strength in mass or
+units (titration packs and co-packs) are also skipped, with their own warning;
+cost the products in such a pack individually. A co-pack whose other product
+is stated as a percentage (such as a capsule-and-cream pack) is not detected
+and is costed as its first product.
 
 ---
 
@@ -107,15 +134,15 @@ Use `nhscii()` and `inflate_nhscii()` to adjust costs for inflation based on NHS
 ```r
 # Factor to inflate from 2019/20 to 2023/24
 nhscii("2019/20", "2023/24")
-#> [1] 1.127...
+#> [1] 1.15617
 
 # Same result using numeric end-years
 nhscii(2020, 2024)
-#> [1] 1.127...
+#> [1] 1.15617
 
 # Percentage change
 nhscii("2019/20", "2023/24", output_type = "percent")
-#> [1] 12.7...
+#> [1] 15.61697
 ```
 
 ### Inflate costs
@@ -123,10 +150,11 @@ nhscii("2019/20", "2023/24", output_type = "percent")
 ```r
 # Adjust a single cost
 inflate_nhscii(100, "2019/20", "2023/24")
-#> [1] 112.7...
+#> [1] 115.617
 
 # Adjust multiple costs
 inflate_nhscii(c(100, 250), from_year = 2020, to_year = 2024, index = "prices")
+#> [1] 113.1838 282.9595
 ```
 
 ### Index options
@@ -135,7 +163,7 @@ inflate_nhscii(c(100, 250), from_year = 2020, to_year = 2024, index = "prices")
 - `"pay"`
 - `"prices"`
 
-**Note:** 2023/24 figures are provisional and may be revised in later PSSRU releases.
+**Note:** NHS CII rates cover 2014/15 to 2024/25; 2024/25 figures are provisional and may be revised in later PSSRU releases.
 
 ---
 
@@ -153,8 +181,18 @@ dmdDataLoader/
     ├── f_ampp_AmppType.csv
     ├── f_ampp_PriceInfoType.csv
     ├── f_lookup_DtPayCatInfoType.csv
-    └── f_lookup_PriceBasisInfoType.csv
+    ├── f_lookup_PriceBasisInfoType.csv
+    ├── f_vmp_VpiType.csv                  # optional
+    ├── f_ingredient.csv                   # optional
+    └── f_lookup_UoMHistoryInfoType.csv    # optional
 ```
+
+The last three files are optional. `f_vmp_VpiType.csv` (ingredient strengths)
+adds the `$ingredients` table that `ingredient =` dosing needs and the
+`is_combination` flag, `f_ingredient.csv` supplies the ingredient names that
+`ingredient =` matches, and `f_lookup_UoMHistoryInfoType.csv` supplies unit
+labels: the ingredient strength units, and readable labels for pack units
+outside the package's built-in map.
 
 ```r
 db <- dmd_load("path/to/dmdDataLoader")

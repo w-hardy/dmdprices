@@ -203,8 +203,22 @@ test_that("a dearer exact-container product cannot invert the whole-pack cost ra
   # the exact single-container build for 80 mg, so choosing by pro-rata price
   # (551.3p) and reporting its whole pack (5513p) exceeded the dearest cover
   # the dearest-pack path found (two 20 mg packs, 4000p). The local fixture
-  # adds that product; its `loaded_at` differs from the shared fixture's so
-  # the memoised candidate table is not reused across the two databases.
+  # adds that product and keeps the shared fixture's `loaded_at`: the
+  # candidate cache keys on table content, so the added product is seen (#30).
+  .local_fresh_dose_cache()
+  # Prime the cache with the shared fixture under the same query and settings,
+  # so a key that ignored the added product would serve this range for `wide`.
+  primed <- dmd_dose_cost_range(
+    "enoxaparin",
+    dose = 80,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    can_split = FALSE,
+    quiet = TRUE
+  )
+  expect_equal(primed$hi_pence, 4000)
+
   master <- db$master
   master <- rbind(
     master,
@@ -224,7 +238,7 @@ test_that("a dearer exact-container product cannot invert the whole-pack cost ra
     )
   )
   wide <- structure(
-    list(master = master, loaded_at = .fixed_loaded_at + 1),
+    list(master = master, loaded_at = .fixed_loaded_at),
     class = "dmd_db"
   )
   rng <- dmd_dose_cost_range(

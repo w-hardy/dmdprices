@@ -346,7 +346,7 @@ nhscii("2025/26", "2026/27")  # Error: from_year not in available range
 
 ### Diagnosis
 
-NHS CII rates are only available for specific financial years (currently 2015/16–2023/24).
+NHS CII rates are only available for specific financial years (currently 2014/15–2024/25, with 2024/25 provisional).
 
 ### Solutions
 
@@ -354,7 +354,7 @@ NHS CII rates are only available for specific financial years (currently 2015/16
 
 ```{r}
 # Valid range
-nhscii("2015/16", "2015/16")  # Returns 1 (valid)
+nhscii("2014/15", "2014/15")  # Returns 1 (valid)
 
 # Invalid year
 # nhscii("2024/25", "2025/26")  # Would error
@@ -362,19 +362,19 @@ nhscii("2015/16", "2015/16")  # Returns 1 (valid)
 
 **Wait for updates:**
 
-The 2024/25 rates are not yet included. Check the latest PSSRU manual at <https://www.pssru.ac.uk/project-pages/unit-costs/> for updated figures.
+The 2025/26 rates are not yet included, and the 2024/25 rates are provisional. Check the latest PSSRU manual at <https://www.pssru.ac.uk/project-pages/unit-costs/> for updated figures.
 
 **For future years, use estimates:**
 
 ```r
 # Use latest available rate as proxy
-latest_rate <- nhscii("2022/23", "2023/24", output_type = "percent")
+latest_rate <- nhscii("2023/24", "2024/25", output_type = "percent")
 
 # Simple projection: assume same rate continues
-projected_2024_25_rate <- latest_rate  # Placeholder
+projected_2025_26_rate <- latest_rate  # Placeholder
 
 # Use in calculation
-nhscii("2023/24", "2023/24") * (1 + projected_2024_25_rate / 100)
+nhscii("2024/25", "2024/25") * (1 + projected_2025_26_rate / 100)
 ```
 
 ---
