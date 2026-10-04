@@ -47,3 +47,12 @@
       Built a <dmd_db> with reduced functionality:
       * 1 pack_size value could not be coerced to numeric and became `NA`.
 
+# an ingredients table must carry the raw dm+d strength fields
+
+    Code
+      as_dmd_db(.canonical_frame(), ingredients = canon_only)
+    Condition
+      Error in `as_dmd_db()`:
+      ! `ingredients` lacks the columns "strength_value", "strength_unit", "denominator_value", and "denominator_unit".
+      i Ingredient targeting reads the raw dm+d VPI strength fields "strength_value", "strength_unit", "denominator_value", and "denominator_unit", as in `dmd_ingredients` and the `$ingredients` of a `dmd_load()` database; the canonical columns are not read.
+

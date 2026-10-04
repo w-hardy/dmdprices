@@ -18,14 +18,21 @@ e.g. \code{"Codeine phosphate"}.}
 concentrations, else \code{NA}.}
 \item{denominator_unit}{\code{character}. Strength denominator unit
 (e.g. \code{"ml"}), else \code{NA}.}
-\item{strength_canonical}{\code{numeric}. Strength in canonical units
-(mass in mg, volume in ml, or biological activity as \code{"unit"}), for
-cross-product comparison. \code{NA} for strengths recorded in units that have
-no mass equivalent (e.g. radioactivity in GBq/MBq, amount of substance in
-mmol, vaccine antigen units, or volumes such as microlitre). Such
+\item{strength_canonical}{\code{numeric}. Strength in canonical units: the
+canonical numerator (mass in mg, volume in ml, or biological activity
+as \code{"unit"}) per \strong{one canonical denominator unit} for a
+concentration, or the canonical numerator alone otherwise. This is the
+same convention as \code{\link[=dmd_parse_strength]{dmd_parse_strength()}} applies to product names, so
+"20 mg per 1 g" is \code{0.02} (mg per mg) and "500 mg per 50 ml" is \code{10}
+(mg per ml). \code{NA} for strengths recorded in units that have no mass
+equivalent (e.g. radioactivity in GBq/MBq, amount of substance in mmol,
+vaccine antigen units, or volumes such as microlitre) or whose
+denominator has no canonical unit (e.g. per hour for a patch). Such
 ingredients cannot be dose-optimised by mass via \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}.}
-\item{strength_unit_canon}{\code{character}. Canonical strength unit, or \code{NA}
-when the strength has no mass/volume/activity equivalent.}
+\item{strength_unit_canon}{\code{character}. Canonical strength unit in slash
+form for a concentration (\code{"mg/mg"}, \code{"mg/ml"}, \code{"unit/ml"}), or the
+canonical numerator unit alone (\code{"mg"}); \code{NA} when the strength has no
+mass/volume/activity equivalent.}
 }
 }
 \source{

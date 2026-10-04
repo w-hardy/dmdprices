@@ -13,7 +13,10 @@ the \code{dmdprices} schema are used as-is; missing canonical columns are filled
 
 \item{ingredients}{Optional. \code{NULL} (default), or a data frame of
 per-ingredient strengths in the \link{dmd_ingredients} shape, enabling
-ingredient-targeted dose optimisation.}
+ingredient-targeted dose optimisation. It must carry \code{vmp_snomed_code},
+\code{ingredient_name} and the raw dm+d strength fields \code{strength_value},
+\code{strength_unit}, \code{denominator_value} and \code{denominator_unit}; the
+canonical columns are not read.}
 
 \item{loaded_at}{A length-1 \code{POSIXct} timestamp recording when the data was
 assembled, shown by \code{print()} and \code{\link[=dmd_master_info]{dmd_master_info()}}. Defaults to

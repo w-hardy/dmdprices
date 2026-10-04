@@ -302,14 +302,16 @@
       denominator_unit = .data$denominator_unit
     )
 
-  can <- mapply(
-    function(v, u) .canonicalise_unit(v, u),
+  # The one strength convention (.canonical_strength()): canonical numerator
+  # per one canonical denominator unit, as the name parser gives it.
+  can <- .canonical_strength(
     out$strength_value,
     out$strength_unit,
-    SIMPLIFY = FALSE
+    out$denominator_value,
+    out$denominator_unit
   )
-  out$strength_canonical <- vapply(can, function(z) z$value, numeric(1))
-  out$strength_unit_canon <- vapply(can, function(z) z$unit, character(1))
+  out$strength_canonical <- can$value
+  out$strength_unit_canon <- can$unit
 
   tibble::as_tibble(out)
 }

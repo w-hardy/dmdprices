@@ -137,3 +137,16 @@ test_that(".new_dmd_db() assembles without validation or coercion", {
   expect_named(db, c("master", "ingredients", "loaded_at"))
   expect_identical(db$loaded_at, ts)
 })
+
+test_that("an ingredients table must carry the raw dm+d strength fields", {
+  canon_only <- data.frame(
+    vmp_snomed_code = "V1",
+    ingredient_name = "Metformin hydrochloride",
+    strength_canonical = 500,
+    strength_unit_canon = "mg"
+  )
+  expect_snapshot(
+    error = TRUE,
+    as_dmd_db(.canonical_frame(), ingredients = canon_only)
+  )
+})

@@ -73,7 +73,10 @@
 #'   the `dmdprices` schema are used as-is; missing canonical columns are filled.
 #' @param ingredients Optional. `NULL` (default), or a data frame of
 #'   per-ingredient strengths in the [dmd_ingredients] shape, enabling
-#'   ingredient-targeted dose optimisation.
+#'   ingredient-targeted dose optimisation. It must carry `vmp_snomed_code`,
+#'   `ingredient_name` and the raw dm+d strength fields `strength_value`,
+#'   `strength_unit`, `denominator_value` and `denominator_unit`; the
+#'   canonical columns are not read.
 #' @param loaded_at A length-1 `POSIXct` timestamp recording when the data was
 #'   assembled, shown by `print()` and [dmd_master_info()]. Defaults to
 #'   [Sys.time()]. It is descriptive only: results and caching depend on the
@@ -132,6 +135,9 @@ as_dmd_db <- function(master, ingredients = NULL, loaded_at = Sys.time()) {
   }
   if (!is.null(ingredients) && !is.data.frame(ingredients)) {
     cli::cli_abort("{.arg ingredients} must be {.code NULL} or a data frame.")
+  }
+  if (!is.null(ingredients)) {
+    .check_ingredient_columns(ingredients)
   }
 
   master <- tibble::as_tibble(master)

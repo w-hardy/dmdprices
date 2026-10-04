@@ -71,8 +71,19 @@ so \code{"codeine"} matches \code{"Codeine phosphate"} but not \code{"dihydrocod
 ingredient names are matched as written in the dm+d (including salt forms).
 If the term still resolves to more than one distinct ingredient, all are
 used and a warning lists them. Ingredients recorded in non-mass units
-(e.g. radioactivity in GBq, electrolytes in mmol) cannot be converted to a
-mass dose; such candidates are skipped with a warning. Requires ingredient
+(e.g. radioactivity in GBq, electrolytes in mmol), or per a quantity with
+no canonical form (per hour, per square centimetre), cannot be converted
+to a mass dose; such candidates are skipped with a warning. The
+ingredient's strength is applied to the same item the product's own
+strength would be: the whole pack for a single bottle or tube, and for a
+pack of containers the size the name states for one container, as a bare
+size ("500ml bags", "0.25g unit dose", "3ml pre-filled pens") or as a
+numeric strength denominator ("500mg/50ml" vials hold 50 ml). A container
+whose size the name does not state is skipped with a warning rather than
+taken to hold one denominator unit (see \code{vignette("dose_optimisation")}).
+The ingredient table must carry the raw dm+d strength fields
+(\code{strength_value}, \code{strength_unit}, \code{denominator_value},
+\code{denominator_unit}); its canonical columns are not read. Requires ingredient
 (VPI) data: the bundled \link{dmd_ingredients} (used when \code{db} is not a
 \verb{<dmd_db>}, including the default), the \verb{$ingredients} table of a
 \code{\link[=dmd_load]{dmd_load()}} database built with \code{f_vmp_VpiType.csv}, or the \code{ingredients}
@@ -120,25 +131,27 @@ the costing answer and an \code{"over-delivery-policy-not-applied"} note is
 added. Exact delivery from a container is available via
 \code{can_split_vials = TRUE}.
 
-Under every policy, a dose with finer decimals than the group's strengths
-is first taken to the nearest whole unit of the strengths' scale (2.4 mg
-against 1 mg tablets is costed as 2 mg, and 2.6 mg as 3 mg), so the
-returned combination can deliver slightly less or more than requested;
-\code{dose_exact} is then \code{FALSE} and \code{over_delivery} shows the difference.
-Where the policy applies and the combination delivers that rounded dose,
-a warning also says that the dose was rounded.}
+The requested dose is never rounded to the strengths. A dose that no
+combination of the group's strengths sums to (2.4 mg against 1 mg
+tablets) has no exact combination: \code{"forbid"} returns no row for the
+group, and \code{"minimise"} and \code{"allow"} return the smallest combination
+that delivers at least the dose (3 mg), with \code{dose_exact = FALSE} and
+\code{over_delivery} showing the surplus. No policy returns less than the
+requested dose. Exactness is judged to one part in a billion of the dose
+(never finer than a billionth of a milligram or millilitre), so a dose
+that is exact in the strengths' unit, such as 0.3 mg from three 0.1 mg
+tablets, counts as exact.}
 
 \item{quiet}{Logical. \code{FALSE} (default) warns, once per call, when a
 preparation group cannot deliver the dose exactly (and is therefore dropped
 under \code{over_delivery = "forbid"}), when a returned combination delivers
 more than the requested dose — saying whether an exact combination existed
-— when a returned combination delivers the dose rounded to the precision
-of the group's strengths (see \code{over_delivery}), and when a group could not
-be solved for the dose at all (the dose is below the resolvable precision
-of the group's strengths, or the dose table would exceed its cell cap) and
-so returns no row. \code{TRUE} silences all four. Unrelated warnings
-(unsupported compounds, multi-product packs, ingredient matching) are not
-affected.}
+— and when a group could not be solved for the dose at all (its strengths
+cannot be represented at the precision the dose table allows for this
+dose, or the dose table would exceed its cell cap) and so returns no row.
+\code{TRUE} silences all three. Unrelated warnings (unsupported compounds,
+multi-product packs, unknown dose counts or container amounts, ingredient
+matching) are not affected.}
 }
 \value{
 A \link[tibble:tibble]{tibble} with one row per
