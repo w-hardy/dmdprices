@@ -1,3 +1,122 @@
+# dmdprices (development version)
+
+## Bug fixes
+
+- **The requested dose is authoritative: the dose functions no longer round
+  it to the precision of the strengths.** `dmd_dose_optimise()`,
+  `dmd_dose_cost()` and `dmd_dose_cost_range()` solve on the integer grid of
+  a preparation group's strengths, and a dose with finer decimals than the
+  strengths was first taken to the nearest whole unit of that grid: 2.4 mg
+  against 1 mg tablets was costed as 2 mg, and 6.3 mg of eptacog alfa as
+  6 mg (315,120p), with `over_delivery = "forbid"` accepting the
+  under-delivering result and the no-exact and over-delivery warnings judged
+  against the rounded value. The grid is now only a search space. A dose
+  that no combination of the group's strengths sums to has no exact
+  combination: `"forbid"` returns no row for the group (and `NA` from
+  `dmd_dose_cost()`), with the usual no-exact warning, and `"minimise"` and
+  `"allow"` return the smallest combination that delivers at least the dose
+  (3 mg for 2.4 mg; 7 mg of eptacog alfa, 367,640p), flagged
+  `dose_exact = FALSE` with the surplus in `over_delivery`. No route delivers
+  less than the requested dose. Exactness, grid membership and the
+  over-delivery notes share one tolerance of one part in a billion of the
+  dose (never finer than a billionth of a milligram or millilitre), so a
+  dose that is exact in the strengths' unit, such as 0.3 mg from three
+  0.1 mg tablets or 2400 micrograms against 0.2 mg tablets, counts as exact.
+  The integer scale is no longer raised for a fine dose, so the dose table
+  stays as small as the strengths allow (0.25 microgram against 20 mg
+  inhalers is still covered by one inhaler), and a group whose strengths the
+  capped scale cannot represent is reported in the "could not be resolved"
+  warning instead of being summed with rounded strengths; no product in the
+  bundled release has such a strength. The "requested dose was rounded"
+  warning added in 0.6.2 is removed, since nothing is rounded any more (see
+  Behaviour changes).
+- **Ingredient-targeted doses (`ingredient =`) applied the ingredient's
+  strength to the wrong quantity.** The dm+d states an ingredient strength
+  per a stated denominator quantity ("9 g per 1 litre" for a sodium chloride
+  bag, "10 mg per 1 ml" for a rituximab vial). The dose functions converted
+  the numerator to milligrams but kept the denominator as written, and then
+  dosed each container as one denominator unit. A 500 ml bag of 0.9% sodium
+  chloride therefore counted 9000 mg of sodium chloride per millilitre (1000
+  times too much), and a 500mg/50ml rituximab vial counted 10 mg (one
+  millilitre) rather than 500 mg, so `dmd_dose_cost("rituximab", dose = 375,
+  dose_unit = "mg", ingredient = "rituximab")` was costed in up to 50 times
+  too many vials. Every strength, parsed from a name or taken from the VPI
+  data, is now brought to one convention before any arithmetic: canonical
+  numerator per one canonical denominator unit (`20mg/g` is 0.02 mg per mg,
+  `500mg/50ml` is 10 mg per ml). The item an ingredient strength is applied
+  to is the same item the product's own strength would be: the container
+  volume the name states, the whole pack for a single bottle or tube, or one
+  denominator unit otherwise. Products costable both ways now cost the same
+  either way (375 mg of rituximab is 62,866p on both paths; 1200 mg of
+  delgocitinib 59,500p). In the bundled release this changes the per-item
+  dose of 11,827 product-ingredient pairs (2,751 medicines; 4,987 priced
+  pairs across 1,158 priced medicines): 3,113 priced pairs were 1000 times
+  too large (193 medicines, mostly infusion bags, vials, pre-filled
+  injections and ampoules whose VPI denominator is 1 g or 1 litre), and
+  1,855 priced pairs (955 medicines) now take the container volume from the
+  product name. Re-run any analysis that used `ingredient =` with an earlier
+  version. This corrects the 0.6.2 notes that said results with
+  `ingredient =` were unchanged by the cream fix.
+- **Packs whose number of doses is unknown are skipped with a warning
+  instead of being costed as one dose per millilitre or gram.** For a
+  product whose strength is per dose or actuation but whose pack is measured
+  in ml or g ("Nicotine 1mg/dose oromucosal spray sugar free" in a 13.2 ml
+  bottle, "Lidocaine 10mg/dose spray sugar free" in 50 ml) the dm+d records
+  no dose count, and the dose functions treated each millilitre as one dose,
+  so their costs were wrong by an order of magnitude in either direction.
+  The same applied when the pack and the strength are in different physical
+  units ("Clobetasol 500micrograms/g shampoo" in a 125 ml bottle), where a
+  density was silently assumed. Such products are now skipped, on both the
+  name-parsed and the `ingredient =` paths, with a warning of class
+  `dmdprices_warning_unknown_dose_count` that names them (its `medicines`
+  field lists them all) and points to `dmd_price_lookup()` for whole-pack
+  costs; no dose count is invented. In the bundled release this removes 15
+  priced medicines (28 priced pack rows) from the name-parsed path:
+  azelastine, benzocaine, colecalciferol, flurbiprofen, lidocaine, nicotine
+  and sildenafil sprays, ispaghula husk effervescent granules and tilactase
+  oral drops. On the `ingredient =` path it removes 66 priced medicines (182
+  product-ingredient pairs), mostly percentage-strength lotions, shampoos,
+  scalp applications and emollients whose VPI strength is per gram while the
+  pack is in millilitres; 30 of those pairs are still costable from the
+  product name. Inhalers and nasal sprays whose pack is counted in doses,
+  and bottles, vials and ampoules measured in the strength's own unit, are
+  unaffected.
+
+## Behaviour changes
+
+- **`over_delivery` is judged against the dose as requested.** Costs change
+  for every dose that a group's strengths do not divide: under the default
+  `"forbid"` such a dose now returns no row (`NA` from `dmd_dose_cost()` and
+  `dmd_dose_cost_range()`) where it returned a rounded-down or rounded-up
+  combination, and under `"minimise"` and `"allow"` it returns the smallest
+  combination covering the dose where it could return less than the dose.
+  Whole containers (`can_split_vials = FALSE`) and whole packs
+  (`can_split = FALSE`) remain exempt from the policy and are still costed as
+  the cheapest container or pack covering the dose. The "requested dose was
+  rounded to the precision of the strengths" warning no longer exists; code
+  that matched its text can drop that pattern. The "could not be resolved"
+  warning's precision bullet now reads "the strengths cannot be represented
+  at the precision the group's dose table allows for this dose" and no
+  longer arises for a dose that is merely small.
+- **`strength_canonical` means the same thing on every row.** In the
+  `combination` tibbles of `dmd_dose_optimise()` and in the
+  `dmd_ingredients` dataset, `strength_canonical` is the canonical numerator
+  per one canonical denominator unit and `strength_unit_canon` names both
+  ("mg/mg", "mg/ml", "unit/ml"). For an ingredient recorded as 20 mg per 1 g
+  the columns were 20 and "mg" and are now 0.02 and "mg/mg". In the bundled
+  `dmd_ingredients` 6,598 of 26,667 rows change value, and 81 rows whose
+  denominator has no canonical form (per hour, per square centimetre, per
+  drop, per application, per microlitre) are now `NA`; when targeted with
+  `ingredient =` such ingredients are skipped with the non-mass-strength
+  warning, which now names the denominator unit. Ingredient tables loaded
+  with `dmd_load()` or passed to `as_dmd_db()` are read from their raw
+  strength fields, so a table built to the old convention targets correctly.
+- **A new dose warning to match.** Code that silences the dose warnings by
+  matching their text should also match "doses per pack is unknown".
+  `quiet = TRUE` does not silence it, like the unsupported-compound and
+  multi-product-pack warnings, and `dmd_dose_cost_range()` shows it once per
+  call.
+
 # dmdprices 0.6.2
 
 ## Bug fixes

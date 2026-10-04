@@ -649,8 +649,13 @@
 #'   ingredient names are matched as written in the dm+d (including salt forms).
 #'   If the term still resolves to more than one distinct ingredient, all are
 #'   used and a warning lists them. Ingredients recorded in non-mass units
-#'   (e.g. radioactivity in GBq, electrolytes in mmol) cannot be converted to a
-#'   mass dose; such candidates are skipped with a warning. Requires ingredient
+#'   (e.g. radioactivity in GBq, electrolytes in mmol), or per a quantity with
+#'   no canonical form (per hour, per square centimetre), cannot be converted
+#'   to a mass dose; such candidates are skipped with a warning. The
+#'   ingredient's strength is applied to the same item the product's own
+#'   strength would be: the container volume the name states ("500mg/50ml"
+#'   vials hold 50 ml), the whole pack for a single bottle or tube, or one
+#'   denominator unit otherwise. Requires ingredient
 #'   (VPI) data: the bundled [dmd_ingredients] (used when `db` is not a
 #'   `<dmd_db>`, including the default), the `$ingredients` table of a
 #'   [dmd_load()] database built with `f_vmp_VpiType.csv`, or the `ingredients`
@@ -695,23 +700,25 @@
 #'   added. Exact delivery from a container is available via
 #'   `can_split_vials = TRUE`.
 #'
-#'   Under every policy, a dose with finer decimals than the group's strengths
-#'   is first taken to the nearest whole unit of the strengths' scale (2.4 mg
-#'   against 1 mg tablets is costed as 2 mg, and 2.6 mg as 3 mg), so the
-#'   returned combination can deliver slightly less or more than requested;
-#'   `dose_exact` is then `FALSE` and `over_delivery` shows the difference.
-#'   Where the policy applies and the combination delivers that rounded dose,
-#'   a warning also says that the dose was rounded.
+#'   The requested dose is never rounded to the strengths. A dose that no
+#'   combination of the group's strengths sums to (2.4 mg against 1 mg
+#'   tablets) has no exact combination: `"forbid"` returns no row for the
+#'   group, and `"minimise"` and `"allow"` return the smallest combination
+#'   that delivers at least the dose (3 mg), with `dose_exact = FALSE` and
+#'   `over_delivery` showing the surplus. No policy returns less than the
+#'   requested dose. Exactness is judged to one part in a billion of the dose
+#'   (never finer than a billionth of a milligram or millilitre), so a dose
+#'   that is exact in the strengths' unit, such as 0.3 mg from three 0.1 mg
+#'   tablets, counts as exact.
 #' @param quiet Logical. `FALSE` (default) warns, once per call, when a
 #'   preparation group cannot deliver the dose exactly (and is therefore dropped
 #'   under `over_delivery = "forbid"`), when a returned combination delivers
 #'   more than the requested dose — saying whether an exact combination existed
-#'   — when a returned combination delivers the dose rounded to the precision
-#'   of the group's strengths (see `over_delivery`), and when a group could not
-#'   be solved for the dose at all (the dose is below the resolvable precision
-#'   of the group's strengths, or the dose table would exceed its cell cap) and
-#'   so returns no row. `TRUE` silences all four. Unrelated warnings
-#'   (unsupported compounds, multi-product packs, ingredient matching) are not
+#'   — and when a group could not be solved for the dose at all (its strengths
+#'   cannot be represented at the precision the dose table allows for this
+#'   dose, or the dose table would exceed its cell cap) and so returns no row.
+#'   `TRUE` silences all three. Unrelated warnings (unsupported compounds,
+#'   multi-product packs, unknown dose counts, ingredient matching) are not
 #'   affected.
 #'
 #' @return A [tibble][tibble::tibble] with one row per
@@ -1037,18 +1044,16 @@ dmd_dose_optimise <- function(
 #'   ampoules are costed as a fraction of a container (vial sharing).
 #' @param over_delivery As in [dmd_dose_optimise()]. Defaults to `"forbid"`, so
 #'   doses that no combination delivers exactly return `na_value` (with one
-#'   warning per call) rather than the cost of an over-delivered dose. A dose
-#'   with finer decimals than the strengths is first taken to the nearest whole
-#'   unit of their scale (see `over_delivery` in [dmd_dose_optimise()]), so its
-#'   cost can be for slightly less or more than requested. Where the
-#'   over-delivery policy applies, a warning says so; whole containers
-#'   (`can_split_vials = FALSE`) and whole packs (`can_split = FALSE`) are
-#'   rounded the same way without a warning.
+#'   warning per call) rather than the cost of an over-delivered dose. The
+#'   requested dose is never rounded to the strengths, and no cost is for less
+#'   than the dose. Whole containers (`can_split_vials = FALSE`) and whole
+#'   packs (`can_split = FALSE`) are exempt from the policy: they are costed as
+#'   the cheapest container or pack covering the dose, without a warning.
 #'   Pass `"minimise"` or `"allow"` to cost over-delivering combinations.
 #' @param quiet As in [dmd_dose_optimise()]. Because this function returns bare
 #'   numbers, the warnings are the only signal that a cost is for an
-#'   over-delivered or rounded dose in the groups the over-delivery policy
-#'   governs (whole-container and whole-pack groups are not warned about);
+#'   over-delivered dose in the groups the over-delivery policy governs
+#'   (whole-container and whole-pack groups are not warned about);
 #'   `TRUE` silences them for bulk costing runs.
 #' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
 #'   or negative elements are returned as `na_value` without error.
