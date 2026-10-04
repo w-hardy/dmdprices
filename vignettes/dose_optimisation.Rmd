@@ -84,7 +84,8 @@ res[, c("objective", "total_items", "dose_delivered",
 By default the optimiser returns only combinations that deliver the requested
 dose **exactly** (`over_delivery = "forbid"`), because for tablets and capsules
 a surplus is extra drug the patient takes. A preparation group that cannot hit
-the dose exactly returns no row and is named in a warning, so an impossible
+the dose exactly (after any rounding to the strengths' precision; see
+"Limitations" below) returns no row and is named in a warning, so an impossible
 dose is never silently costed as an over-delivered one:
 
 ```{r, eval = FALSE}
@@ -141,7 +142,9 @@ answer. Exact delivery from a container is available with
 `can_split_vials = TRUE`.
 
 The same argument is accepted by `dmd_dose_cost()` and `dmd_dose_cost_range()`,
-where a dose that cannot be delivered exactly returns `NA` under the default.
+where a dose that cannot be delivered exactly returns `NA` under the default
+(apart from the rounding to the strengths' precision described under
+"Limitations", which returns a cost and warns).
 
 ## Segregating preparations
 

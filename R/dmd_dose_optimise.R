@@ -966,8 +966,11 @@ dmd_dose_optimise <- function(
 #'   ampoules are costed as a fraction of a container (vial sharing).
 #' @param over_delivery As in [dmd_dose_optimise()]. Defaults to `"forbid"`, so
 #'   doses that no combination delivers exactly return `na_value` (with one
-#'   warning per call) rather than the cost of an over-delivered dose. Pass
-#'   `"minimise"` or `"allow"` to cost over-delivering combinations.
+#'   warning per call) rather than the cost of an over-delivered dose. A dose
+#'   with finer decimals than the strengths is first taken to the nearest whole
+#'   unit of their scale (see `over_delivery` in [dmd_dose_optimise()]), so its
+#'   cost can be for slightly less or more than requested; a warning says so.
+#'   Pass `"minimise"` or `"allow"` to cost over-delivering combinations.
 #' @param quiet As in [dmd_dose_optimise()]. Because this function returns bare
 #'   numbers, the warnings are the only signal that a cost is for an
 #'   over-delivered or rounded dose; `TRUE` silences them for bulk costing
