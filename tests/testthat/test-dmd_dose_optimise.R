@@ -2033,10 +2033,10 @@ test_that("dmd_dose_cost() and _range() warn once about over-delivery", {
 
 test_that("a dose finer than the strengths warns that it was rounded", {
   # Metformin 100 / 500 / 1000 mg tablets work on a 1 mg scale, so 300.4 mg
-  # is taken to 300 mg (an under-dose) and 299.6 mg to 300 mg. Under the
-  # default "forbid" both used to raise the over-delivery warning, which
-  # called the under-dose "Delivering more than the requested dose" and
-  # advised passing the over_delivery = "forbid" already in force.
+  # is taken to 300 mg (an under-dose) and 299.6 mg to 300 mg. Under "forbid"
+  # (the default) and "minimise" both used to raise the over-delivery warning,
+  # which called the under-dose "Delivering more than the requested dose" and
+  # advised passing over_delivery = "forbid".
   db <- .fake_dose_db()
   collect <- function(expr) {
     warnings <- character()
@@ -2051,22 +2051,43 @@ test_that("a dose finer than the strengths warns that it was rounded", {
   }
   rounded_msg <- "was rounded to the precision of the strengths"
 
-  for (case in list(c(dose = 300.4, over = -0.4), c(dose = 299.6, over = 0.4))) {
-    out <- collect(dmd_dose_optimise(
-      "metformin",
-      dose = case[["dose"]],
-      dose_unit = "mg",
-      db = db,
-      preparation = "tablet|none|oral",
-      objective = "cheapest"
-    ))
-    expect_equal(out$value$dose_delivered, 300)
-    expect_false(out$value$dose_exact)
-    expect_equal(out$value$over_delivery, case[["over"]])
-    expect_equal(sum(grepl(rounded_msg, out$warnings, fixed = TRUE)), 1L)
-    expect_false(any(grepl("Delivering more", out$warnings, fixed = TRUE)))
-    expect_false(any(grepl('"forbid"', out$warnings, fixed = TRUE)))
+  for (policy in c("forbid", "minimise")) {
+    for (case in list(c(dose = 300.4, over = -0.4), c(dose = 299.6, over = 0.4))) {
+      out <- collect(dmd_dose_optimise(
+        "metformin",
+        dose = case[["dose"]],
+        dose_unit = "mg",
+        db = db,
+        preparation = "tablet|none|oral",
+        objective = "cheapest",
+        over_delivery = policy
+      ))
+      expect_equal(out$value$dose_delivered, 300)
+      expect_false(out$value$dose_exact)
+      expect_equal(out$value$over_delivery, case[["over"]])
+      expect_equal(sum(grepl(rounded_msg, out$warnings, fixed = TRUE)), 1L)
+      expect_false(any(grepl("Delivering more", out$warnings, fixed = TRUE)))
+      expect_false(any(grepl('"forbid"', out$warnings, fixed = TRUE)))
+    }
   }
+
+  # Both default objectives round in the same group, which the warning names
+  # once.
+  out <- collect(dmd_dose_optimise(
+    "metformin",
+    dose = 300.4,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet|none|oral"
+  ))
+  expect_equal(nrow(out$value), 2L)
+  rounded_w <- out$warnings[grepl(rounded_msg, out$warnings, fixed = TRUE)]
+  expect_length(rounded_w, 1L)
+  expect_match(
+    gsub("\\s+", " ", rounded_w),
+    'for 1 preparation group: "tablet (oral)".',
+    fixed = TRUE
+  )
 
   # dmd_dose_cost() returns bare numbers, so its warning is the only signal;
   # it is raised once per call however many doses round, and the range call
