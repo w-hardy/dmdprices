@@ -88,7 +88,7 @@ test_that("a mg/ml bottle priced per ml is unchanged", {
   enriched <- .per_gram_candidates("oral solution")
   enriched <- enriched[enriched$unit == "ml", , drop = FALSE]
   expect_equal(
-    enriched$per_item_dose[order(enriched$medicine)],
+    enriched$per_item_dose[order(enriched$medicine, method = "radix")],
     c(200, 400)
   )
 })
@@ -180,7 +180,7 @@ test_that("a targeted strength is canonical per one canonical denominator unit, 
 test_that("a targeted vial keeps the container volume stated in its name", {
   .local_fresh_dose_cache()
   targeted <- .targeted("Rituximab", "Rituximab")
-  targeted <- targeted[order(targeted$medicine), , drop = FALSE]
+  targeted <- targeted[order(targeted$medicine, method = "radix"), , drop = FALSE]
   expect_equal(targeted$medicine, c(
     "Rituximab 100mg/10ml solution for infusion",
     "Rituximab 500mg/50ml solution for infusion"
@@ -240,6 +240,20 @@ test_that("a VPI denominator in grams or litres does not scale a container-count
   expect_equal(bags$items_per_pack, 10)
 })
 
+test_that("ingredient targeting never reads the stored canonical columns", {
+  .local_fresh_dose_cache()
+  poisoned <- vpi_db
+  poisoned$ingredients$strength_canonical <- -999
+  poisoned$ingredients$strength_unit_canon <- "bogus"
+  azy <- .targeted("Azythro", "Azythro substance", db = poisoned)
+  expect_equal(azy$strength_canonical, 0.015)
+  expect_equal(azy$strength_unit_canon, "mg/mg")
+  expect_equal(azy$per_item_dose, 15)
+  bags <- .targeted("Exsaline", "Sodium chloride", db = poisoned)
+  expect_equal(bags$strength_canonical, 9)
+  expect_equal(bags$per_item_dose, 9000)
+})
+
 test_that("a targeted one-container pack is measured in the strength's canonical unit", {
   .local_fresh_dose_cache()
   spirit <- .targeted("Exspirit", "Methyl salicylate")
@@ -256,13 +270,17 @@ test_that("a targeted one-container pack is measured in the strength's canonical
 
 test_that("a VPI denominator with no canonical unit is skipped with a warning naming it", {
   .local_fresh_dose_cache()
-  expect_warning(
-    targeted <- .targeted("Expatch", "Expatchine"),
-    "hour"
-  )
+  expect_snapshot(targeted <- .targeted("Expatch transdermal", "Expatchine"))
   expect_equal(nrow(targeted), 1L)
   expect_equal(targeted$strength_canonical, NA_real_)
   expect_equal(targeted$per_item_dose, NA_real_)
+})
+
+test_that("the non-mass warning names a bad numerator and a bad denominator together", {
+  .local_fresh_dose_cache()
+  expect_snapshot(targeted <- .targeted("Expatch", "Expatchine"))
+  expect_equal(nrow(targeted), 2L)
+  expect_equal(targeted$per_item_dose, c(NA_real_, NA_real_))
 })
 
 test_that("an ingredient table without canonical columns is targeted from its raw fields", {
@@ -275,11 +293,46 @@ test_that("an ingredient table without canonical columns is targeted from its ra
 })
 
 test_that(".per_item_dose() has one convention and no flag", {
+  # A deliberate guard against reintroducing a per-source convention flag
+  # (0.6.2's `canonical_pack_quantity`): the behaviour it stood for is
+  # asserted above by the targeted and parsed rows agreeing.
   expect_named(formals(.per_item_dose), "enriched")
+})
+
+test_that(".canonical_strength() canonicalises each side and rejects what it cannot", {
+  expect_equal(
+    .canonical_strength(numeric(), character()),
+    list(value = numeric(), unit = character())
+  )
+  # A scalar denominator recycles over a vector of numerators.
+  can <- .canonical_strength(c(10, 20), c("mg", "mg"), 1, "g")
+  expect_equal(can$value, c(0.01, 0.02))
+  expect_equal(can$unit, c("mg/mg", "mg/mg"))
+  # A denominator unit without a value means per one unit.
+  expect_equal(.canonical_strength(10, "mg", NA_real_, "g")$value, 0.01)
+  # Units are matched regardless of case.
+  expect_equal(.canonical_strength(5, "MG", 1, "ML")$unit, "mg/ml")
+  # No canonical form on either side: no strength.
+  none <- list(value = NA_real_, unit = NA_character_)
+  expect_equal(.canonical_strength(5, "GBq", 1, "ml"), none)
+  expect_equal(.canonical_strength(5, "microgram", 1, "hour"), none)
+  # A missing value, or a denominator that is not a positive quantity, is no
+  # strength either, on both sides.
+  expect_equal(.canonical_strength(NA_real_, "mg", 1, "ml"), none)
+  expect_equal(.canonical_strength(5, "mg", 0, "ml"), none)
 })
 
 test_that("the bundled dmd_ingredients canonical columns follow the one convention", {
   ing <- dmdprices::dmd_ingredients
+  # One row pinned by hand, independently of the helper: delgocitinib is
+  # recorded as 20 mg per 1 g.
+  delgo <- ing[ing$vmp_snomed_code %in% "44923111000001104", , drop = FALSE]
+  expect_equal(nrow(delgo), 1L)
+  expect_equal(delgo$strength_value, 20)
+  expect_equal(delgo$denominator_unit, "g")
+  expect_equal(delgo$strength_canonical, 0.02)
+  expect_equal(delgo$strength_unit_canon, "mg/mg")
+  # Data-sync check: the bundled columns were regenerated with the helper.
   can <- .canonical_strength(
     ing$strength_value,
     ing$strength_unit,

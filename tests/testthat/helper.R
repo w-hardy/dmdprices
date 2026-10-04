@@ -396,51 +396,64 @@
         "Exspirit cutaneous solution",
         "Exornithine powder",
         "Exoxygen medical gas",
-        "Expatch transdermal patches"
+        "Expatch transdermal patches",
+        "Expatch radio injection vials"
       ),
-      pack_size = c(6, 10, 200, 100, 2130, 4),
-      unit = c("unit dose", "bag", "ml", "g", "litre", "patch"),
-      vmp_snomed_code = c("V_AZY", "V_SAL", "V_SPI", "V_ORN", "V_OXY", "V_PAT"),
+      pack_size = c(6, 10, 200, 100, 2130, 4, 1),
+      unit = c("unit dose", "bag", "ml", "g", "litre", "patch", "vial"),
+      vmp_snomed_code = c(
+        "V_AZY", "V_SAL", "V_SPI", "V_ORN", "V_OXY", "V_PAT", "V_RAD"
+      ),
       vmpp_snomed_code = c(
-        "VPP_AZY", "VPP_SAL", "VPP_SPI", "VPP_ORN", "VPP_OXY", "VPP_PAT"
+        "VPP_AZY", "VPP_SAL", "VPP_SPI", "VPP_ORN", "VPP_OXY", "VPP_PAT",
+        "VPP_RAD"
       ),
-      drug_tariff_category = rep("Part VIIIA Category C", 6),
-      basic_price = c(699L, 1890L, 300L, 6292L, 1000L, 2000L),
-      nhs_indicative_price = c(699L, 1890L, 300L, 6292L, 1000L, 2000L),
-      price_basis = rep("NHS Indicative Price", 6),
-      price_date = rep("2025-08-08", 6),
+      drug_tariff_category = rep("Part VIIIA Category C", 7),
+      basic_price = c(699L, 1890L, 300L, 6292L, 1000L, 2000L, 5000L),
+      nhs_indicative_price = c(699L, 1890L, 300L, 6292L, 1000L, 2000L, 5000L),
+      price_basis = rep("NHS Indicative Price", 7),
+      price_date = rep("2025-08-08", 7),
       ampp_name = c(
         "Azythro 15mg/g eye drops 6 unit dose",
         "Exsaline 0.9% infusion 10 bag",
         "Exspirit cutaneous solution 200 ml",
         "Exornithine powder 100 gram",
         "Exoxygen medical gas 2130 litre",
-        "Expatch transdermal patches 4 patch"
+        "Expatch transdermal patches 4 patch",
+        "Expatch radio injection 1 vial"
       ),
       ampp_snomed_code = c(
-        "APP_AZY", "APP_SAL", "APP_SPI", "APP_ORN", "APP_OXY", "APP_PAT"
+        "APP_AZY", "APP_SAL", "APP_SPI", "APP_ORN", "APP_OXY", "APP_PAT",
+        "APP_RAD"
       )
     )
   )
+  # The last two rows share an ingredient whose strength cannot be dosed by
+  # mass: per hour for the patch, and in GBq for the radio injection.
   db$ingredients <- tibble::tibble(
     vmp_snomed_code = c(
-      "11", "12", "V_AZY", "V_SAL", "V_SPI", "V_ORN", "V_OXY", "V_PAT"
+      "11", "12", "V_AZY", "V_SAL", "V_SPI", "V_ORN", "V_OXY", "V_PAT", "V_RAD"
     ),
     ingredient_snomed_code = c(
-      "I_rit", "I_rit", "I_azy", "I_nacl", "I_msal", "I_orn", "I_oxy", "I_pat"
+      "I_rit", "I_rit", "I_azy", "I_nacl", "I_msal", "I_orn", "I_oxy",
+      "I_pat", "I_pat"
     ),
     ingredient_name = c(
       "Rituximab", "Rituximab", "Azythro substance", "Sodium chloride",
-      "Methyl salicylate", "Ornithine", "Oxygen", "Expatchine"
+      "Methyl salicylate", "Ornithine", "Oxygen", "Expatchine", "Expatchine"
     ),
-    strength_value = c(10, 10, 15, 9, 5, 1, 1, 5),
-    strength_unit = c("mg", "mg", "mg", "g", "ml", "mg", "ml", "microgram"),
-    denominator_value = c(1, 1, 1, 1, 1, 1, 1, 1),
-    denominator_unit = c("ml", "ml", "g", "litre", "litre", "mg", "ml", "hour"),
-    strength_canonical = c(10, 10, 0.015, 9, 0.005, 1, 1, NA_real_),
+    strength_value = c(10, 10, 15, 9, 5, 1, 1, 5, 5),
+    strength_unit = c(
+      "mg", "mg", "mg", "g", "ml", "mg", "ml", "microgram", "GBq"
+    ),
+    denominator_value = c(1, 1, 1, 1, 1, 1, 1, 1, 1),
+    denominator_unit = c(
+      "ml", "ml", "g", "litre", "litre", "mg", "ml", "hour", "ml"
+    ),
+    strength_canonical = c(10, 10, 0.015, 9, 0.005, 1, 1, NA_real_, NA_real_),
     strength_unit_canon = c(
       "mg/ml", "mg/ml", "mg/mg", "mg/ml", "ml/ml", "mg/mg", "ml/ml",
-      NA_character_
+      NA_character_, NA_character_
     )
   )
   db
@@ -459,8 +472,11 @@
 #   Salbutamol 500micrograms/1ml ampoules, 5 ampoule     -> five 0.5 mg items
 #   Covivax 30micrograms/0.3ml dose vials, 10 dose       -> ten 0.03 mg items
 #   Tiotropium 18micrograms/dose capsules, 30 capsule    -> thirty 0.018 mg items
-# VPI rows cover nicotine (1 mg per 1 dose), lidocaine (10 mg per 1 actuation)
-# and the salbutamol inhaler (100 microgram per 1 dose).
+# Two rows only the ingredient path can classify: Nicospray (no strength in
+# its name; VPI 1 mg per 1 dose, 13.2 ml) and Oilatine 5mg/ml lotion (parsed
+# per ml, one 250 ml bottle; VPI 5 mg per 1 g, which the ml pack cannot count).
+# VPI rows cover nicotine (1 mg per 1 dose, both sprays), lidocaine (10 mg per
+# 1 actuation), the salbutamol inhaler (100 microgram per 1 dose) and oilatine.
 .fake_dose_count_db <- function(loaded_at = .fixed_loaded_at) {
   master <- tibble::tibble(
     medicine = c(
@@ -477,29 +493,35 @@
       "Delgocitinib 20mg/g cream",
       "Salbutamol 500micrograms/1ml solution for injection ampoules",
       "Covivax 30micrograms/0.3ml dose suspension for injection multidose vials",
-      "Tiotropium 18micrograms/dose inhalation powder capsules"
+      "Tiotropium 18micrograms/dose inhalation powder capsules",
+      "Nicospray oromucosal spray",
+      "Oilatine 5mg/ml lotion"
     ),
-    pack_size = c(13.2, 26.4, 50, 300, 15, 125, 200, 150, 30, 100, 60, 5, 10, 30),
+    pack_size = c(
+      13.2, 26.4, 50, 300, 15, 125, 200, 150, 30, 100, 60, 5, 10, 30, 13.2, 250
+    ),
     unit = c(
       "ml", "ml", "ml", "g", "ml", "ml",
-      "dose", "dose", "dose", "ml", "g", "ampoule", "dose", "capsule"
+      "dose", "dose", "dose", "ml", "g", "ampoule", "dose", "capsule",
+      "ml", "ml"
     ),
     vmp_snomed_code = c(
       "V_NIC", "V_NIC", "V_LID", "V_ISP", "V_FLU", "V_CLO",
-      "V_INH", "V_NAS", "V_BEN", "V_MOR", "V_DEL", "V_AMP", "V_VAC", "V_CAP"
+      "V_INH", "V_NAS", "V_BEN", "V_MOR", "V_DEL", "V_AMP", "V_VAC", "V_CAP",
+      "V_NSP", "V_OIL"
     ),
-    vmpp_snomed_code = paste0("VPP", seq_len(14)),
-    drug_tariff_category = rep("Part VIIIA Category C", 14),
+    vmpp_snomed_code = paste0("VPP", seq_len(16)),
+    drug_tariff_category = rep("Part VIIIA Category C", 16),
     basic_price = c(
       1497L, 2329L, 629L, 800L, 500L, 1000L,
-      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L
+      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L, 1200L, 700L
     ),
     nhs_indicative_price = c(
       1497L, 2329L, 629L, 800L, 500L, 1000L,
-      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L
+      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L, 1200L, 700L
     ),
-    price_basis = rep("NHS Indicative Price", 14),
-    price_date = rep("2025-08-08", 14),
+    price_basis = rep("NHS Indicative Price", 16),
+    price_date = rep("2025-08-08", 16),
     ampp_name = c(
       "Nicorette QuickMist 1mg/dose mouthspray 13.2 ml",
       "Nicorette QuickMist 1mg/dose mouthspray 26.4 ml",
@@ -514,20 +536,26 @@
       "Delgocitinib 20mg/g cream 60 gram",
       "Salbutamol 500micrograms/1ml ampoules 5 ampoule",
       "Covivax multidose vials 10 dose",
-      "Tiotropium 18micrograms/dose capsules 30 capsule"
+      "Tiotropium 18micrograms/dose capsules 30 capsule",
+      "Nicospray mouthspray 13.2 ml",
+      "Oilatine lotion 250 ml"
     ),
-    ampp_snomed_code = paste0("APP", seq_len(14))
+    ampp_snomed_code = paste0("APP", seq_len(16))
   )
   ingredients <- tibble::tibble(
-    vmp_snomed_code = c("V_NIC", "V_LID", "V_INH"),
-    ingredient_snomed_code = c("I_nic", "I_lid", "I_sal"),
-    ingredient_name = c("Nicotine", "Lidocaine", "Salbutamol"),
-    strength_value = c(1, 10, 100),
-    strength_unit = c("mg", "mg", "microgram"),
-    denominator_value = c(1, 1, 1),
-    denominator_unit = c("dose", "actuation", "dose"),
-    strength_canonical = c(1, 10, 0.1),
-    strength_unit_canon = c("mg/dose", "mg/actuation", "mg/dose")
+    vmp_snomed_code = c("V_NIC", "V_LID", "V_INH", "V_NSP", "V_OIL"),
+    ingredient_snomed_code = c("I_nic", "I_lid", "I_sal", "I_nic", "I_oil"),
+    ingredient_name = c(
+      "Nicotine", "Lidocaine", "Salbutamol", "Nicotine", "Oilatine"
+    ),
+    strength_value = c(1, 10, 100, 1, 5),
+    strength_unit = c("mg", "mg", "microgram", "mg", "mg"),
+    denominator_value = c(1, 1, 1, 1, 1),
+    denominator_unit = c("dose", "actuation", "dose", "dose", "g"),
+    strength_canonical = c(1, 10, 0.1, 1, 0.005),
+    strength_unit_canon = c(
+      "mg/dose", "mg/actuation", "mg/dose", "mg/dose", "mg/mg"
+    )
   )
   structure(
     list(master = master, ingredients = ingredients, loaded_at = loaded_at),
@@ -576,4 +604,54 @@
   .forget_dose_cache()
   withr::defer(.forget_dose_cache(), envir = env)
   invisible()
+}
+
+# A group whose strengths the capped dose table cannot represent: 0.125 mg and
+# 1 mg need a scale of 1000, but a 6000.125 mg dose caps it at 833, where
+# 0.125 mg is 104.125 units. Two preparations (tablets, capsules) so that a
+# call can drop more than one group.
+.fake_unresolvable_db <- function(loaded_at = .fixed_loaded_at) {
+  master <- tibble::tibble(
+    medicine = c(
+      "Finedrug 125microgram tablets",
+      "Finedrug 1mg tablets",
+      "Finedrug 125microgram capsules",
+      "Finedrug 1mg capsules"
+    ),
+    pack_size = rep(28, 4),
+    unit = c("tablet", "tablet", "capsule", "capsule"),
+    vmp_snomed_code = paste0("V", 1:4),
+    vmpp_snomed_code = paste0("VPP", 1:4),
+    drug_tariff_category = rep("Part VIIIA Category M", 4),
+    basic_price = c(100L, 900L, 110L, 950L),
+    nhs_indicative_price = c(100L, 900L, 110L, 950L),
+    price_basis = rep("NHS Indicative Price", 4),
+    price_date = rep("2025-08-08", 4),
+    ampp_name = paste(
+      "Finedrug",
+      c("125microgram", "1mg", "125microgram", "1mg"),
+      "28",
+      c("tablet", "tablet", "capsule", "capsule")
+    ),
+    ampp_snomed_code = paste0("APP", 1:4)
+  )
+  structure(list(master = master, loaded_at = loaded_at), class = "dmd_db")
+}
+
+# Evaluate `expr` with its warnings muffled and return its value together with
+# the warning conditions and their messages, so tests can count and match them.
+.with_warnings <- function(expr) {
+  conditions <- list()
+  value <- withCallingHandlers(
+    expr,
+    warning = function(w) {
+      conditions[[length(conditions) + 1L]] <<- w
+      invokeRestart("muffleWarning")
+    }
+  )
+  list(
+    value = value,
+    conditions = conditions,
+    warnings = vapply(conditions, conditionMessage, character(1))
+  )
 }

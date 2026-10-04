@@ -30,19 +30,6 @@ db <- .fake_dose_count_db()
   out[!duplicated(out$ampp_snomed_code), , drop = FALSE]
 }
 
-# Collect every warning a call raises, muffling them, so counts are exact.
-.collect_count_warnings <- function(expr) {
-  seen <- list()
-  value <- withCallingHandlers(
-    expr,
-    warning = function(w) {
-      seen[[length(seen) + 1L]] <<- w
-      invokeRestart("muffleWarning")
-    }
-  )
-  list(value = value, warnings = seen)
-}
-
 .unknown_count_warnings <- function(warnings) {
   Filter(function(w) inherits(w, "dmdprices_warning_unknown_dose_count"), warnings)
 }
@@ -50,24 +37,35 @@ db <- .fake_dose_count_db()
 # ── Classification at enrichment ─────────────────────────────────────────────
 
 test_that(".pack_dose_basis() tells reconciled packs from unknown dose counts", {
-  enriched <- tibble::tibble(
-    denominator_unit = c(NA, "ml", "ml", "g", "dose", "dose", "actuation", "dose", "g", "ml", "dose"),
-    pack_size = 1,
-    unit = c("tablet", "ml", "vial", "g", "dose", "ml", "ml", "g", "ml", "dose", "capsule")
+  cases <- tibble::tribble(
+    ~denominator_unit, ~unit,       ~basis,
+    NA,                "tablet",    "item",
+    "ml",              "ml",        "pack",
+    "ml",              "litre",     "pack",
+    "g",               "g",         "pack",
+    "g",               "mg",        "pack",
+    "dose",            "dose",      "pack",
+    "actuation",       "actuation", "pack",
+    "ml",              "vial",      "container",
+    "mg",              NA,          "container",
+    "ml",              "dose",      "container",
+    "dose",            "capsule",   "container",
+    "actuation",       "dose",      "container",
+    "hour",            "ml",        "container",
+    "dose",            "ml",        "unknown",
+    "dose",            "g",         "unknown",
+    "dose",            "litre",     "unknown",
+    "actuation",       "ml",        "unknown",
+    "g",               "ml",        "unknown",
+    "ml",              "g",         "unknown"
   )
-  expect_equal(
-    .pack_dose_basis(enriched),
-    c(
-      "item", "pack", "container", "pack", "pack",
-      "unknown", "unknown", "unknown", "unknown",
-      "container", "container"
-    )
-  )
+  cases$pack_size <- 1
+  expect_equal(.pack_dose_basis(cases), cases$basis)
 })
 
 test_that("a per-dose strength in an ml or g pack has no per-item dose", {
   enriched <- .count_candidates(c("spray", "granules", "shampoo"))
-  enriched <- enriched[order(enriched$medicine), , drop = FALSE]
+  enriched <- enriched[order(enriched$medicine, method = "radix"), , drop = FALSE]
   unknown <- enriched$dose_basis == "unknown"
   expect_equal(
     enriched$medicine[unknown],
@@ -80,9 +78,15 @@ test_that("a per-dose strength in an ml or g pack has no per-item dose", {
       "Nicotine 1mg/dose oromucosal spray sugar free"
     )
   )
-  expect_true(all(is.na(enriched$per_item_dose[unknown])))
-  expect_true(all(is.na(enriched$items_per_pack[unknown])))
-  expect_true(all(is.na(enriched$per_item_price_pence[unknown])))
+  expect_equal(enriched$per_item_dose[unknown], rep(NA_real_, 6))
+  expect_equal(enriched$items_per_pack[unknown], rep(NA_real_, 6))
+  expect_equal(enriched$per_item_price_pence[unknown], rep(NA_real_, 6))
+})
+
+test_that("the warning lists three products and counts the rest", {
+  enriched <- .count_candidates(c("spray", "granules", "shampoo"))
+  expect_snapshot(kept <- .drop_unknown_dose_counts(enriched))
+  expect_false(any(kept$dose_basis == "unknown"))
 })
 
 test_that("packs whose dose count is known keep their per-item dose", {
@@ -90,7 +94,7 @@ test_that("packs whose dose count is known keep their per-item dose", {
     "inhaler", "nasal spray", "oral solution", "cream", "ampoules",
     "Covivax", "capsules", "Benzydamine"
   ))
-  enriched <- enriched[order(enriched$medicine), , drop = FALSE]
+  enriched <- enriched[order(enriched$medicine, method = "radix"), , drop = FALSE]
   expect_equal(enriched$dose_basis, c(
     "pack", # Benzydamine 150micrograms/dose oromucosal spray, 30 dose
     "container", # Covivax 30micrograms/0.3ml dose ... vials, 10 dose
@@ -112,7 +116,7 @@ test_that("packs whose dose count is known keep their per-item dose", {
 
 test_that("a product with an unknown dose count returns no row and a classed warning", {
   .local_fresh_dose_cache()
-  got <- .collect_count_warnings(dmd_dose_optimise(
+  got <- .with_warnings(dmd_dose_optimise(
     "Nicotine",
     dose = 1,
     dose_unit = "mg",
@@ -120,7 +124,7 @@ test_that("a product with an unknown dose count returns no row and a classed war
     objective = "cheapest"
   ))
   expect_equal(nrow(got$value), 0L)
-  unknown <- .unknown_count_warnings(got$warnings)
+  unknown <- .unknown_count_warnings(got$conditions)
   expect_length(unknown, 1L)
   expect_match(
     conditionMessage(unknown[[1]]),
@@ -156,6 +160,49 @@ test_that("the warning text names the products and the reason", {
   expect_equal(nrow(res), 2L)
 })
 
+test_that("ingredient targeting classifies the dose count from the VPI denominator", {
+  .local_fresh_dose_cache()
+  # Nicospray's name gives no strength; only its VPI row (1 mg per 1 dose)
+  # reveals that its 13.2 ml bottle holds an unknown number of doses.
+  got <- .with_warnings(dmd_dose_cost(
+    "Nicospray",
+    dose = 1,
+    dose_unit = "mg",
+    db = db,
+    ingredient = "Nicotine"
+  ))
+  expect_equal(got$value, NA_real_)
+  expect_length(.unknown_count_warnings(got$conditions), 1L)
+  expect_equal(
+    .unknown_count_warnings(got$conditions)[[1]]$medicines,
+    "Nicospray oromucosal spray"
+  )
+
+  # Oilatine is one 250 ml bottle of 5 mg/ml by its name (1250 mg), but its
+  # VPI strength is per gram, which an ml pack cannot count.
+  expect_equal(
+    dmd_dose_cost(
+      "Oilatine",
+      dose = 5,
+      dose_unit = "mg",
+      db = db,
+      over_delivery = "minimise",
+      quiet = TRUE
+    ),
+    700
+  )
+  got <- .with_warnings(dmd_dose_cost(
+    "Oilatine",
+    dose = 5,
+    dose_unit = "mg",
+    db = db,
+    over_delivery = "minimise",
+    ingredient = "Oilatine"
+  ))
+  expect_equal(got$value, NA_real_)
+  expect_length(.unknown_count_warnings(got$conditions), 1L)
+})
+
 test_that("every route refuses to cost an unknown dose count", {
   .local_fresh_dose_cache()
   shared <- list(query = "Nicotine", dose_unit = "mg", db = db)
@@ -166,23 +213,23 @@ test_that("every route refuses to cost an unknown dose count", {
     list(over_delivery = "allow"),
     list(ingredient = "Nicotine")
   )) {
-    got <- .collect_count_warnings(
+    got <- .with_warnings(
       do.call(dmd_dose_cost, c(shared, list(dose = c(1, 150)), extra))
     )
     expect_equal(got$value, c(NA_real_, NA_real_))
-    expect_length(.unknown_count_warnings(got$warnings), 1L)
+    expect_length(.unknown_count_warnings(got$conditions), 1L)
   }
 
-  got <- .collect_count_warnings(
+  got <- .with_warnings(
     dmd_dose_cost("Lidocaine", dose = 10, dose_unit = "mg", db = db, ingredient = "Lidocaine")
   )
   expect_equal(got$value, NA_real_)
-  expect_length(.unknown_count_warnings(got$warnings), 1L)
+  expect_length(.unknown_count_warnings(got$conditions), 1L)
 })
 
 test_that("the cost range warns once for both bounds", {
   .local_fresh_dose_cache()
-  got <- .collect_count_warnings(dmd_dose_cost_range(
+  got <- .with_warnings(dmd_dose_cost_range(
     "Nicotine",
     dose = c(1, 150),
     dose_unit = "mg",
@@ -190,12 +237,12 @@ test_that("the cost range warns once for both bounds", {
   ))
   expect_equal(got$value$lo_pence, c(NA_real_, NA_real_))
   expect_equal(got$value$hi_pence, c(NA_real_, NA_real_))
-  expect_length(.unknown_count_warnings(got$warnings), 1L)
+  expect_length(.unknown_count_warnings(got$conditions), 1L)
 })
 
 test_that("a group keeps its reconciled rows when others have unknown dose counts", {
   .local_fresh_dose_cache()
-  got <- .collect_count_warnings(dmd_dose_optimise(
+  got <- .with_warnings(dmd_dose_optimise(
     "oromucosal spray",
     dose = 4.5,
     dose_unit = "mg",
@@ -206,7 +253,7 @@ test_that("a group keeps its reconciled rows when others have unknown dose count
   combo <- got$value$combination[[1]]
   expect_equal(combo$medicine, "Benzydamine 150micrograms/dose oromucosal spray sugar free")
   expect_equal(got$value$dose_cost_pence, 400)
-  unknown <- .unknown_count_warnings(got$warnings)
+  unknown <- .unknown_count_warnings(got$conditions)
   expect_length(unknown, 1L)
   expect_setequal(unknown[[1]]$medicines, c(
     "Nicotine 1mg/dose oromucosal spray sugar free",
@@ -216,7 +263,7 @@ test_that("a group keeps its reconciled rows when others have unknown dose count
 
 test_that("quiet = TRUE does not silence the unknown-dose-count warning", {
   .local_fresh_dose_cache()
-  got <- .collect_count_warnings(dmd_dose_cost(
+  got <- .with_warnings(dmd_dose_cost(
     "Nicotine",
     dose = 1,
     dose_unit = "mg",
@@ -224,7 +271,7 @@ test_that("quiet = TRUE does not silence the unknown-dose-count warning", {
     quiet = TRUE
   ))
   expect_equal(got$value, NA_real_)
-  expect_length(.unknown_count_warnings(got$warnings), 1L)
+  expect_length(.unknown_count_warnings(got$conditions), 1L)
 })
 
 # ── Valid per-dose packs are untouched ───────────────────────────────────────

@@ -445,7 +445,7 @@
     bad_den <- sort(unique(stats::na.omit(
       enriched$denominator_unit[na_canon & !num_na]
     )))
-    msg <- "{sum(na_canon)} candidate{?s} for {.val {ingredient}} ha{?s/ve} a non-mass strength and cannot be dosed by mass; skipped."
+    msg <- "{sum(na_canon)} candidate{?s} for {.val {ingredient}} {cli::qty(sum(na_canon))}ha{?s/ve} a non-mass strength and cannot be dosed by mass; skipped."
     if (length(bad_num) > 0L) {
       msg <- c(msg, "i" = "Strength unit{?s}: {.val {bad_num}}.")
     }

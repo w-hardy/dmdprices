@@ -87,7 +87,12 @@
   den <- .canonicalise_units(den_value, den_unit)
   out_value <- ifelse(has_den, num$value / den$value, num$value)
   out_unit <- ifelse(has_den, paste0(num$unit, "/", den$unit), num$unit)
-  bad <- is.na(num$unit) | (has_den & is.na(den$unit))
+  # No strength without a value, a canonical unit on each side and a positive
+  # denominator quantity; the unit is dropped with the value so that a row
+  # never carries a unit for a strength it does not have.
+  bad <- is.na(num$value) |
+    is.na(num$unit) |
+    (has_den & (is.na(den$unit) | !(den$value > 0)))
   out_value[bad] <- NA_real_
   out_unit[bad] <- NA_character_
   list(value = out_value, unit = out_unit)

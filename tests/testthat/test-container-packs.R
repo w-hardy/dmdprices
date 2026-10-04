@@ -466,12 +466,6 @@ test_that("the cost range sees every preparation group for a small dose", {
   expect_equal(rng$hi_pence, 150)
 })
 
-test_that("the integer scale keeps the dose at least one unit", {
-  expect_equal(.pick_scale_safe(c(12, 20, 40), 0.1), 1)
-  expect_equal(.pick_scale_safe(c(0.5, 5), 0.1), 10)
-  expect_equal(.pick_scale_safe(c(500, 1000), 750), 1)
-})
-
 test_that("a dose below the smallest strength is covered by one container", {
   # 5e-8 mg against a 20 mg inhaler: the smallest total at or above the dose
   # is one whole inhaler; no exact combination exists, so dose_exact is FALSE.
@@ -580,33 +574,6 @@ test_that("a very fine dose keeps the strengths' scale and one inhaler covers it
   list(value = value, warnings = seen)
 }
 
-# A group whose strengths the capped dose table cannot represent: 0.125 mg and
-# 1 mg need a scale of 1000, but a 6000.125 mg dose caps it at 833, where
-# 0.125 mg is 104.125 units. Two preparations (tablets, capsules) so that a
-# call can drop more than one group.
-.fake_unresolvable_db <- function() {
-  master <- tibble::tibble(
-    medicine = c(
-      "Finedrug 125microgram tablets",
-      "Finedrug 1mg tablets",
-      "Finedrug 125microgram capsules",
-      "Finedrug 1mg capsules"
-    ),
-    pack_size = rep(28, 4),
-    unit = c("tablet", "tablet", "capsule", "capsule"),
-    vmp_snomed_code = paste0("V", 1:4),
-    vmpp_snomed_code = paste0("VPP", 1:4),
-    drug_tariff_category = rep("Part VIIIA Category M", 4),
-    basic_price = c(100L, 900L, 110L, 950L),
-    nhs_indicative_price = c(100L, 900L, 110L, 950L),
-    price_basis = rep("NHS Indicative Price", 4),
-    price_date = rep("2025-08-08", 4),
-    ampp_name = paste("Finedrug", c("125microgram", "1mg", "125microgram", "1mg"), "28", c("tablet", "tablet", "capsule", "capsule")),
-    ampp_snomed_code = paste0("APP", 1:4)
-  )
-  structure(list(master = master, loaded_at = .fixed_loaded_at), class = "dmd_db")
-}
-
 test_that("the precision warning is raised exactly once by the cost range", {
   got <- .collect_warnings(dmd_dose_cost_range(
     "finedrug",
@@ -625,17 +592,16 @@ test_that("one unresolved-dose warning per call names every dropped group", {
   # Two groups (tablets and capsules) cannot be represented for 6000.125 mg;
   # the default objective pair must not double the warning and the second
   # group must not be lost from it.
-  got <- .collect_warnings(dmd_dose_optimise(
-    "finedrug",
-    dose = 6000.125,
-    dose_unit = "mg",
-    db = .fake_unresolvable_db(),
-    over_delivery = "minimise"
-  ))
-  expect_equal(nrow(got$value), 0L)
-  expect_length(grep("precision", got$warnings), 1L)
-  expect_match(got$warnings[grep("precision", got$warnings)], "tablet")
-  expect_match(got$warnings[grep("precision", got$warnings)], "capsule")
+  expect_snapshot(
+    res <- dmd_dose_optimise(
+      "finedrug",
+      dose = 6000.125,
+      dose_unit = "mg",
+      db = .fake_unresolvable_db(),
+      over_delivery = "minimise"
+    )
+  )
+  expect_equal(nrow(res), 0L)
 })
 
 test_that("quiet = TRUE silences the unresolved-dose warning", {

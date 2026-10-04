@@ -7,23 +7,11 @@
 #
 # The fixture is .fake_grid_db() (helper.R): 1 mg tablets in packs of 100
 # (9p each) and 10 (10p each), 1 mg/1 ml vials in a pack of 10 (100p each)
-# and a 5 mg/5 ml vial (450p); plus the sublingual, eptacog and inhaler
-# fixtures for exactly representable decimals, a real-name case and a tiny dose.
+# and a 5 mg/5 ml vial (450p); plus the sublingual and eptacog fixtures for
+# exactly representable decimals and a real-name case. The tiny-dose inhaler
+# case lives in test-container-packs.R.
 
 db <- .fake_grid_db()
-
-# Collect every warning a call raises, muffling them, so counts are exact.
-.collect_grid_warnings <- function(expr) {
-  seen <- character()
-  value <- withCallingHandlers(
-    expr,
-    warning = function(w) {
-      seen <<- c(seen, conditionMessage(w))
-      invokeRestart("muffleWarning")
-    }
-  )
-  list(value = value, warnings = seen)
-}
 
 .tablets <- function(dose, ...) {
   dmd_dose_optimise(
@@ -58,6 +46,21 @@ test_that(".grid_target() places the dose on or above the strengths' grid", {
   expect_equal(.grid_target(10.4, 1)$t_lo, 11)
 })
 
+test_that("the dose tolerance is one part in a billion, never below a billionth of a unit", {
+  expect_equal(.dose_tol(3), 3e-9)
+  expect_equal(.dose_tol(0.5), 1e-9)
+  expect_true(.grid_target(3 - 2e-9, 1)$on_grid)
+  off <- .grid_target(3 - 4e-9, 1)
+  expect_false(off$on_grid)
+  expect_equal(off$t_lo, 3)
+})
+
+test_that(".strengths_on_grid() accepts only whole numbers of grid units", {
+  expect_true(.strengths_on_grid(c(0.1, 0.2), 10))
+  expect_false(.strengths_on_grid(c(0.125, 1), 833))
+  expect_true(.strengths_on_grid(numeric(), 1))
+})
+
 test_that(".pick_scale_safe() takes the strengths' scale and never raises it for the dose", {
   expect_equal(.pick_scale_safe(c(12, 20, 40), 0.1), 1)
   expect_equal(.pick_scale_safe(c(12, 20, 40), 0.00025), 1)
@@ -71,7 +74,7 @@ test_that(".pick_scale_safe() takes the strengths' scale and never raises it for
 test_that("forbid returns no exact combination for a dose off the strengths' grid", {
   .local_fresh_dose_cache()
   for (dose in c(2.4, 2.6)) {
-    got <- .collect_grid_warnings(.tablets(dose))
+    got <- .with_warnings(.tablets(dose))
     expect_equal(nrow(got$value), 0L)
     expect_length(grep("No exact-dose combination exists", got$warnings), 1L)
     expect_length(grep("rounded", got$warnings), 0L)
@@ -81,7 +84,7 @@ test_that("forbid returns no exact combination for a dose off the strengths' gri
 test_that("minimise delivers the first grid point above the dose", {
   .local_fresh_dose_cache()
   for (dose in c(2.4, 2.6)) {
-    got <- .collect_grid_warnings(.tablets(dose, over_delivery = "minimise"))
+    got <- .with_warnings(.tablets(dose, over_delivery = "minimise"))
     expect_equal(got$value$dose_delivered, 3)
     expect_equal(got$value$over_delivery, 3 - dose)
     expect_false(got$value$dose_exact)
@@ -118,7 +121,7 @@ test_that("vectorised costs refuse or over-deliver an off-grid dose, never under
   .local_fresh_dose_cache()
   shared <- list(query = "testdrug", dose_unit = "mg", db = db, preparation = "tablet")
 
-  got <- .collect_grid_warnings(
+  got <- .with_warnings(
     do.call(dmd_dose_cost, c(shared, list(dose = c(2.4, 2.6, 3))))
   )
   expect_equal(got$value, c(NA_real_, NA_real_, 27))
@@ -129,7 +132,7 @@ test_that("vectorised costs refuse or over-deliver an off-grid dose, never under
     c(27, 27, 27)
   )
 
-  got <- .collect_grid_warnings(
+  got <- .with_warnings(
     do.call(dmd_dose_cost_range, c(shared, list(dose = c(2.4, 2.6, 3))))
   )
   expect_equal(got$value$lo_pence, c(NA_real_, NA_real_, 27))
@@ -170,9 +173,16 @@ test_that("the dose unit does not change where the dose sits on the grid", {
   expect_equal(grams$dose_delivered_unit, "g")
 
   expect_equal(
-    dmd_dose_cost("testdrug", dose = 2400, dose_unit = "microgram", db = db, preparation = "tablet"),
+    dmd_dose_cost(
+      "testdrug",
+      dose = 2400,
+      dose_unit = "microgram",
+      db = db,
+      preparation = "tablet",
+      quiet = TRUE
+    ),
     NA_real_
-  ) |> suppressWarnings()
+  )
 })
 
 # ── Exactly representable decimals stay exact ────────────────────────────────
@@ -180,10 +190,16 @@ test_that("the dose unit does not change where the dose sits on the grid", {
 test_that("a decimal dose the strengths can build exactly is exact under forbid", {
   .local_fresh_dose_cache()
   sl <- .fake_sublingual_db()
-  for (dose in list(c(2.4, "mg"), c(2400, "microgram"), c(0.1 + 0.1 + 0.2, "mg"), c(0.3 / 0.1, "mg"))) {
+  cases <- list(
+    list(2.4, "mg"),
+    list(2400, "microgram"),
+    list(0.1 + 0.1 + 0.2, "mg"),
+    list(0.3 / 0.1, "mg")
+  )
+  for (dose in cases) {
     res <- dmd_dose_optimise(
       "buprenorphine",
-      dose = as.numeric(dose[[1]]),
+      dose = dose[[1]],
       dose_unit = dose[[2]],
       db = sl,
       preparation = "sublingual",
@@ -211,7 +227,7 @@ test_that("floating-point noise in the dose does not create a false mismatch", {
 test_that("a weight-based eptacog dose is refused under forbid and covered under minimise", {
   .local_fresh_dose_cache()
   ept <- .fake_multi_strength_db()
-  got <- .collect_grid_warnings(dmd_dose_optimise(
+  got <- .with_warnings(dmd_dose_optimise(
     "eptacog",
     dose = 6.3,
     dose_unit = "mg",
@@ -258,6 +274,20 @@ test_that("whole containers cover an off-grid dose with the smallest surplus", {
     dmd_dose_cost("testdrug", dose = c(2.4, 10.4), dose_unit = "mg", db = db, preparation = "injection"),
     c(300, 1000)
   )
+
+  # Vial sharing draws the exact fraction (0.48 of a 5 mg vial at 450p), so
+  # the grid plays no part on that route.
+  shared <- dmd_dose_optimise(
+    "testdrug",
+    dose = 2.4,
+    dose_unit = "mg",
+    db = db,
+    preparation = "injection",
+    objective = "cheapest",
+    can_split_vials = TRUE
+  )
+  expect_true(shared$dose_exact)
+  expect_equal(shared$dose_cost_pence, 216)
 })
 
 test_that("whole packs cover an off-grid dose", {
@@ -285,30 +315,13 @@ test_that("strengths the dose table cannot represent are refused, not mis-costed
   # caps the scale at 833, where 0.125 mg is 104.125 units: no integer grid
   # represents the strengths, so the group is refused as a precision failure
   # rather than solved on a grid whose totals do not match the items.
-  master <- tibble::tibble(
-    medicine = c("Finedrug 125microgram tablets", "Finedrug 1mg tablets"),
-    pack_size = c(28, 28),
-    unit = c("tablet", "tablet"),
-    vmp_snomed_code = c("V1", "V2"),
-    vmpp_snomed_code = c("VPP1", "VPP2"),
-    drug_tariff_category = rep("Part VIIIA Category M", 2),
-    basic_price = c(100L, 900L),
-    nhs_indicative_price = c(100L, 900L),
-    price_basis = rep("NHS Indicative Price", 2),
-    price_date = rep("2025-08-08", 2),
-    ampp_name = c("Finedrug 125microgram 28 tablet", "Finedrug 1mg 28 tablet"),
-    ampp_snomed_code = c("APP1", "APP2")
-  )
-  fine <- structure(
-    list(master = master, loaded_at = .fixed_loaded_at),
-    class = "dmd_db"
-  )
   .local_fresh_dose_cache()
-  got <- .collect_grid_warnings(dmd_dose_optimise(
+  got <- .with_warnings(dmd_dose_optimise(
     "finedrug",
     dose = 6000.125,
     dose_unit = "mg",
-    db = fine,
+    db = .fake_unresolvable_db(),
+    preparation = "tablet",
     objective = "cheapest",
     over_delivery = "minimise"
   ))
@@ -316,6 +329,25 @@ test_that("strengths the dose table cannot represent are refused, not mis-costed
   expect_length(grep("could not be resolved", got$warnings), 1L)
   expect_match(got$warnings, "precision", all = FALSE)
   expect_length(grep("No exact-dose combination exists", got$warnings), 0L)
+})
+
+test_that("whole packs whose doses the capped table cannot represent are refused", {
+  # Pack doses of 3.5 mg and 28 mg need a scale of 10; a 1,600,000 mg dose
+  # caps it at 3, where 3.5 mg is 10.5 units.
+  .local_fresh_dose_cache()
+  got <- .with_warnings(dmd_dose_optimise(
+    "finedrug",
+    dose = 1.6e6,
+    dose_unit = "mg",
+    db = .fake_unresolvable_db(),
+    preparation = "tablet",
+    objective = "cheapest",
+    can_split = FALSE,
+    over_delivery = "minimise"
+  ))
+  expect_equal(nrow(got$value), 0L)
+  expect_length(grep("could not be resolved", got$warnings), 1L)
+  expect_match(got$warnings, "tablet", all = FALSE)
 })
 
 test_that("a dose table past the cell cap is refused as such", {
@@ -338,7 +370,7 @@ test_that("a dose table past the cell cap is refused as such", {
     class = "dmd_db"
   )
   .local_fresh_dose_cache()
-  got <- .collect_grid_warnings(dmd_dose_cost(
+  got <- .with_warnings(dmd_dose_cost(
     "widedrug",
     dose = 4000,
     dose_unit = "mg",
@@ -349,35 +381,3 @@ test_that("a dose table past the cell cap is refused as such", {
   expect_length(grep("No exact-dose combination exists", got$warnings), 0L)
 })
 
-test_that("a dose far below the smallest strength is covered by one item, not refused", {
-  .local_fresh_dose_cache()
-  packs <- .fake_container_pack_db()
-  got <- .collect_grid_warnings(dmd_dose_optimise(
-    "salbutamol",
-    dose = 5e-8,
-    dose_unit = "mg",
-    db = packs,
-    preparation = "inhaler",
-    objective = "cheapest",
-    over_delivery = "minimise"
-  ))
-  expect_equal(nrow(got$value), 1L)
-  expect_equal(got$value$total_items, 1)
-  expect_equal(got$value$cost_prorata_pence, 150)
-  expect_length(grep("precision", got$warnings), 0L)
-
-  # A whole inhaler is a policy-exempt container, so "forbid" costs the same
-  # inhaler and notes the exemption instead of refusing the dose.
-  got <- .collect_grid_warnings(dmd_dose_optimise(
-    "salbutamol",
-    dose = 5e-8,
-    dose_unit = "mg",
-    db = packs,
-    preparation = "inhaler",
-    objective = "cheapest"
-  ))
-  expect_equal(nrow(got$value), 1L)
-  expect_equal(got$value$cost_prorata_pence, 150)
-  expect_match(got$value$notes, "over-delivery-policy-not-applied")
-  expect_length(got$warnings, 0L)
-})
