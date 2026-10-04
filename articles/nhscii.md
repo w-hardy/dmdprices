@@ -32,7 +32,7 @@ nhscii("2019/20", "2023/24")
 #> [1] 1.15617
 ```
 
-A factor of `1.127` means a 12.7% increase over that period.
+A factor of `1.156` means a 15.6% increase over that period.
 
 ### Using numeric years
 
@@ -172,10 +172,10 @@ Licensed under [CC BY-NC-SA
 
 Current coverage: 2014/15 to 2024/25
 
-### A note on 2023/24 figures
+### A note on 2024/25 figures
 
-The 2023/24 values in this package are **provisional**. As is standard
-for each annual PSSRU publication, later releases (e.g., the 2025
+The 2024/25 values in this package are **provisional**. As is standard
+for each annual PSSRU publication, later releases (e.g., the 2026
 manual) may revise these figures when additional data become available.
 Check the latest PSSRU manual for the most current rates.
 
@@ -186,19 +186,23 @@ To see which financial years are currently supported:
 ``` r
 
 # Pay and prices index
-nhscii("2015/16", "2015/16")  # Check earliest available year
+nhscii("2014/15", "2014/15")  # Check earliest available year
 #> [1] 1
 
 # All indices cover the same period:
-# 2015/16, 2016/17, 2017/18, 2018/19, 2019/20, 2020/21, 2021/22, 2022/23, 2023/24
+# 2014/15, 2015/16, 2016/17, 2017/18, 2018/19, 2019/20, 2020/21, 2021/22,
+# 2022/23, 2023/24, 2024/25
 ```
 
 If you try to use an unavailable year, you’ll get a helpful error:
 
 ``` r
 
-nhscii("2014/15", "2023/24")
-#> [1] 1.245031
+nhscii("2019/20", "2025/26")
+#> Error in `nhscii()`:
+#> ! `to_year` ("2025/26") is not a known financial year.
+#> ℹ Use one of "2014/15", "2015/16", "2016/17", "2017/18", "2018/19", "2019/20",
+#>   "2020/21", "2021/22", "2022/23", "2023/24", and "2024/25".
 ```
 
 ## Further reading

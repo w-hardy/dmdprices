@@ -11,7 +11,7 @@ table. The returned object can be passed directly to dmd_price_lookup()."></head
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,9 @@ table. The returned object can be passed directly to dmd_price_lookup()."></head
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.2</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.1</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.5.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
@@ -75,7 +78,11 @@ table. The returned object can be passed directly to <code><a href="dmd_price_lo
 <dl><dt id="arg-path">path<a class="anchor" aria-label="anchor" href="#arg-path"></a></dt>
 <dd><p>Path to the <code>dmdDataLoader</code> folder (the parent of <code>csv/</code>).
 Defaults to <code>getOption("dmdprices.path")</code>, allowing you to set a
-project-wide default via <code>options(dmdprices.path = "~/dmdDataLoader")</code>.</p></dd>
+project-wide default via <code>options(dmdprices.path = "~/dmdDataLoader")</code>.
+If <code>path</code> has no <code>csv/</code> subfolder, <code>dmd_load()</code> signals an error of class
+<code>dmdprices_error_missing_csv_dir</code> with the fields <code>path</code> (as supplied) and
+<code>csv_dir</code> (the <code>csv/</code> folder after <code><a href="https://rdrr.io/r/base/normalizePath.html" class="external-link">normalizePath()</a></code>, with forward
+slashes; absolute when <code>path</code> exists).</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -92,6 +99,11 @@ Columns: <code>vmp_snomed_code</code>, <code>ingredient_snomed_code</code>, <cod
 <code>denominator_unit</code>, <code>strength_canonical</code>, <code>strength_unit_canon</code>.</p></li>
 <li><p><code>$loaded_at</code> — a <code>POSIXct</code> timestamp recording when the data was loaded.</p></li>
 </ul></div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="as_dmd_db.html">as_dmd_db()</a></code> to build a <code>&lt;dmd_db&gt;</code> from an in-memory table (e.g.
+external Drug-Tariff data); <code><a href="dmd_price_lookup.html">dmd_price_lookup()</a></code>, <code><a href="dmd_dose_optimise.html">dmd_dose_optimise()</a></code>.</p></div>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -110,7 +122,7 @@ Columns: <code>vmp_snomed_code</code>, <code>ingredient_snomed_code</code>, <cod
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

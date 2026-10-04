@@ -420,7 +420,7 @@ nhscii("2025/26", "2026/27")  # Error: from_year not in available range
 ### Diagnosis
 
 NHS CII rates are only available for specific financial years (currently
-2015/16–2023/24).
+2014/15–2024/25, with 2024/25 provisional).
 
 ### Solutions
 
@@ -429,7 +429,7 @@ NHS CII rates are only available for specific financial years (currently
 ``` r
 
 # Valid range
-nhscii("2015/16", "2015/16")  # Returns 1 (valid)
+nhscii("2014/15", "2014/15")  # Returns 1 (valid)
 #> [1] 1
 
 # Invalid year
@@ -438,7 +438,8 @@ nhscii("2015/16", "2015/16")  # Returns 1 (valid)
 
 **Wait for updates:**
 
-The 2024/25 rates are not yet included. Check the latest PSSRU manual at
+The 2025/26 rates are not yet included, and the 2024/25 rates are
+provisional. Check the latest PSSRU manual at
 <https://www.pssru.ac.uk/project-pages/unit-costs/> for updated figures.
 
 **For future years, use estimates:**
@@ -446,13 +447,13 @@ The 2024/25 rates are not yet included. Check the latest PSSRU manual at
 ``` r
 
 # Use latest available rate as proxy
-latest_rate <- nhscii("2022/23", "2023/24", output_type = "percent")
+latest_rate <- nhscii("2023/24", "2024/25", output_type = "percent")
 
 # Simple projection: assume same rate continues
-projected_2024_25_rate <- latest_rate  # Placeholder
+projected_2025_26_rate <- latest_rate  # Placeholder
 
 # Use in calculation
-nhscii("2023/24", "2023/24") * (1 + projected_2024_25_rate / 100)
+nhscii("2024/25", "2024/25") * (1 + projected_2025_26_rate / 100)
 ```
 
 ------------------------------------------------------------------------
@@ -494,7 +495,7 @@ analysis_metadata <- list(
 # Include in your report
 str(analysis_metadata)
 #> List of 5
-#>  $ analysis_date: Date[1:1], format: "2026-06-24"
+#>  $ analysis_date: Date[1:1], format: "2026-10-04"
 #>  $ dmd          :List of 2
 #>   ..$ source : chr "NHS dm+d (bundled)"
 #>   ..$ release: chr "Week 15 2026 (06 April 2026)"
@@ -507,7 +508,7 @@ str(analysis_metadata)
 #>   ..$ coverage: chr "2014/15 to 2024/25"
 #>  $ package      :List of 2
 #>   ..$ name   : chr "dmdprices"
-#>   ..$ version: chr "0.5.0"
+#>   ..$ version: chr "0.6.2"
 ```
 
 **Sample text for your methodology:**

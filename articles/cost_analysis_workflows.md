@@ -363,7 +363,7 @@ str(analysis_meta)
 #>  $ price_year     : chr "2023/24"
 #>  $ inflation_index: chr "pay_and_prices"
 #>  $ dmd_release    : chr "Week 15 2026 (06 April 2026)"
-#>  $ analysis_date  : Date[1:1], format: "2026-06-24"
+#>  $ analysis_date  : Date[1:1], format: "2026-10-04"
 ```
 
 ### 2. Handle lookup failures gracefully

@@ -72,6 +72,7 @@ run_inflate_nhscii()
 |----|----|
 | Getting started | [Introduction to dmdprices](https://w-hardy.github.io/dmdprices/articles/dmdprices.md) |
 | Interactive apps | [Apps](https://w-hardy.github.io/dmdprices/articles/apps.md) |
+| Dose optimisation | [Dose optimisation](https://w-hardy.github.io/dmdprices/articles/dose_optimisation.md) |
 | NHS Cost Inflation Index | [NHS CII adjustment](https://w-hardy.github.io/dmdprices/articles/nhscii.md) |
 | Cost analysis in practice | [Cost analysis workflows](https://w-hardy.github.io/dmdprices/articles/cost_analysis_workflows.md) |
 | Drug Tariff matching | [Drug Tariff matching](https://w-hardy.github.io/dmdprices/articles/drug_tariff_matching.md) |
@@ -107,6 +108,8 @@ Query medicine prices from the dm+d
   : Look up medicine prices from a dm+d database
 - [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)
   : Load a dm+d database from a dmdDataLoader output directory
+- [`as_dmd_db()`](https://w-hardy.github.io/dmdprices/reference/as_dmd_db.md)
+  : Build a dm+d database from an in-memory table
 
 ## Dose optimisation
 

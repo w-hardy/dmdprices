@@ -3,7 +3,7 @@
 ## Overview
 
 [`dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md)
-takes a clinical dose (e.g. 900 mg) and returns the best combination of
+takes a clinical dose (e.g. 1000 mg) and returns the best combination of
 AMPPs (branded packs) from the dm+d that deliver it. “Best” is
 controlled by the `objective` argument, which accepts one or more of:
 
@@ -20,8 +20,12 @@ Pass a character vector to request multiple objectives at once, or use
 Preparations are segregated automatically: immediate-release tablets,
 modified-release tablets, oral solutions, and solutions for injection
 each get their own row so they are never mixed in a single combination.
-Compound products with multiple active strengths in one VMP name are
-skipped with a warning because the dose target would be ambiguous.
+Combination products (multiple active ingredients in one VMP) are
+skipped with a warning because the dose target would be ambiguous — see
+“Combination products” below for how to dose them by a single
+ingredient. Packs holding several products (titration packs, co-packs)
+are skipped for the same reason, with a warning of their own, when their
+name gives each product’s strength in mass or units.
 
 ## A basic example
 
@@ -53,18 +57,98 @@ branded pack name, SNOMED codes, and the count / packs-to-buy / pro-rata
 
 ## When objectives differ
 
-A 900 mg metformin dose is a good illustration. The cheapest combination
-may use more items (several smaller tablets) while the minimum-items
-answer may over-deliver (e.g. two 500 mg tablets → 1,000 mg). The output
-flags `over_delivery` in both the column and the notes:
+A 1500 mg metformin dose is a good illustration. The cheapest
+combination may use more items (several smaller tablets) while the
+minimum-items answer uses fewer, larger ones. Both deliver 1500 mg
+exactly:
 
 ``` r
 
-res <- dmd_dose_optimise("metformin", dose = 900, dose_unit = "mg",
+res <- dmd_dose_optimise("metformin", dose = 1500, dose_unit = "mg",
                          preparation = "tablet|none|oral")
 res[, c("objective", "total_items", "dose_delivered",
         "over_delivery", "cost_prorata_pence", "cost_whole_pack_pence")]
 ```
+
+## Over-delivery
+
+By default the optimiser returns only combinations that deliver the
+requested dose **exactly** (`over_delivery = "forbid"`), because for
+tablets and capsules a surplus is extra drug the patient takes. A
+preparation group that cannot hit the dose exactly returns no row and is
+named in a warning, so an impossible dose is never silently costed as an
+over-delivered one:
+
+``` r
+
+# 750 mg cannot be built from 500 mg and 1,000 mg tablets — no rows, with a warning
+dmd_dose_optimise("metformin", dose = 750, dose_unit = "mg",
+                  preparation = "tablet|none|oral")
+
+# smallest achievable over-delivery, objective applied within it
+dmd_dose_optimise("metformin", dose = 750, dose_unit = "mg",
+                  preparation = "tablet|none|oral",
+                  over_delivery = "minimise")[,
+  c("objective", "dose_delivered", "over_delivery", "dose_exact", "notes")]
+
+# "allow" lets the objective decide across everything covering the dose
+dmd_dose_optimise("metformin", dose = 750, dose_unit = "mg",
+                  preparation = "tablet|none|oral",
+                  over_delivery = "allow")
+```
+
+`dose_exact` flags whether the row delivers the dose exactly, so you do
+not have to compare a floating-point `over_delivery` to zero.
+
+The requested dose is never rounded to the strengths. A dose that no
+combination of a group’s strengths sums to — 2.4 mg against 1 mg tablets
+— has no exact combination: the group returns no row under `"forbid"`,
+and under `"minimise"` or `"allow"` the smallest combination delivering
+at least the dose (3 mg). No result delivers less than the dose
+requested.
+
+Whenever a returned combination over-delivers, one warning per call
+lists the preparation groups affected and says which case it is — no
+exact combination exists, or one exists but the objective preferred an
+over-delivering combination (only possible under `"allow"`). These
+warnings are the only signal in
+[`dmd_dose_cost()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_cost.md)
+and
+[`dmd_dose_cost_range()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_cost_range.md),
+which return bare numbers with no `notes` column to inspect. Pass
+`quiet = TRUE` to silence them in bulk costing runs; unrelated warnings
+still come through:
+
+``` r
+
+# warns: an exact 3 mg combination existed but the cheapest one over-delivers
+dmd_dose_cost("buprenorphine", dose = 3, dose_unit = "mg",
+              preparation = "sublingual tablet", over_delivery = "allow")
+
+# same call, silenced
+dmd_dose_cost("buprenorphine", dose = 3, dose_unit = "mg",
+              preparation = "sublingual tablet", over_delivery = "allow",
+              quiet = TRUE)
+```
+
+Two cases are **exempt**, because there the surplus stays in the pack or
+the vial rather than reaching the patient, and the cheapest pack or
+container covering the dose is the costing answer:
+
+- whole-pack dispensing (`can_split = FALSE`), and
+- whole containers — vials and ampoules with `can_split_vials = FALSE`.
+
+Exempt rows carry an `"over-delivery-policy-not-applied"` note and do
+not warn, since buying whole packs or vials to cover a dose is the
+expected costing answer. Exact delivery from a container is available
+with `can_split_vials = TRUE`.
+
+The same argument is accepted by
+[`dmd_dose_cost()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_cost.md)
+and
+[`dmd_dose_cost_range()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_cost_range.md),
+where a dose that cannot be delivered exactly returns `NA` under the
+default.
 
 ## Segregating preparations
 
@@ -122,12 +206,19 @@ When `can_split = FALSE`:
 - In the `combination` tibble, `count` is the number of **packs**
   dispensed rather than individual tablets.
 
-Concentration-based preparations (liquids, vials, inhalers) are treated
-as one container regardless of `can_split`, since one bottle, vial, or
-ampoule is the minimum dispensing unit. For liquids where the pack
-quantity is in the same unit as the concentration denominator (for
-example `10 mg/5 ml` in a `100 ml` bottle), the optimiser uses the total
-pack volume to calculate the active quantity in the container.
+With `can_split = TRUE`, concentration-based preparations (liquids,
+vials, inhalers) are still costed in whole containers unless
+`can_split_vials = TRUE`, since one bottle, vial, or ampoule is the
+minimum administration unit; with `can_split = FALSE` they are optimised
+over whole packs like every other preparation, so a pack of several
+syringes or ampoules is dispensed as whole packs and `total_items`
+counts packs. For liquids where the pack quantity is in the same unit as
+the concentration denominator (for example `10 mg/5 ml` in a `100 ml`
+bottle), the optimiser uses the total pack volume to calculate the
+active quantity in the container. A pack that counts containers (for
+example `10 pre-filled disposable injection` or `5 ampoule`) is priced
+per container — a tenth of the pack price for one of ten syringes — and
+its whole-pack cost buys as many packs as the containers need.
 
 ## Worst-case cost
 
@@ -252,13 +343,120 @@ The `combination` list-column includes `vmpp_snomed_code` and
 `ampp_snomed_code` for each picked product, so you can join back to
 other dm+d views or NHS Drug Tariff Part VIIIA CSVs.
 
+## Combination products
+
+Some products contain more than one active ingredient — co-codamol
+(codeine + paracetamol) is the familiar case, but the class also
+includes allergen mix solutions and multi-factor concentrates whose
+names show only a single number. A single dose target is ambiguous for
+these, so the optimiser skips them and says so:
+
+``` r
+
+dmd_dose_optimise("co-codamol", dose = 30, dose_unit = "mg")
+#> Warning: 110 unsupported compound products skipped during dose optimisation.
+#> x E.g. "Co-codamol 12.8mg/500mg tablets", ... and 9 more.
+#> i Pass `ingredient = "<name>"` to dose one active ingredient of a
+#>   combination product (e.g. the codeine in co-codamol).
+```
+
+A product counts as a combination when the dm+d `is_combination` flag
+says so — derived from the dm+d virtual product ingredient (VPI) data
+and authoritative even when the name reads as a single strength — or
+when its name lists multiple active strengths.
+
+A strength in brackets that only restates the product’s strength in
+another unit dimension is the same dose, so it does not make a product a
+combination: eptacog alfa “1mg (50,000unit)” is dosed by mass like any
+single-strength product. A bracketed strength in the same dimension, or
+one that names another substance, is a competing dose basis and the
+product stays skipped: “Iohexol 755mg/ml (Iodine 350mg/ml)” and
+“Mexiletine hydrochloride 200mg (Mexiletine 167mg)” are two examples.
+
+Packs that hold several products — titration packs such as “Danicopan
+50mg tablets and Danicopan 100mg tablets”, and co-packs of different
+products — have no single per-item strength either. They are skipped
+with a separate warning that names the kind of pack; cost each product
+in the pack individually instead. Here the single-strength tablets are
+still optimised:
+
+``` r
+
+dmd_dose_optimise("danicopan", dose = 200, dose_unit = "mg")
+#> Warning: 1 multi-product pack skipped during dose optimisation.
+#> x Multi-strength pack: "Danicopan 50mg tablets and Danicopan 100mg tablets".
+#> i A pack holding several products has no single per-item strength; cost its
+#>   products individually.
+```
+
+Detection relies on the name giving each product’s strength in mass or
+units. A co-pack whose other product is stated as a percentage, such as
+“Fluconazole 150mg capsule and Clotrimazole 2% cream”, is not recognised
+and is costed as its first product. A pack whose name gives no strength,
+such as “Generic Otezla tablets treatment initiation pack”, is dropped
+like any other product without a parsed strength, with no warning naming
+it.
+
+Code that silences these warnings by matching their text should match
+`"multi-product pack"` as well as `"unsupported compound product"`.
+
+To dose a combination product, name the ingredient you are dosing
+against. Candidates are then restricted to products containing that
+ingredient, and the dose is matched against the ingredient’s own dm+d
+strength rather than whatever number appears in the product name:
+
+``` r
+
+# 30 mg of codeine from co-codamol products, priced per preparation group
+dmd_dose_optimise(
+  "co-codamol", dose = 30, dose_unit = "mg",
+  ingredient = "codeine phosphate"
+)[, c("preparation_label", "objective", "dose_delivered",
+      "dose_exact", "dose_cost_pence")]
+```
+
+Ingredient matching is case-insensitive and word-boundary based (so
+`"codeine"` does not also match `"dihydrocodeine"`); see
+[`?dmd_dose_optimise`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md)
+for the details, including the warnings raised when a term matches
+several distinct ingredients or a non-mass strength.
+
 ## Limitations
 
 - Discrete items only — tablet splitting is not considered.
 - For liquids, each “item” is one container (bottle, ampoule, vial)
-  unless `can_split_vials = TRUE`. A small dose requested against a
-  large container is delivered as one whole container with an
-  `over_delivery` flag.
-- Compound products (multiple active ingredients in one VMP) are skipped
-  with a warning and are not returned as optimiser rows.
+  unless `can_split_vials = TRUE`, or one whole pack when
+  `can_split = FALSE`. A small dose requested against a large container
+  (or pack) is delivered as one whole container with an `over_delivery`
+  flag; containers are exempt from the `over_delivery` policy for that
+  reason.
+- Sprays, granules and similar products whose strength is per dose or
+  actuation but whose pack is measured in ml or g (for example nicotine
+  1mg/dose mouth spray in a 13.2 ml bottle, or lidocaine 10mg/dose spray
+  in a 50 ml bottle) are skipped with a warning: the dm+d records no
+  dose count for such packs and the package does not invent one. The
+  same applies when the pack and the strength are in different physical
+  units (a 500micrograms/g shampoo in a 125 ml bottle). Cost them as
+  whole packs with
+  [`dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/dmd_price_lookup.md).
+- The amount of drug in one container of a concentration (a vial, bag,
+  bottle, unit dose or pre-filled device) is read from the product name:
+  a stated container size in the strength’s dimension (“500ml bags”,
+  “0.25g unit dose”, “2.4ml pre-filled disposable devices”; in an
+  “and”-joined pack only this product’s own phrase counts), else a
+  numeric strength denominator (“500mg/50ml”, “10mg/1ml”,
+  “4mg/100microlitres”). A name that states neither (“10mg/ml …
+  ampoules”), or two different sizes, gives no amount: the product is
+  skipped on both paths with a warning of class
+  `dmdprices_warning_unknown_container_amount`, never taken to hold one
+  millilitre or one gram. Cost such products as whole packs with
+  [`dmd_price_lookup()`](https://w-hardy.github.io/dmdprices/reference/dmd_price_lookup.md).
+  A multi-dose pen or cartridge is one container, so a labelled dose
+  draws a whole one unless `can_split_vials = TRUE`.
+- Combination products (multiple active ingredients in one VMP) are
+  skipped with a warning unless an `ingredient` is named — see
+  “Combination products” above. Packs holding several products are
+  skipped with a warning of their own when their name gives each
+  product’s strength in mass or units; a co-pack with a
+  percentage-strength cream is costed as its first product.
 - Clinical safety (max single / max daily dose) is **not** enforced.

@@ -31,6 +31,10 @@ strength is not meaningful; use `components`.
 
 ## Details
 
+Strengths written with comma thousands separators, as dm+d does for
+large biological-activity values (e.g. nystatin `"100,000units/ml"`),
+parse identically to their plain forms.
+
 Combination (multi-ingredient) products such as co-codamol
 (`"8mg/500mg"`) or co-careldopa (`"25mg/100mg"`) are detected and their
 individual ingredient strengths returned in the `components`
@@ -45,17 +49,19 @@ liquid (e.g. co-trimoxazole `"80mg/400mg/5ml"`) is captured in
 dmd_parse_strength(c(
   "Metformin 500mg tablets",
   "Morphine 10mg/5ml oral solution",
-  "Salbutamol 100micrograms/dose inhaler CFC free"
+  "Salbutamol 100micrograms/dose inhaler CFC free",
+  "Nystatin 100,000units/ml oral suspension"
 ))
-#> # A tibble: 3 × 11
+#> # A tibble: 4 × 12
 #>   drug_stem  strength_value strength_unit denominator_value denominator_unit
 #>   <chr>               <dbl> <chr>                     <dbl> <chr>           
 #> 1 Metformin             500 mg                           NA NA              
 #> 2 Morphine               10 mg                            5 ml              
 #> 3 Salbutamol            100 micrograms                    1 dose            
-#> # ℹ 6 more variables: tail <chr>, strength_canonical <dbl>,
-#> #   strength_unit_canon <chr>, is_combination <lgl>, n_components <int>,
-#> #   components <list>
+#> 4 Nystatin           100000 units                         1 ml              
+#> # ℹ 7 more variables: denominator_explicit <lgl>, tail <chr>,
+#> #   strength_canonical <dbl>, strength_unit_canon <chr>, is_combination <lgl>,
+#> #   n_components <int>, components <list>
 
 # Combination products expose per-ingredient strengths
 res <- dmd_parse_strength("Co-codamol 8mg/500mg tablets")

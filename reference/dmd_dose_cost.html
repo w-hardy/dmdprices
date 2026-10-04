@@ -11,7 +11,7 @@ vector of costs in pence of the same length."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,9 @@ vector of costs in pence of the same length."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.2</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.1</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.5.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
@@ -79,6 +82,8 @@ vector of costs in pence of the same length.</p>
 <span>  active_only <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  can_split <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  can_split_vials <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  over_delivery <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"forbid"</span>, <span class="st">"minimise"</span>, <span class="st">"allow"</span><span class="op">)</span>,</span>
+<span>  quiet <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  na_value <span class="op">=</span> <span class="cn">NA_real_</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -110,6 +115,25 @@ while <code>"most_expensive"</code> alone returns the worst-case cost across gro
 <dt id="arg-can-split-vials">can_split_vials<a class="anchor" aria-label="anchor" href="#arg-can-split-vials"></a></dt>
 <dd><p>As in <code><a href="dmd_dose_optimise.html">dmd_dose_optimise()</a></code>. If <code>TRUE</code>, vials and
 ampoules are costed as a fraction of a container (vial sharing).</p></dd>
+
+
+<dt id="arg-over-delivery">over_delivery<a class="anchor" aria-label="anchor" href="#arg-over-delivery"></a></dt>
+<dd><p>As in <code><a href="dmd_dose_optimise.html">dmd_dose_optimise()</a></code>. Defaults to <code>"forbid"</code>, so
+doses that no combination delivers exactly return <code>na_value</code> (with one
+warning per call) rather than the cost of an over-delivered dose. The
+requested dose is never rounded to the strengths, and no cost is for less
+than the dose. Whole containers (<code>can_split_vials = FALSE</code>) and whole
+packs (<code>can_split = FALSE</code>) are exempt from the policy: they are costed as
+the cheapest container or pack covering the dose, without a warning.
+Pass <code>"minimise"</code> or <code>"allow"</code> to cost over-delivering combinations.</p></dd>
+
+
+<dt id="arg-quiet">quiet<a class="anchor" aria-label="anchor" href="#arg-quiet"></a></dt>
+<dd><p>As in <code><a href="dmd_dose_optimise.html">dmd_dose_optimise()</a></code>. Because this function returns bare
+numbers, the warnings are the only signal that a cost is for an
+over-delivered dose in the groups the over-delivery policy governs
+(whole-container and whole-pack groups are not warned about);
+<code>TRUE</code> silences them for bulk costing runs.</p></dd>
 
 
 <dt id="arg-na-value">na_value<a class="anchor" aria-label="anchor" href="#arg-na-value"></a></dt>
@@ -167,7 +191,7 @@ details.</p></div>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

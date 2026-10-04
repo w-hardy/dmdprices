@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,6 +51,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.2</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.1</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.5.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
@@ -107,7 +110,7 @@ two financial years:</p>
 <code class="sourceCode R"><span><span class="co"># Inflate from 2019/20 to 2023/24</span></span>
 <span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2019/20"</span>, <span class="st">"2023/24"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1.15617</span></span></code></pre></div>
-<p>A factor of <code>1.127</code> means a 12.7% increase over that
+<p>A factor of <code>1.156</code> means a 15.6% increase over that
 period.</p>
 <div class="section level3">
 <h3 id="using-numeric-years">Using numeric years<a class="anchor" aria-label="anchor" href="#using-numeric-years"></a>
@@ -228,11 +231,11 @@ Health Economics (University of York), Kent, UK. <a href="https://doi.org/10.220
 4.0</a>.</p>
 <p>Current coverage: 2014/15 to 2024/25</p>
 <div class="section level3">
-<h3 id="a-note-on-202324-figures">A note on 2023/24 figures<a class="anchor" aria-label="anchor" href="#a-note-on-202324-figures"></a>
+<h3 id="a-note-on-202425-figures">A note on 2024/25 figures<a class="anchor" aria-label="anchor" href="#a-note-on-202425-figures"></a>
 </h3>
-<p>The 2023/24 values in this package are <strong>provisional</strong>.
+<p>The 2024/25 values in this package are <strong>provisional</strong>.
 As is standard for each annual PSSRU publication, later releases (e.g.,
-the 2025 manual) may revise these figures when additional data become
+the 2026 manual) may revise these figures when additional data become
 available. Check the latest PSSRU manual for the most current rates.</p>
 </div>
 </div>
@@ -242,16 +245,20 @@ available. Check the latest PSSRU manual for the most current rates.</p>
 <p>To see which financial years are currently supported:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Pay and prices index</span></span>
-<span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2015/16"</span>, <span class="st">"2015/16"</span><span class="op">)</span>  <span class="co"># Check earliest available year</span></span>
+<span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2014/15"</span>, <span class="st">"2014/15"</span><span class="op">)</span>  <span class="co"># Check earliest available year</span></span>
 <span><span class="co">#&gt; [1] 1</span></span>
 <span></span>
 <span><span class="co"># All indices cover the same period:</span></span>
-<span><span class="co"># 2015/16, 2016/17, 2017/18, 2018/19, 2019/20, 2020/21, 2021/22, 2022/23, 2023/24</span></span></code></pre></div>
+<span><span class="co"># 2014/15, 2015/16, 2016/17, 2017/18, 2018/19, 2019/20, 2020/21, 2021/22,</span></span>
+<span><span class="co"># 2022/23, 2023/24, 2024/25</span></span></code></pre></div>
 <p>If you try to use an unavailable year, you’ll get a helpful
 error:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2014/15"</span>, <span class="st">"2023/24"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1.245031</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2019/20"</span>, <span class="st">"2025/26"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `nhscii()`:</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> `to_year` (<span style="color: #0000BB;">"2025/26"</span>) is not a known financial year.</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Use one of <span style="color: #0000BB;">"2014/15"</span>, <span style="color: #0000BB;">"2015/16"</span>, <span style="color: #0000BB;">"2016/17"</span>, <span style="color: #0000BB;">"2017/18"</span>, <span style="color: #0000BB;">"2018/19"</span>, <span style="color: #0000BB;">"2019/20"</span>,</span></span>
+<span><span class="co">#&gt;   <span style="color: #0000BB;">"2020/21"</span>, <span style="color: #0000BB;">"2021/22"</span>, <span style="color: #0000BB;">"2022/23"</span>, <span style="color: #0000BB;">"2023/24"</span>, and <span style="color: #0000BB;">"2024/25"</span>.</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="further-reading">Further reading<a class="anchor" aria-label="anchor" href="#further-reading"></a>
@@ -274,7 +281,7 @@ costing guidance</a></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

@@ -72,9 +72,10 @@ results:
 
 - **Warnings** (yellow) report non-fatal notices from functions such as
   [`dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md)
-  — for example when unsupported compound products are skipped, an
-  ingredient name is ambiguous, or a strength is recorded in a non-mass
-  unit. Results are still shown alongside the warning.
+  — for example when unsupported compound products or multi-product
+  packs are skipped, an ingredient name is ambiguous, or a strength is
+  recorded in a non-mass unit. Results are still shown alongside the
+  warning.
 - **Errors** (red) report a failed call — for example an invalid
   financial year in the NHS CII adjuster or a malformed query — and
   explain what to change.

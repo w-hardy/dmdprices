@@ -22,6 +22,8 @@ dmd_dose_cost(
   active_only = TRUE,
   can_split = TRUE,
   can_split_vials = FALSE,
+  over_delivery = c("forbid", "minimise", "allow"),
+  quiet = FALSE,
   na_value = NA_real_
 )
 ```
@@ -57,6 +59,28 @@ dmd_dose_cost(
   [`dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md).
   If `TRUE`, vials and ampoules are costed as a fraction of a container
   (vial sharing).
+
+- over_delivery:
+
+  As in
+  [`dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md).
+  Defaults to `"forbid"`, so doses that no combination delivers exactly
+  return `na_value` (with one warning per call) rather than the cost of
+  an over-delivered dose. The requested dose is never rounded to the
+  strengths, and no cost is for less than the dose. Whole containers
+  (`can_split_vials = FALSE`) and whole packs (`can_split = FALSE`) are
+  exempt from the policy: they are costed as the cheapest container or
+  pack covering the dose, without a warning. Pass `"minimise"` or
+  `"allow"` to cost over-delivering combinations.
+
+- quiet:
+
+  As in
+  [`dmd_dose_optimise()`](https://w-hardy.github.io/dmdprices/reference/dmd_dose_optimise.md).
+  Because this function returns bare numbers, the warnings are the only
+  signal that a cost is for an over-delivered dose in the groups the
+  over-delivery policy governs (whole-container and whole-pack groups
+  are not warned about); `TRUE` silences them for bulk costing runs.
 
 - na_value:
 

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,6 +51,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.2</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.1</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.5.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
@@ -188,7 +191,7 @@ for the next year)</p>
 <li>Pay inflation rates</li>
 <li>Price inflation rates</li>
 <li>Combined pay+prices indices</li>
-<li>Coverage: Currently 2015/16–2023/24</li>
+<li>Coverage: Currently 2014/15–2024/25</li>
 </ul>
 <p><strong>Published by:</strong> Personal Social Services Research Unit
 (PSSRU), University of Kent</p>
@@ -199,7 +202,7 @@ for the next year)</p>
 <code class="sourceCode R"><span><span class="co"># Example: current rates available</span></span>
 <span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2015/16"</span>, <span class="st">"2023/24"</span>, index <span class="op">=</span> <span class="st">"prices"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1.204231</span></span></code></pre></div>
-<p><strong>Note:</strong> 2023/24 figures are provisional per the 2025
+<p><strong>Note:</strong> 2024/25 figures are provisional per the 2025
 PSSRU manual. Later releases may revise these values.</p>
 </div>
 <div class="section level2">
@@ -264,10 +267,10 @@ PSSRU manual. Later releases may revise these values.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># The rates currently available</span></span>
 <span><span class="co"># (from the .nhscii_rates internal object)</span></span>
-<span><span class="co"># Coverage: 2015/16 to 2023/24</span></span>
+<span><span class="co"># Coverage: 2014/15 to 2024/25 (2024/25 provisional)</span></span>
 <span><span class="co"># Use nhscii() with any year in that range</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2015/16"</span>, <span class="st">"2015/16"</span><span class="op">)</span>  <span class="co"># Should return 1</span></span>
+<span><span class="fu"><a href="../reference/nhscii.html">nhscii</a></span><span class="op">(</span><span class="st">"2014/15"</span>, <span class="st">"2014/15"</span><span class="op">)</span>  <span class="co"># Should return 1</span></span>
 <span><span class="co">#&gt; [1] 1</span></span></code></pre></div>
 </div>
 </div>
@@ -297,7 +300,7 @@ PSSRU manual. Later releases may revise these values.</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">data_audit</span><span class="op">)</span></span>
 <span><span class="co">#&gt; List of 3</span></span>
-<span><span class="co">#&gt;  $ analysis_date   : Date[1:1], format: "2026-06-24"</span></span>
+<span><span class="co">#&gt;  $ analysis_date   : Date[1:1], format: "2026-10-04"</span></span>
 <span><span class="co">#&gt;  $ dmd_source      :List of 3</span></span>
 <span><span class="co">#&gt;   ..$ source         : chr "dmdprices bundled dataset"</span></span>
 <span><span class="co">#&gt;   ..$ release        : chr "Week 15 2026 (06 April 2026)"</span></span>
@@ -329,10 +332,10 @@ PSSRU manual. Later releases may revise these values.</p>
 <span></span>
 <span><span class="va">metadata</span></span>
 <span><span class="co">#&gt;              item                        value</span></span>
-<span><span class="co">#&gt; 1   Analysis date                   2026-06-24</span></span>
+<span><span class="co">#&gt; 1   Analysis date                   2026-10-04</span></span>
 <span><span class="co">#&gt; 2    dm+d release Week 15 2026 (06 April 2026)</span></span>
 <span><span class="co">#&gt; 3   NHS CII index               pay_and_prices</span></span>
-<span><span class="co">#&gt; 4 Package version                        0.5.0</span></span></code></pre></div>
+<span><span class="co">#&gt; 4 Package version                        0.6.2</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -346,7 +349,7 @@ PSSRU manual. Later releases may revise these values.</p>
 <span></span>
 <span><span class="co"># 2. Check if NHS CII needs updating</span></span>
 <span><span class="co"># Visit https://www.pssru.ac.uk and check if new manual is available</span></span>
-<span><span class="co"># (Current package covers through 2023/24; update when 2024/25 rates published)</span></span>
+<span><span class="co"># (Current package covers through 2024/25, provisional; update when 2025/26 rates are published)</span></span>
 <span></span>
 <span><span class="co"># 3. In your analysis scripts:</span></span>
 <span><span class="va">dm_d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"data/dm_d_current.rds"</span><span class="op">)</span></span>
@@ -355,7 +358,7 @@ PSSRU manual. Later releases may revise these values.</p>
 <span><span class="co"># 4. Record versions</span></span>
 <span><span class="va">analysis_metadata</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  dm_d_release <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">dm_d</span>, <span class="st">"dmd_release_label"</span><span class="op">)</span>,</span>
-<span>  cii_latest_year <span class="op">=</span> <span class="st">"2023/24"</span>,  <span class="co"># Update when new rates available</span></span>
+<span>  cii_latest_year <span class="op">=</span> <span class="st">"2024/25"</span>,  <span class="co"># Update when new rates available</span></span>
 <span>  analysis_date <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -579,7 +582,7 @@ common reasons:</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

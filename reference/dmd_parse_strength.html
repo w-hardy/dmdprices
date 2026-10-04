@@ -11,7 +11,7 @@ form (mass in mg, volume in ml, biological activity as "unit").'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,9 @@ form (mass in mg, volume in ml, biological activity as "unit").'></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.2</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.1</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.5.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
@@ -89,7 +92,10 @@ because a single scalar strength is not meaningful; use <code>components</code>.
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Combination (multi-ingredient) products such as co-codamol
+    <p>Strengths written with comma thousands separators, as dm+d does for large
+biological-activity values (e.g. nystatin <code>"100,000units/ml"</code>), parse
+identically to their plain forms.</p>
+<p>Combination (multi-ingredient) products such as co-codamol
 (<code>"8mg/500mg"</code>) or co-careldopa (<code>"25mg/100mg"</code>) are detected and their
 individual ingredient strengths returned in the <code>components</code> list-column,
 rather than being misread as a single mass-per-mass concentration. A
@@ -102,17 +108,19 @@ trailing volume/dose denominator on a combination liquid (e.g. co-trimoxazole
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">dmd_parse_strength</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="st">"Metformin 500mg tablets"</span>,</span></span>
 <span class="r-in"><span>  <span class="st">"Morphine 10mg/5ml oral solution"</span>,</span></span>
-<span class="r-in"><span>  <span class="st">"Salbutamol 100micrograms/dose inhaler CFC free"</span></span></span>
+<span class="r-in"><span>  <span class="st">"Salbutamol 100micrograms/dose inhaler CFC free"</span>,</span></span>
+<span class="r-in"><span>  <span class="st">"Nystatin 100,000units/ml oral suspension"</span></span></span>
 <span class="r-in"><span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 11</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 12</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   drug_stem  strength_value strength_unit denominator_value denominator_unit</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Metformin             500 mg                           <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>              </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Morphine               10 mg                            5 ml              </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Salbutamol            100 micrograms                    1 dose            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 6 more variables: tail &lt;chr&gt;, strength_canonical &lt;dbl&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   strength_unit_canon &lt;chr&gt;, is_combination &lt;lgl&gt;, n_components &lt;int&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   components &lt;list&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> Nystatin           <span style="text-decoration: underline;">100</span>000 units                         1 ml              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 7 more variables: denominator_explicit &lt;lgl&gt;, tail &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   strength_canonical &lt;dbl&gt;, strength_unit_canon &lt;chr&gt;, is_combination &lt;lgl&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   n_components &lt;int&gt;, components &lt;list&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Combination products expose per-ingredient strengths</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">dmd_parse_strength</span><span class="op">(</span><span class="st">"Co-codamol 8mg/500mg tablets"</span><span class="op">)</span></span></span>
@@ -135,7 +143,7 @@ trailing volume/dose denominator on a combination liquid (e.g. co-trimoxazole
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

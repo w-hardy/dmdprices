@@ -15,7 +15,7 @@ ingredient-specific dose optimisation via dmd_dose_optimise()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,9 @@ ingredient-specific dose optimisation via dmd_dose_optimise()."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.2</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.1</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.5.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
@@ -102,16 +105,23 @@ concentrations, else <code>NA</code>.</p></dd>
 (e.g. <code>"ml"</code>), else <code>NA</code>.</p></dd>
 
 <dt>strength_canonical</dt>
-<dd><p><code>numeric</code>. Strength in canonical units
-(mass in mg, volume in ml, or biological activity as <code>"unit"</code>), for
-cross-product comparison. <code>NA</code> for strengths recorded in units that have
-no mass equivalent (e.g. radioactivity in GBq/MBq, amount of substance in
-mmol, vaccine antigen units, or volumes such as microlitre). Such
+<dd><p><code>numeric</code>. Strength in canonical units: the
+canonical numerator (mass in mg, volume in ml, or biological activity
+as <code>"unit"</code>) per <strong>one canonical denominator unit</strong> for a
+concentration, or the canonical numerator alone otherwise. This is the
+same convention as <code><a href="dmd_parse_strength.html">dmd_parse_strength()</a></code> applies to product names, so
+"20 mg per 1 g" is <code>0.02</code> (mg per mg) and "500 mg per 50 ml" is <code>10</code>
+(mg per ml). <code>NA</code> for strengths recorded in units that have no mass
+equivalent (e.g. radioactivity in GBq/MBq, amount of substance in mmol,
+vaccine antigen units, or volumes such as microlitre) or whose
+denominator has no canonical unit (e.g. per hour for a patch). Such
 ingredients cannot be dose-optimised by mass via <code><a href="dmd_dose_optimise.html">dmd_dose_optimise()</a></code>.</p></dd>
 
 <dt>strength_unit_canon</dt>
-<dd><p><code>character</code>. Canonical strength unit, or <code>NA</code>
-when the strength has no mass/volume/activity equivalent.</p></dd>
+<dd><p><code>character</code>. Canonical strength unit in slash
+form for a concentration (<code>"mg/mg"</code>, <code>"mg/ml"</code>, <code>"unit/ml"</code>), or the
+canonical numerator unit alone (<code>"mg"</code>); <code>NA</code> when the strength has no
+mass/volume/activity equivalent.</p></dd>
 
 
 </dl></div>
@@ -127,12 +137,17 @@ Services Authority (NHSBSA).</p>
     <p>A VMP with two or more distinct ingredients is a combination product; this is
 also surfaced as the <code>is_combination</code> column on a <code><a href="dmd_load.html">dmd_load()</a></code> database's
 <code>$master</code> table.</p>
-<p>The version bundled with the package may be <strong>empty</strong>: the VPI extract is an
-optional part of a dm+d release and is not always present. Rebuild the
-bundled data from a release that includes
-<code>f_vmp_VpiType.csv</code> (see <code>data-raw/dmd_master.R</code>), or
-load a full release with <code><a href="dmd_load.html">dmd_load()</a></code>, to populate it. Check with
-<code>nrow(dmd_ingredients)</code>.</p>
+<p>The bundled table is built from the same Week 15 2026 release as
+<a href="dmd_master.html">dmd_master</a> and has 26,667 rows (<code>nrow(dmd_ingredients)</code>).
+<code>data-raw/dmd_master.R</code> rebuilds both datasets.</p>
+<p>A database loaded with <code><a href="dmd_load.html">dmd_load()</a></code> carries its own <code>$ingredients</code> table,
+which is used in place of this one. That table depends on optional files of
+the <code>dmdDataLoader</code> export. Without <code>f_vmp_VpiType.csv</code> it is <code>NULL</code>, and
+the <code>ingredient</code> argument of <code><a href="dmd_dose_optimise.html">dmd_dose_optimise()</a></code> returns no results, with
+a warning. Without <code>f_ingredient.csv</code> it is built but <code>ingredient_name</code> is
+<code>NA</code>, so <code>ingredient</code> matches nothing. Without
+<code>f_lookup_UoMHistoryInfoType.csv</code> its strength units are <code>NA</code>, so
+<code>ingredient</code> skips every candidate as having a non-mass strength.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -148,7 +163,7 @@ load a full release with <code><a href="dmd_load.html">dmd_load()</a></code>, to
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

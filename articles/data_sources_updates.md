@@ -118,7 +118,7 @@ year)
 - Pay inflation rates
 - Price inflation rates
 - Combined pay+prices indices
-- Coverage: Currently 2015/16–2023/24
+- Coverage: Currently 2014/15–2024/25
 
 **Published by:** Personal Social Services Research Unit (PSSRU),
 University of Kent
@@ -137,7 +137,7 @@ nhscii("2015/16", "2023/24", index = "prices")
 #> [1] 1.204231
 ```
 
-**Note:** 2023/24 figures are provisional per the 2025 PSSRU manual.
+**Note:** 2024/25 figures are provisional per the 2025 PSSRU manual.
 Later releases may revise these values.
 
 ## How often should you update?
@@ -192,10 +192,10 @@ attr(dmd_master, "package_date")
 
 # The rates currently available
 # (from the .nhscii_rates internal object)
-# Coverage: 2015/16 to 2023/24
+# Coverage: 2014/15 to 2024/25 (2024/25 provisional)
 # Use nhscii() with any year in that range
 
-nhscii("2015/16", "2015/16")  # Should return 1
+nhscii("2014/15", "2014/15")  # Should return 1
 #> [1] 1
 ```
 
@@ -224,7 +224,7 @@ data_audit <- list(
 
 str(data_audit)
 #> List of 3
-#>  $ analysis_date   : Date[1:1], format: "2026-06-24"
+#>  $ analysis_date   : Date[1:1], format: "2026-10-04"
 #>  $ dmd_source      :List of 3
 #>   ..$ source         : chr "dmdprices bundled dataset"
 #>   ..$ release        : chr "Week 15 2026 (06 April 2026)"
@@ -257,10 +257,10 @@ metadata <- data.frame(
 
 metadata
 #>              item                        value
-#> 1   Analysis date                   2026-06-24
+#> 1   Analysis date                   2026-10-04
 #> 2    dm+d release Week 15 2026 (06 April 2026)
 #> 3   NHS CII index               pay_and_prices
-#> 4 Package version                        0.5.0
+#> 4 Package version                        0.6.2
 ```
 
 ## Update workflow example
@@ -275,7 +275,7 @@ saveRDS(my_dm_d, "data/dm_d_current.rds")
 
 # 2. Check if NHS CII needs updating
 # Visit https://www.pssru.ac.uk and check if new manual is available
-# (Current package covers through 2023/24; update when 2024/25 rates published)
+# (Current package covers through 2024/25, provisional; update when 2025/26 rates are published)
 
 # 3. In your analysis scripts:
 dm_d <- readRDS("data/dm_d_current.rds")
@@ -284,7 +284,7 @@ medicine_cost <- dmd_price_lookup("Metformin 500mg", db = dm_d)
 # 4. Record versions
 analysis_metadata <- list(
   dm_d_release = attr(dm_d, "dmd_release_label"),
-  cii_latest_year = "2023/24",  # Update when new rates available
+  cii_latest_year = "2024/25",  # Update when new rates available
   analysis_date = Sys.Date()
 )
 ```

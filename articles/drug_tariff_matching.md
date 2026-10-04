@@ -346,7 +346,7 @@ analysis_timestamp
 #> [1] "Week 15 2026 (06 April 2026)"
 #> 
 #> $analysis_date
-#> [1] "2026-06-24"
+#> [1] "2026-10-04"
 ```
 
 ## Further reading

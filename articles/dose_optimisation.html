@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dmdprices</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,6 +51,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.2</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.1</a></li>
+    <li><a class="dropdown-item" href="../news/index.html">Version 0.6.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.5.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.4.0</a></li>
     <li><a class="dropdown-item" href="../news/index.html">Version 0.3.0</a></li>
@@ -87,7 +90,7 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p><code><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise()</a></code> takes a clinical dose (e.g. 900 mg)
+<p><code><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise()</a></code> takes a clinical dose (e.g. 1000 mg)
 and returns the best combination of AMPPs (branded packs) from the dm+d
 that deliver it. “Best” is controlled by the <code>objective</code>
 argument, which accepts one or more of:</p>
@@ -109,8 +112,12 @@ default is <code>c("cheapest", "min_items")</code>.</p>
 <p>Preparations are segregated automatically: immediate-release tablets,
 modified-release tablets, oral solutions, and solutions for injection
 each get their own row so they are never mixed in a single combination.
-Compound products with multiple active strengths in one VMP name are
-skipped with a warning because the dose target would be ambiguous.</p>
+Combination products (multiple active ingredients in one VMP) are
+skipped with a warning because the dose target would be ambiguous — see
+“Combination products” below for how to dose them by a single
+ingredient. Packs holding several products (titration packs, co-packs)
+are skipped for the same reason, with a warning of their own, when their
+name gives each product’s strength in mass or units.</p>
 </div>
 <div class="section level2">
 <h2 id="a-basic-example">A basic example<a class="anchor" aria-label="anchor" href="#a-basic-example"></a>
@@ -137,16 +144,83 @@ branded pack name, SNOMED codes, and the count / packs-to-buy / pro-rata
 <div class="section level2">
 <h2 id="when-objectives-differ">When objectives differ<a class="anchor" aria-label="anchor" href="#when-objectives-differ"></a>
 </h2>
-<p>A 900 mg metformin dose is a good illustration. The cheapest
+<p>A 1500 mg metformin dose is a good illustration. The cheapest
 combination may use more items (several smaller tablets) while the
-minimum-items answer may over-deliver (e.g. two 500 mg tablets → 1,000
-mg). The output flags <code>over_delivery</code> in both the column and
-the notes:</p>
+minimum-items answer uses fewer, larger ones. Both deliver 1500 mg
+exactly:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"metformin"</span>, dose <span class="op">=</span> <span class="fl">900</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span>,</span>
+<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"metformin"</span>, dose <span class="op">=</span> <span class="fl">1500</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span>,</span>
 <span>                         preparation <span class="op">=</span> <span class="st">"tablet|none|oral"</span><span class="op">)</span></span>
 <span><span class="va">res</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"objective"</span>, <span class="st">"total_items"</span>, <span class="st">"dose_delivered"</span>,</span>
 <span>        <span class="st">"over_delivery"</span>, <span class="st">"cost_prorata_pence"</span>, <span class="st">"cost_whole_pack_pence"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="over-delivery">Over-delivery<a class="anchor" aria-label="anchor" href="#over-delivery"></a>
+</h2>
+<p>By default the optimiser returns only combinations that deliver the
+requested dose <strong>exactly</strong>
+(<code>over_delivery = "forbid"</code>), because for tablets and
+capsules a surplus is extra drug the patient takes. A preparation group
+that cannot hit the dose exactly returns no row and is named in a
+warning, so an impossible dose is never silently costed as an
+over-delivered one:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 750 mg cannot be built from 500 mg and 1,000 mg tablets — no rows, with a warning</span></span>
+<span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"metformin"</span>, dose <span class="op">=</span> <span class="fl">750</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span>,</span>
+<span>                  preparation <span class="op">=</span> <span class="st">"tablet|none|oral"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># smallest achievable over-delivery, objective applied within it</span></span>
+<span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"metformin"</span>, dose <span class="op">=</span> <span class="fl">750</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span>,</span>
+<span>                  preparation <span class="op">=</span> <span class="st">"tablet|none|oral"</span>,</span>
+<span>                  over_delivery <span class="op">=</span> <span class="st">"minimise"</span><span class="op">)</span><span class="op">[</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"objective"</span>, <span class="st">"dose_delivered"</span>, <span class="st">"over_delivery"</span>, <span class="st">"dose_exact"</span>, <span class="st">"notes"</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="co"># "allow" lets the objective decide across everything covering the dose</span></span>
+<span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"metformin"</span>, dose <span class="op">=</span> <span class="fl">750</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span>,</span>
+<span>                  preparation <span class="op">=</span> <span class="st">"tablet|none|oral"</span>,</span>
+<span>                  over_delivery <span class="op">=</span> <span class="st">"allow"</span><span class="op">)</span></span></code></pre></div>
+<p><code>dose_exact</code> flags whether the row delivers the dose
+exactly, so you do not have to compare a floating-point
+<code>over_delivery</code> to zero.</p>
+<p>The requested dose is never rounded to the strengths. A dose that no
+combination of a group’s strengths sums to — 2.4 mg against 1 mg tablets
+— has no exact combination: the group returns no row under
+<code>"forbid"</code>, and under <code>"minimise"</code> or
+<code>"allow"</code> the smallest combination delivering at least the
+dose (3 mg). No result delivers less than the dose requested.</p>
+<p>Whenever a returned combination over-delivers, one warning per call
+lists the preparation groups affected and says which case it is — no
+exact combination exists, or one exists but the objective preferred an
+over-delivering combination (only possible under <code>"allow"</code>).
+These warnings are the only signal in <code><a href="../reference/dmd_dose_cost.html">dmd_dose_cost()</a></code> and
+<code><a href="../reference/dmd_dose_cost_range.html">dmd_dose_cost_range()</a></code>, which return bare numbers with no
+<code>notes</code> column to inspect. Pass <code>quiet = TRUE</code> to
+silence them in bulk costing runs; unrelated warnings still come
+through:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># warns: an exact 3 mg combination existed but the cheapest one over-delivers</span></span>
+<span><span class="fu"><a href="../reference/dmd_dose_cost.html">dmd_dose_cost</a></span><span class="op">(</span><span class="st">"buprenorphine"</span>, dose <span class="op">=</span> <span class="fl">3</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span>,</span>
+<span>              preparation <span class="op">=</span> <span class="st">"sublingual tablet"</span>, over_delivery <span class="op">=</span> <span class="st">"allow"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># same call, silenced</span></span>
+<span><span class="fu"><a href="../reference/dmd_dose_cost.html">dmd_dose_cost</a></span><span class="op">(</span><span class="st">"buprenorphine"</span>, dose <span class="op">=</span> <span class="fl">3</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span>,</span>
+<span>              preparation <span class="op">=</span> <span class="st">"sublingual tablet"</span>, over_delivery <span class="op">=</span> <span class="st">"allow"</span>,</span>
+<span>              quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>Two cases are <strong>exempt</strong>, because there the surplus
+stays in the pack or the vial rather than reaching the patient, and the
+cheapest pack or container covering the dose is the costing answer:</p>
+<ul>
+<li>whole-pack dispensing (<code>can_split = FALSE</code>), and</li>
+<li>whole containers — vials and ampoules with
+<code>can_split_vials = FALSE</code>.</li>
+</ul>
+<p>Exempt rows carry an <code>"over-delivery-policy-not-applied"</code>
+note and do not warn, since buying whole packs or vials to cover a dose
+is the expected costing answer. Exact delivery from a container is
+available with <code>can_split_vials = TRUE</code>.</p>
+<p>The same argument is accepted by <code><a href="../reference/dmd_dose_cost.html">dmd_dose_cost()</a></code> and
+<code><a href="../reference/dmd_dose_cost_range.html">dmd_dose_cost_range()</a></code>, where a dose that cannot be
+delivered exactly returns <code>NA</code> under the default.</p>
 </div>
 <div class="section level2">
 <h2 id="segregating-preparations">Segregating preparations<a class="anchor" aria-label="anchor" href="#segregating-preparations"></a>
@@ -154,7 +228,7 @@ the notes:</p>
 <p>A morphine dose should never mix oral solutions with tablets or
 injections, so <code><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise()</a></code> returns one result per
 preparation group:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"morphine"</span>, dose <span class="op">=</span> <span class="fl">20</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span><span class="op">)</span><span class="op">[</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"preparation_label"</span>, <span class="st">"objective"</span>, <span class="st">"total_items"</span>,</span>
 <span>    <span class="st">"dose_delivered"</span>, <span class="st">"over_delivery"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
@@ -165,7 +239,7 @@ preparation group:</p>
 <p>Small doses in micrograms are handled transparently. The requested
 dose unit is retained in the output while the canonical form is used
 internally:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"levothyroxine"</span>, dose <span class="op">=</span> <span class="fl">125</span>, dose_unit <span class="op">=</span> <span class="st">"microgram"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -188,7 +262,7 @@ pay when you cannot split a pack.</p>
 part-pack (<code>can_split = TRUE</code>, the default). In community
 pharmacy, whole packs must be dispensed. Set
 <code>can_split = FALSE</code> to switch to pack-level optimisation:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"metformin"</span>, dose <span class="op">=</span> <span class="st">"1500 mg"</span>, can_split <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>When <code>can_split = FALSE</code>:</p>
 <ul>
@@ -202,13 +276,21 @@ pharmacy actually pays), not a pro-rata fraction.</li>
 number of <strong>packs</strong> dispensed rather than individual
 tablets.</li>
 </ul>
-<p>Concentration-based preparations (liquids, vials, inhalers) are
-treated as one container regardless of <code>can_split</code>, since one
-bottle, vial, or ampoule is the minimum dispensing unit. For liquids
-where the pack quantity is in the same unit as the concentration
-denominator (for example <code>10 mg/5 ml</code> in a
-<code>100 ml</code> bottle), the optimiser uses the total pack volume to
-calculate the active quantity in the container.</p>
+<p>With <code>can_split = TRUE</code>, concentration-based preparations
+(liquids, vials, inhalers) are still costed in whole containers unless
+<code>can_split_vials = TRUE</code>, since one bottle, vial, or ampoule
+is the minimum administration unit; with <code>can_split = FALSE</code>
+they are optimised over whole packs like every other preparation, so a
+pack of several syringes or ampoules is dispensed as whole packs and
+<code>total_items</code> counts packs. For liquids where the pack
+quantity is in the same unit as the concentration denominator (for
+example <code>10 mg/5 ml</code> in a <code>100 ml</code> bottle), the
+optimiser uses the total pack volume to calculate the active quantity in
+the container. A pack that counts containers (for example
+<code>10 pre-filled disposable injection</code> or
+<code>5 ampoule</code>) is priced per container — a tenth of the pack
+price for one of ten syringes — and its whole-pack cost buys as many
+packs as the containers need.</p>
 </div>
 <div class="section level2">
 <h2 id="worst-case-cost">Worst-case cost<a class="anchor" aria-label="anchor" href="#worst-case-cost"></a>
@@ -217,7 +299,7 @@ calculate the active quantity in the container.</p>
 combination of AMPPs that delivers the dose. This is useful for
 budget-impact analysis or scenario modelling where you want an upper
 bound on expenditure:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span></span>
 <span>  <span class="st">"metformin"</span>,</span>
 <span>  dose <span class="op">=</span> <span class="fl">1000</span>,</span>
@@ -227,7 +309,7 @@ bound on expenditure:</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Request multiple objectives at once by passing a vector, or use
 <code>"all"</code> as a shorthand for all three:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Three rows: cheapest, min_items, and most_expensive</span></span>
 <span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span></span>
 <span>  <span class="st">"metformin"</span>,</span>
@@ -245,7 +327,7 @@ costed as whole containers — even when the dose is a fraction of the
 container volume. Set <code>can_split_vials = TRUE</code> to enable
 <strong>vial sharing</strong>, where the cost is pro-rated to the exact
 fraction of the container needed:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 250 mg from a 500 mg/50 ml vial — costs half a vial, not a whole one</span></span>
 <span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span></span>
 <span>  <span class="st">"rituximab"</span>,</span>
@@ -277,7 +359,7 @@ units.</p>
 <code><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise()</a></code> inside <code><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">purrr::map_dbl()</a></code>.
 It accepts a numeric vector of doses and returns a numeric vector of
 costs in pence of the same length:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">treatment_df</span> <span class="op">|&gt;</span></span>
@@ -309,7 +391,7 @@ cost</strong> across groups is returned. Specify
 </ul>
 <p>Use <code><a href="../reference/dmd_dose_cost_range.html">dmd_dose_cost_range()</a></code> when you need both lower and
 upper cost bounds:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/dmd_dose_cost_range.html">dmd_dose_cost_range</a></span><span class="op">(</span></span>
 <span>  <span class="st">"rituximab"</span>,</span>
 <span>  dose <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">375</span>, <span class="fl">500</span>, <span class="fl">700</span><span class="op">)</span>,</span>
@@ -326,16 +408,109 @@ picked product, so you can join back to other dm+d views or NHS Drug
 Tariff Part VIIIA CSVs.</p>
 </div>
 <div class="section level2">
+<h2 id="combination-products">Combination products<a class="anchor" aria-label="anchor" href="#combination-products"></a>
+</h2>
+<p>Some products contain more than one active ingredient — co-codamol
+(codeine + paracetamol) is the familiar case, but the class also
+includes allergen mix solutions and multi-factor concentrates whose
+names show only a single number. A single dose target is ambiguous for
+these, so the optimiser skips them and says so:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"co-codamol"</span>, dose <span class="op">=</span> <span class="fl">30</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: 110 unsupported compound products skipped during dose optimisation.</span></span>
+<span><span class="co">#&gt; x E.g. "Co-codamol 12.8mg/500mg tablets", ... and 9 more.</span></span>
+<span><span class="co">#&gt; i Pass `ingredient = "&lt;name&gt;"` to dose one active ingredient of a</span></span>
+<span><span class="co">#&gt;   combination product (e.g. the codeine in co-codamol).</span></span></code></pre></div>
+<p>A product counts as a combination when the dm+d
+<code>is_combination</code> flag says so — derived from the dm+d virtual
+product ingredient (VPI) data and authoritative even when the name reads
+as a single strength — or when its name lists multiple active
+strengths.</p>
+<p>A strength in brackets that only restates the product’s strength in
+another unit dimension is the same dose, so it does not make a product a
+combination: eptacog alfa “1mg (50,000unit)” is dosed by mass like any
+single-strength product. A bracketed strength in the same dimension, or
+one that names another substance, is a competing dose basis and the
+product stays skipped: “Iohexol 755mg/ml (Iodine 350mg/ml)” and
+“Mexiletine hydrochloride 200mg (Mexiletine 167mg)” are two
+examples.</p>
+<p>Packs that hold several products — titration packs such as “Danicopan
+50mg tablets and Danicopan 100mg tablets”, and co-packs of different
+products — have no single per-item strength either. They are skipped
+with a separate warning that names the kind of pack; cost each product
+in the pack individually instead. Here the single-strength tablets are
+still optimised:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span><span class="st">"danicopan"</span>, dose <span class="op">=</span> <span class="fl">200</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: 1 multi-product pack skipped during dose optimisation.</span></span>
+<span><span class="co">#&gt; x Multi-strength pack: "Danicopan 50mg tablets and Danicopan 100mg tablets".</span></span>
+<span><span class="co">#&gt; i A pack holding several products has no single per-item strength; cost its</span></span>
+<span><span class="co">#&gt;   products individually.</span></span></code></pre></div>
+<p>Detection relies on the name giving each product’s strength in mass
+or units. A co-pack whose other product is stated as a percentage, such
+as “Fluconazole 150mg capsule and Clotrimazole 2% cream”, is not
+recognised and is costed as its first product. A pack whose name gives
+no strength, such as “Generic Otezla tablets treatment initiation pack”,
+is dropped like any other product without a parsed strength, with no
+warning naming it.</p>
+<p>Code that silences these warnings by matching their text should match
+<code>"multi-product pack"</code> as well as
+<code>"unsupported compound product"</code>.</p>
+<p>To dose a combination product, name the ingredient you are dosing
+against. Candidates are then restricted to products containing that
+ingredient, and the dose is matched against the ingredient’s own dm+d
+strength rather than whatever number appears in the product name:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 30 mg of codeine from co-codamol products, priced per preparation group</span></span>
+<span><span class="fu"><a href="../reference/dmd_dose_optimise.html">dmd_dose_optimise</a></span><span class="op">(</span></span>
+<span>  <span class="st">"co-codamol"</span>, dose <span class="op">=</span> <span class="fl">30</span>, dose_unit <span class="op">=</span> <span class="st">"mg"</span>,</span>
+<span>  ingredient <span class="op">=</span> <span class="st">"codeine phosphate"</span></span>
+<span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"preparation_label"</span>, <span class="st">"objective"</span>, <span class="st">"dose_delivered"</span>,</span>
+<span>      <span class="st">"dose_exact"</span>, <span class="st">"dose_cost_pence"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>Ingredient matching is case-insensitive and word-boundary based (so
+<code>"codeine"</code> does not also match
+<code>"dihydrocodeine"</code>); see <code><a href="../reference/dmd_dose_optimise.html">?dmd_dose_optimise</a></code> for
+the details, including the warnings raised when a term matches several
+distinct ingredients or a non-mass strength.</p>
+</div>
+<div class="section level2">
 <h2 id="limitations">Limitations<a class="anchor" aria-label="anchor" href="#limitations"></a>
 </h2>
 <ul>
 <li>Discrete items only — tablet splitting is not considered.</li>
 <li>For liquids, each “item” is one container (bottle, ampoule, vial)
-unless <code>can_split_vials = TRUE</code>. A small dose requested
-against a large container is delivered as one whole container with an
-<code>over_delivery</code> flag.</li>
-<li>Compound products (multiple active ingredients in one VMP) are
-skipped with a warning and are not returned as optimiser rows.</li>
+unless <code>can_split_vials = TRUE</code>, or one whole pack when
+<code>can_split = FALSE</code>. A small dose requested against a large
+container (or pack) is delivered as one whole container with an
+<code>over_delivery</code> flag; containers are exempt from the
+<code>over_delivery</code> policy for that reason.</li>
+<li>Sprays, granules and similar products whose strength is per dose or
+actuation but whose pack is measured in ml or g (for example nicotine
+1mg/dose mouth spray in a 13.2 ml bottle, or lidocaine 10mg/dose spray
+in a 50 ml bottle) are skipped with a warning: the dm+d records no dose
+count for such packs and the package does not invent one. The same
+applies when the pack and the strength are in different physical units
+(a 500micrograms/g shampoo in a 125 ml bottle). Cost them as whole packs
+with <code><a href="../reference/dmd_price_lookup.html">dmd_price_lookup()</a></code>.</li>
+<li>The amount of drug in one container of a concentration (a vial, bag,
+bottle, unit dose or pre-filled device) is read from the product name: a
+stated container size in the strength’s dimension (“500ml bags”, “0.25g
+unit dose”, “2.4ml pre-filled disposable devices”; in an “and”-joined
+pack only this product’s own phrase counts), else a numeric strength
+denominator (“500mg/50ml”, “10mg/1ml”, “4mg/100microlitres”). A name
+that states neither (“10mg/ml … ampoules”), or two different sizes,
+gives no amount: the product is skipped on both paths with a warning of
+class <code>dmdprices_warning_unknown_container_amount</code>, never
+taken to hold one millilitre or one gram. Cost such products as whole
+packs with <code><a href="../reference/dmd_price_lookup.html">dmd_price_lookup()</a></code>. A multi-dose pen or
+cartridge is one container, so a labelled dose draws a whole one unless
+<code>can_split_vials = TRUE</code>.</li>
+<li>Combination products (multiple active ingredients in one VMP) are
+skipped with a warning unless an <code>ingredient</code> is named — see
+“Combination products” above. Packs holding several products are skipped
+with a warning of their own when their name gives each product’s
+strength in mass or units; a co-pack with a percentage-strength cream is
+costed as its first product.</li>
 <li>Clinical safety (max single / max daily dose) is
 <strong>not</strong> enforced.</li>
 </ul>
@@ -351,7 +526,7 @@ skipped with a warning and are not returned as optimiser rows.</li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

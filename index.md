@@ -72,6 +72,7 @@ run_inflate_nhscii()
 |----|----|
 | Getting started | [Introduction to dmdprices](https://w-hardy.github.io/dmdprices/articles/dmdprices.md) |
 | Interactive apps | [Apps](https://w-hardy.github.io/dmdprices/articles/apps.md) |
+| Dose optimisation | [Dose optimisation](https://w-hardy.github.io/dmdprices/articles/dose_optimisation.md) |
 | NHS Cost Inflation Index | [NHS CII adjustment](https://w-hardy.github.io/dmdprices/articles/nhscii.md) |
 | Cost analysis in practice | [Cost analysis workflows](https://w-hardy.github.io/dmdprices/articles/cost_analysis_workflows.md) |
 | Drug Tariff matching | [Drug Tariff matching](https://w-hardy.github.io/dmdprices/articles/drug_tariff_matching.md) |

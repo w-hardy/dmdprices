@@ -8,6 +8,8 @@ Query medicine prices from the dm+d
   : Look up medicine prices from a dm+d database
 - [`dmd_load()`](https://w-hardy.github.io/dmdprices/reference/dmd_load.md)
   : Load a dm+d database from a dmdDataLoader output directory
+- [`as_dmd_db()`](https://w-hardy.github.io/dmdprices/reference/as_dmd_db.md)
+  : Build a dm+d database from an in-memory table
 
 ## Dose optimisation
 

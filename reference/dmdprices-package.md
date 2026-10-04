@@ -68,8 +68,4 @@ research or clinical decision-making. Use at your own risk.
 
 ## Author
 
-**Maintainer**: Will Hardy <w.hardy@bangor.ac.uk>
-
-Authors:
-
-- Will Hardy <w.hardy@bangor.ac.uk>
+**Maintainer**: Will Hardy <w.hardy@bangor.ac.uk> \[copyright holder\]
