@@ -76,6 +76,12 @@
   warning, like other products whose names list several strengths. The
   bundled release has no price for it, so this shows only with
   `active_only = FALSE` or a custom table.
+- `dmd_dose_cost_range()` no longer shows a dose warning twice on a narrow
+  console. It shows each warning once for both bounds by matching the
+  warning's text, which cli wraps to the console width, so a line break
+  inside the matched phrase let the second bound's copy through (below 51
+  columns for the rounding warning below, and below about 41 for the
+  others).
 - The `dmd_load()` "No path supplied." hint now shows
   `options(dmdprices.path = "...")` without literal backslashes, so it can be
   copied as written.

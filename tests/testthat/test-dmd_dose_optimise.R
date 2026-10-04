@@ -2085,6 +2085,15 @@ test_that("a dose finer than the strengths warns that it was rounded", {
   out <- collect(do.call(dmd_dose_cost_range, c(shared, list(dose = c(300.4, 299.6)))))
   expect_equal(sum(grepl(rounded_msg, out$warnings, fixed = TRUE)), 1L)
 
+  # cli wraps the message on a narrow console (testthat pins
+  # cli.condition_width to Inf, so set it here), which must not stop the range
+  # call from showing the warning once. The wrapped text no longer contains
+  # the whole of rounded_msg, so match a single word.
+  withr::with_options(list(cli.condition_width = 40), {
+    out <- collect(do.call(dmd_dose_cost_range, c(shared, list(dose = c(300.4, 299.6)))))
+  })
+  expect_equal(sum(grepl("rounded", out$warnings, fixed = TRUE)), 1L)
+
   # An exact dose does not warn, and quiet = TRUE silences the warning.
   expect_no_warning(do.call(dmd_dose_cost, c(shared, list(dose = 300))))
   expect_no_warning(do.call(dmd_dose_cost, c(shared, list(dose = 300.4, quiet = TRUE))))

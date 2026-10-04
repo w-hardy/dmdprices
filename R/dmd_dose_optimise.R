@@ -1340,7 +1340,9 @@ dmd_dose_cost_range <- function(
     withCallingHandlers(
       do.call(dmd_dose_cost, c(shared, list(objective = obj))),
       warning = function(w) {
-        msg <- conditionMessage(w)
+        # cli wraps conditionMessage() to the console width, which can break a
+        # pattern across lines; collapse the whitespace before matching.
+        msg <- gsub("[[:space:]]+", " ", conditionMessage(w))
         hit <- once[vapply(once, grepl, logical(1), msg, fixed = TRUE)]
         if (length(hit) == 0L) {
           return()
