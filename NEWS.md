@@ -89,8 +89,9 @@
   container's content is not a whole number of the solver's grid units
   (1.5 ml of 0.25mg/0.37ml is 1.0135 mg) the dose is still solved: the
   group's other products keep their exact combinations, and that container
-  is costed whole as many times as needed when it is the better answer,
-  instead of the group being refused. In the bundled release the name-parsed
+  is costed whole as many times as needed when it is the better answer (on
+  a tie in cost and item count, the answer wasting the least drug, as the
+  grid solver itself breaks ties), instead of the group being refused. In the bundled release the name-parsed
   path resizes
   189 pack rows (90 medicines, 61
   priced: unit-dose eye drops and multi-dose pens and devices) and skips

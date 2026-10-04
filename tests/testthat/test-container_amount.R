@@ -75,9 +75,11 @@ test_that("one off-grid container does not cost its group its exact combinations
     dmd_dose_cost("Mixtest", dose = c(3, 1, 1.01), dose_unit = "mg", db = db),
     c(2500, 1000, 1500)
   )
+  # Under min_items 1.01 mg is one vial either way, and the grid solver's own
+  # tie rule (the least surplus, then cost) picks the 1.0135 mg vial (2,000p).
   expect_equal(
     dmd_dose_cost("Mixtest", dose = c(3, 1, 1.01), dose_unit = "mg", db = db, objective = "min_items"),
-    c(2500, 1000, 1500)
+    c(2500, 1000, 2000)
   )
   # Only the off-grid vial reaches 1.02 mg in one container at the lowest
   # cost per item? No: the 2 mg vial (1,500p) still wins; 2.03 mg needs two
@@ -90,6 +92,31 @@ test_that("one off-grid container does not cost its group its exact combinations
     dmd_dose_cost("Mixtest", dose = 3, dose_unit = "mg", db = db, can_split = FALSE),
     2500
   )
+})
+
+test_that("a cost tie between the grid and a whole off-grid container goes to the least surplus", {
+  .local_fresh_dose_cache()
+  # With the 1.0135 mg vial priced like the 2 mg vial (1,500p), 1.01 mg costs
+  # 1,500p in one vial either way: the 1.0135 mg vial wastes less, so it wins.
+  tied <- db
+  off <- tied$master$medicine == "Mixtest 0.25mg/0.37ml solution for injection 1.5ml vials"
+  tied$master$basic_price[off] <- 1500L
+  tied$master$nhs_indicative_price[off] <- 1500L
+  for (objective in c("cheapest", "min_items")) {
+    res <- dmd_dose_optimise("Mixtest", dose = 1.01, dose_unit = "mg", db = tied, objective = objective)
+    expect_equal(res$dose_cost_pence, 1500, info = objective)
+    expect_equal(res$total_items, 1, info = objective)
+    expect_equal(res$dose_delivered, 0.25 * 1.5 / 0.37, info = objective)
+  }
+  packs <- dmd_dose_optimise(
+    "Mixtest",
+    dose = 1.01,
+    dose_unit = "mg",
+    db = tied,
+    objective = "cheapest",
+    can_split = FALSE
+  )
+  expect_equal(packs$dose_delivered, 0.25 * 1.5 / 0.37)
 })
 
 test_that("a whole container whose dose is off the solver's grid still covers the dose", {

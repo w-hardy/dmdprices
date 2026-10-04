@@ -159,8 +159,9 @@
 # the patient) is refused as a precision failure, while a group of whole
 # containers or packs is solved twice, by the DP over the members the grid
 # does represent and by .cover_counts() over single products, and the answer
-# that best meets the objective is kept: one 1.0135 mg pen in a group must
-# not cost the group its exact 1 mg + 2 mg combination.
+# that best meets the objective is kept (on a tie, the one wasting the least
+# drug): one 1.0135 mg pen in a group must not cost the group its exact
+# 1 mg + 2 mg combination, nor lose 1 mg to a 4 mg pen at the same price.
 .solve_group <- function(
   strengths,
   prices,
@@ -238,11 +239,15 @@
   }
   cost <- vapply(candidates, function(c) sum(c$counts * prices), numeric(1))
   items <- vapply(candidates, function(c) sum(c$counts), numeric(1))
+  delivered <- vapply(candidates, function(c) c$dose_delivered, numeric(1))
+  # Ties follow the DP's own rule: the smallest surplus, then the fewest
+  # containers; most_expensive takes the most containers and the largest
+  # surplus.
   pick <- switch(
     objective,
-    most_expensive = order(-cost, items)[1L],
-    min_items = order(items, cost)[1L],
-    order(cost, items)[1L]
+    most_expensive = order(-cost, -items, -delivered)[1L],
+    min_items = order(items, delivered, cost)[1L],
+    order(cost, delivered, items)[1L]
   )
   candidates[[pick]]
 }
@@ -254,15 +259,16 @@
 .cover_counts <- function(strengths, prices, dose_canonical, objective) {
   n <- pmax(1, ceiling((dose_canonical - .dose_tol(dose_canonical)) / strengths))
   cost <- n * prices
+  delivered <- n * strengths
   usable <- is.finite(cost)
   if (!any(usable)) {
     return(NULL)
   }
   order_by <- switch(
     objective,
-    most_expensive = order(-cost, n),
-    min_items = order(n, cost),
-    order(cost, n)
+    most_expensive = order(-cost, -n, -delivered),
+    min_items = order(n, delivered, cost),
+    order(cost, delivered, n)
   )
   pick <- order_by[usable[order_by]][1L]
   counts <- rep(0L, length(strengths))

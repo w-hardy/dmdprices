@@ -308,6 +308,31 @@ test_that("whole packs cover an off-grid dose", {
   expect_match(res$notes, "over-delivery", fixed = TRUE)
 })
 
+test_that("a cost tie between the grid solution and a whole-container cover goes to the least surplus", {
+  # 1 mg against 2 mg and 4 mg pens the grid represents and a 1.0135 mg pen
+  # it does not, all 7,325p: one pen either way, so the pen wasting the least
+  # drug wins, for the cheapest and the fewest-items objectives alike.
+  strengths <- c(2, 4, 0.25 * 1.5 / 0.37)
+  prices <- c(7325, 7325, 7325)
+  for (objective in c("cheapest", "min_items")) {
+    solved <- .solve_group(strengths, prices, 1, objective, "allow", FALSE, FALSE)
+    expect_equal(solved$counts, c(0L, 0L, 1L), info = objective)
+    expect_equal(solved$dose_delivered, 0.25 * 1.5 / 0.37, info = objective)
+  }
+  # The grid solver's own tie rule, which the cover follows: at one cost the
+  # smallest surplus, then the fewest containers; under min_items the smallest
+  # surplus before cost; most_expensive takes the largest surplus.
+  on_grid <- .solve_group(c(1, 2), c(2000, 1500), 1, "min_items", "allow", FALSE, TRUE)
+  expect_equal(on_grid$counts, c(1L, 0L))
+  expect_equal(
+    .solve_group(c(1, 2, 1.0135), c(2000, 1500, 1500), 1.01, "min_items", "allow", FALSE, FALSE)$counts,
+    c(0L, 0L, 1L)
+  )
+  expect_equal(.cover_counts(c(4, 2.027), c(7325, 7325), 1, "cheapest"), c(0L, 1L))
+  expect_equal(.cover_counts(c(4, 2.027), c(7325, 7325), 1, "min_items"), c(0L, 1L))
+  expect_equal(.cover_counts(c(2.027, 4), c(7325, 7325), 1, "most_expensive"), c(0L, 1L))
+})
+
 # ── Solver failures stay distinguishable from "no exact combination" ─────────
 
 test_that("strengths the dose table cannot represent are refused, not mis-costed", {
