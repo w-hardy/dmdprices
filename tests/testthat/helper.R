@@ -446,6 +446,95 @@
   db
 }
 
+# Fake dmd_db for products whose number of doses per pack is unknown: the
+# strength is per dose or actuation but the pack is measured in ml or g, or
+# the pack and the strength are in different physical units. Names are real
+# dm+d VMP names (apart from Covivax); rows and prices are fake. Beside them,
+# the packs whose dose count IS known and must keep costing:
+#   Salbutamol 100micrograms/dose inhaler, 200 dose      -> one 20 mg container
+#   Fluticasone 50micrograms/dose nasal spray, 150 dose  -> one 7.5 mg container
+#   Benzydamine 150micrograms/dose oromucosal spray, 30 dose -> one 4.5 mg container
+#   Morphine 10mg/5ml oral solution, 100 ml              -> one 200 mg bottle
+#   Delgocitinib 20mg/g cream, 60 g                      -> one 1200 mg tube
+#   Salbutamol 500micrograms/1ml ampoules, 5 ampoule     -> five 0.5 mg items
+#   Covivax 30micrograms/0.3ml dose vials, 10 dose       -> ten 0.03 mg items
+#   Tiotropium 18micrograms/dose capsules, 30 capsule    -> thirty 0.018 mg items
+# VPI rows cover nicotine (1 mg per 1 dose), lidocaine (10 mg per 1 actuation)
+# and the salbutamol inhaler (100 microgram per 1 dose).
+.fake_dose_count_db <- function(loaded_at = .fixed_loaded_at) {
+  master <- tibble::tibble(
+    medicine = c(
+      "Nicotine 1mg/dose oromucosal spray sugar free",
+      "Nicotine 1mg/dose oromucosal spray sugar free",
+      "Lidocaine 10mg/dose spray sugar free",
+      "Ispaghula husk 3.5g/dose effervescent granules gluten free sugar free",
+      "Flurbiprofen 2.92mg/actuation oromucosal spray sugar free",
+      "Clobetasol 500micrograms/g shampoo",
+      "Salbutamol 100micrograms/dose inhaler CFC free",
+      "Fluticasone 50micrograms/dose nasal spray",
+      "Benzydamine 150micrograms/dose oromucosal spray sugar free",
+      "Morphine 10mg/5ml oral solution",
+      "Delgocitinib 20mg/g cream",
+      "Salbutamol 500micrograms/1ml solution for injection ampoules",
+      "Covivax 30micrograms/0.3ml dose suspension for injection multidose vials",
+      "Tiotropium 18micrograms/dose inhalation powder capsules"
+    ),
+    pack_size = c(13.2, 26.4, 50, 300, 15, 125, 200, 150, 30, 100, 60, 5, 10, 30),
+    unit = c(
+      "ml", "ml", "ml", "g", "ml", "ml",
+      "dose", "dose", "dose", "ml", "g", "ampoule", "dose", "capsule"
+    ),
+    vmp_snomed_code = c(
+      "V_NIC", "V_NIC", "V_LID", "V_ISP", "V_FLU", "V_CLO",
+      "V_INH", "V_NAS", "V_BEN", "V_MOR", "V_DEL", "V_AMP", "V_VAC", "V_CAP"
+    ),
+    vmpp_snomed_code = paste0("VPP", seq_len(14)),
+    drug_tariff_category = rep("Part VIIIA Category C", 14),
+    basic_price = c(
+      1497L, 2329L, 629L, 800L, 500L, 1000L,
+      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L
+    ),
+    nhs_indicative_price = c(
+      1497L, 2329L, 629L, 800L, 500L, 1000L,
+      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L
+    ),
+    price_basis = rep("NHS Indicative Price", 14),
+    price_date = rep("2025-08-08", 14),
+    ampp_name = c(
+      "Nicorette QuickMist 1mg/dose mouthspray 13.2 ml",
+      "Nicorette QuickMist 1mg/dose mouthspray 26.4 ml",
+      "Xylocaine 10mg/dose spray 50 ml",
+      "Ispaghula husk 3.5g/dose effervescent granules 300 gram",
+      "Strefen Direct oromucosal spray 15 ml",
+      "Clobetasol 500micrograms/g shampoo 125 ml",
+      "Salbutamol 100micrograms/dose inhaler 200 dose",
+      "Fluticasone 50micrograms/dose nasal spray 150 dose",
+      "Benzydamine 150micrograms/dose oromucosal spray 30 dose",
+      "Morphine 10mg/5ml oral solution 100 ml",
+      "Delgocitinib 20mg/g cream 60 gram",
+      "Salbutamol 500micrograms/1ml ampoules 5 ampoule",
+      "Covivax multidose vials 10 dose",
+      "Tiotropium 18micrograms/dose capsules 30 capsule"
+    ),
+    ampp_snomed_code = paste0("APP", seq_len(14))
+  )
+  ingredients <- tibble::tibble(
+    vmp_snomed_code = c("V_NIC", "V_LID", "V_INH"),
+    ingredient_snomed_code = c("I_nic", "I_lid", "I_sal"),
+    ingredient_name = c("Nicotine", "Lidocaine", "Salbutamol"),
+    strength_value = c(1, 10, 100),
+    strength_unit = c("mg", "mg", "microgram"),
+    denominator_value = c(1, 1, 1),
+    denominator_unit = c("dose", "actuation", "dose"),
+    strength_canonical = c(1, 10, 0.1),
+    strength_unit_canon = c("mg/dose", "mg/actuation", "mg/dose")
+  )
+  structure(
+    list(master = master, ingredients = ingredients, loaded_at = loaded_at),
+    class = "dmd_db"
+  )
+}
+
 # Start a test with an empty dose-candidate cache (the memo and its remembered
 # table key) and empty it again when the test ends, so nothing cached carries
 # over between tests. Call it first in any test whose outcome depends on what

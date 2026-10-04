@@ -9,33 +9,55 @@
   )
 }
 
-# TRUE for a concentration row whose pack quantity is expressed in the
-# strength's own denominator unit (a 100 ml bottle of a mg/ml liquid, a
-# 200-dose inhaler of a microgram/dose aerosol): the whole pack is one
-# container. FALSE for container-count packs (10 pre-filled syringes, 5
-# ampoules, 20 nebuliser vials), where pack_size counts the containers.
-# Known gap (follow-up issue): a per-dose or per-actuation strength sold in a
-# pack measured in ml or g (a 13.2 ml nicotine 1mg/dose mouth spray, a 300 g
-# tub of 3.5g/dose granules) is one container whose dose count the dm+d does
-# not give, but the units differ, so it is read as pack_size one-dose items.
-.pack_is_one_container <- function(enriched) {
+# How a row's pack quantity relates to its strength, which decides what one
+# optimisation item is:
+#   "item"      no denominator: a tablet or capsule, the strength is per item;
+#   "pack"      one container: the pack quantity is in the strength's own
+#               denominator unit (a 100 ml bottle of a mg/ml liquid, a 60 g
+#               tube of a mg/g cream, a 200-dose inhaler of a microgram/dose
+#               aerosol), so the item is the whole pack;
+#   "container" container count: the pack counts containers (10 pre-filled
+#               syringes, 5 ampoules, 30 inhalation capsules, the 10 doses of a
+#               multidose vaccine vial), so the item is one denominator
+#               quantity;
+#   "unknown"   the pack quantity and the strength denominator cannot be
+#               reconciled into a number of items: a strength per dose or
+#               actuation sold in a pack measured in ml or g (a 13.2 ml
+#               nicotine 1mg/dose mouth spray, a 300 g tub of 3.5g/dose
+#               granules), whose dose count the dm+d does not record, or a
+#               physical denominator with a different physical pack unit (a
+#               shampoo stated per g and sold in ml). Such a row gets no
+#               per-item dose and is skipped with a warning
+#               (.drop_unknown_dose_counts()) rather than costed as if each
+#               ml or g were one dose.
+.pack_dose_basis <- function(enriched) {
+  den <- unname(.canonicalise_unit_name(enriched$denominator_unit))
+  pack <- unname(.canonicalise_unit_name(enriched$unit))
+  physical <- c("mg", "ml")
+  count_like <- c("dose", "actuation")
+
   is_concentration <- !is.na(enriched$denominator_unit)
-  pack_unit_canon <- unname(.canonicalise_unit_name(enriched$unit))
-  den_unit_canon <- unname(.canonicalise_unit_name(enriched$denominator_unit))
-  is_concentration &
-    !is.na(pack_unit_canon) &
-    !is.na(den_unit_canon) &
-    pack_unit_canon == den_unit_canon
+  one_container <- is_concentration & !is.na(den) & !is.na(pack) & den == pack
+  unknown <- is_concentration &
+    !one_container &
+    ((den %in% count_like & pack %in% physical) |
+      (den %in% physical & pack %in% physical))
+
+  basis <- rep("container", length(is_concentration))
+  basis[!is_concentration] <- "item"
+  basis[one_container] <- "pack"
+  basis[unknown] <- "unknown"
+  basis
 }
 
 # Total dose represented by one discrete optimisation item: the strength times
 # the item quantity, both in canonical units. `strength_canonical` is the
 # canonical numerator per one canonical denominator unit whatever its source
 # (.canonical_strength()), so the item quantity must be canonical too. For a
-# concentration sold as one container (pack unit matching the denominator
-# unit: a 100 ml bottle, a 60 g tube, a 200-dose inhaler) the item is the
-# whole pack, "60 g" -> 60000 mg. For vials and other container-count packs
-# the item is one denominator quantity, "500mg/50ml" -> 50 ml.
+# one-container pack ("pack" basis) the item is the whole pack, "60 g" ->
+# 60000 mg; for a container-count pack ("container") it is one denominator
+# quantity, "500mg/50ml" -> 50 ml; a pack with an "unknown" basis has no
+# per-item dose.
 .per_item_dose <- function(enriched) {
   out <- enriched$strength_canonical
   is_concentration <- !is.na(enriched$denominator_unit)
@@ -43,16 +65,17 @@
     return(out)
   }
 
+  basis <- .pack_dose_basis(enriched)
   multiplier <- .canonicalise_units(
     enriched$denominator_value,
     enriched$denominator_unit
   )$value
-
-  use_pack_quantity <- .pack_is_one_container(enriched)
-  multiplier[use_pack_quantity] <- .canonicalise_units(
-    enriched$pack_size[use_pack_quantity],
-    enriched$unit[use_pack_quantity]
+  whole_pack <- basis == "pack"
+  multiplier[whole_pack] <- .canonicalise_units(
+    enriched$pack_size[whole_pack],
+    enriched$unit[whole_pack]
   )$value
+  multiplier[basis == "unknown"] <- NA_real_
 
   out[is_concentration] <-
     enriched$strength_canonical[is_concentration] *
@@ -66,13 +89,15 @@
 # is in the strength's denominator unit, otherwise one of the pack_size
 # containers the pack holds, so a 10-syringe pack prices each syringe at a
 # tenth of the pack. A pack whose container count is unknown (NA pack_size)
-# is treated as one container. NA or non-positive counts give an NA price,
-# and an NA pack price propagates through the division.
+# is treated as one container; a pack whose dose count is unknown ("unknown"
+# basis) has no items. NA or non-positive counts give an NA price, and an NA
+# pack price propagates through the division.
 .container_pricing <- function(enriched) {
-  is_concentration <- !is.na(enriched$denominator_unit)
-  one_container <- is_concentration &
-    (.pack_is_one_container(enriched) | is.na(enriched$pack_size))
+  basis <- .pack_dose_basis(enriched)
+  one_container <- basis == "pack" |
+    (basis == "container" & is.na(enriched$pack_size))
   items_per_pack <- ifelse(one_container, 1, enriched$pack_size)
+  items_per_pack[basis == "unknown"] <- NA_real_
   safe_items <- items_per_pack
   safe_items[!is.na(safe_items) & safe_items <= 0] <- NA_real_
   enriched$items_per_pack <- items_per_pack
@@ -191,6 +216,37 @@
   enriched[!skip, , drop = FALSE]
 }
 
+# Drop the rows whose number of doses per pack is unknown (.pack_dose_basis()
+# "unknown") with one warning per call that names them, so they are never
+# costed as if each ml or g were one dose and a caller reading bare numbers
+# can tell the resulting NA from "no product matched". Runs after ingredient
+# targeting, which recomputes the basis from the VPI denominator. Not governed
+# by `quiet`, like the other data-exclusion warnings; silence it by its class.
+.drop_unknown_dose_counts <- function(enriched) {
+  if (!"dose_basis" %in% names(enriched)) {
+    return(enriched)
+  }
+
+  skip <- enriched$dose_basis %in% "unknown"
+  if (any(skip)) {
+    skipped <- unique(enriched$medicine[skip])
+    ex <- .skipped_examples(skipped)
+    # The first line must keep its wording: dmd_dose_cost_range() de-duplicates
+    # this warning by matching "doses per pack is unknown".
+    cli::cli_warn(
+      c(
+        "{ex$n} product{?s} skipped during dose optimisation: the number of doses per pack is unknown.",
+        "x" = "E.g. {.val {ex$shown}}{ex$more}.",
+        "i" = "The strength is per dose or actuation but the pack is measured in ml or g, or the pack and the strength are in different units, and the dm+d records no dose count for such packs. Cost them as whole packs with {.fn dmd_price_lookup}."
+      ),
+      class = "dmdprices_warning_unknown_dose_count",
+      medicines = skipped
+    )
+  }
+
+  enriched[!skip, , drop = FALSE]
+}
+
 # Performs all dose-independent work: price lookup, strength parsing,
 # preparation classification, and price-field resolution. The result is
 # memoized at session level so repeated calls for the same
@@ -229,6 +285,7 @@
   enriched <- dplyr::bind_cols(candidates, parsed, prep)
 
   enriched$unsupported_compound <- .is_unsupported_compound(enriched)
+  enriched$dose_basis <- .pack_dose_basis(enriched)
   enriched$per_item_dose <- .per_item_dose(enriched)
 
   # Resolve price field with per-row fallback.
@@ -365,8 +422,10 @@
   enriched$targeted_ingredient <- vpi$ingredient_name
 
   # The named ingredient gives an unambiguous dose, so these rows are now
-  # optimisable even when the product is a combination.
+  # optimisable even when the product is a combination. The denominator may
+  # have changed, so the pack basis is classified again.
   enriched$unsupported_compound <- FALSE
+  enriched$dose_basis <- .pack_dose_basis(enriched)
   enriched$per_item_dose <- .per_item_dose(enriched)
 
   # Some ingredients are recorded in units that cannot be canonicalised to a
@@ -797,6 +856,7 @@ dmd_dose_optimise <- function(
     enriched <- .apply_ingredient_targeting(enriched, db, ingredient)
   }
   enriched <- .drop_unsupported_compounds(enriched)
+  enriched <- .drop_unknown_dose_counts(enriched)
   if (nrow(enriched) == 0) {
     return(.empty_dose_result())
   }
@@ -1099,6 +1159,7 @@ dmd_dose_cost <- function(
     enriched <- .apply_ingredient_targeting(enriched, db, ingredient)
   }
   enriched <- .drop_unsupported_compounds(enriched)
+  enriched <- .drop_unknown_dose_counts(enriched)
   if (nrow(enriched) == 0) {
     return(rep(na_value, length(dose)))
   }
@@ -1353,6 +1414,7 @@ dmd_dose_cost_range <- function(
   once <- c(
     "unsupported compound product",
     "multi-product pack",
+    "doses per pack is unknown",
     "No exact-dose combination exists",
     "Delivering more than the requested dose",
     "was rounded to the precision of",
