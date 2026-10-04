@@ -222,14 +222,17 @@
 # can tell the resulting NA from "no product matched". Runs after ingredient
 # targeting, which recomputes the basis from the VPI denominator. Not governed
 # by `quiet`, like the other data-exclusion warnings; silence it by its class.
-.drop_unknown_dose_counts <- function(enriched) {
+# `candidate` marks the rows the call would otherwise have costed: a product
+# the preparation filter or the dose unit excludes anyway is dropped silently.
+.drop_unknown_dose_counts <- function(enriched, candidate = NULL) {
   if (!"dose_basis" %in% names(enriched)) {
     return(enriched)
   }
 
   skip <- enriched$dose_basis %in% "unknown"
-  if (any(skip)) {
-    skipped <- unique(enriched$medicine[skip])
+  named <- if (is.null(candidate)) skip else skip & candidate
+  if (any(named)) {
+    skipped <- unique(enriched$medicine[named])
     ex <- .skipped_examples(skipped)
     # The first line must keep its wording: dmd_dose_cost_range() de-duplicates
     # this warning by matching "doses per pack is unknown".
@@ -245,6 +248,30 @@
   }
 
   enriched[!skip, , drop = FALSE]
+}
+
+# Rows whose preparation group or label contains `preparation`, matched
+# case-insensitively and literally (so a key such as
+# "solution for infusion|none|intravenous" is not read as regex alternation);
+# every row when no preparation is requested.
+.preparation_matches <- function(enriched, preparation) {
+  if (is.null(preparation)) {
+    return(rep(TRUE, nrow(enriched)))
+  }
+  needle <- tolower(preparation)
+  grepl(needle, tolower(enriched$preparation_group), fixed = TRUE) |
+    grepl(needle, tolower(enriched$preparation_label), fixed = TRUE)
+}
+
+# Rows whose strength is in the requested dose's canonical unit. A
+# concentration ("mg/ml") delivers its numerator, so that is the unit compared.
+.dose_unit_matches <- function(enriched, unit_canon) {
+  row_mass_unit <- ifelse(
+    grepl("/", enriched$strength_unit_canon),
+    sub("/.*", "", enriched$strength_unit_canon),
+    enriched$strength_unit_canon
+  )
+  !is.na(row_mass_unit) & row_mass_unit == unit_canon
 }
 
 # Performs all dose-independent work: price lookup, strength parsing,
@@ -322,6 +349,37 @@
   invisible()
 }
 
+# The raw dm+d VPI strength fields that ingredient targeting reads. A table's
+# canonical columns are never read, so a table built to any convention targets
+# alike, but these fields must be present.
+.ingredient_strength_cols <- c(
+  "strength_value",
+  "strength_unit",
+  "denominator_value",
+  "denominator_unit"
+)
+
+.check_ingredient_columns <- function(
+  ingredients,
+  arg = "ingredients",
+  call = rlang::caller_env()
+) {
+  fields <- .ingredient_strength_cols
+  required <- c("vmp_snomed_code", "ingredient_name", fields)
+  missing <- setdiff(required, names(ingredients))
+  if (length(missing) > 0L) {
+    cli::cli_abort(
+      c(
+        "{.arg {arg}} lacks the {cli::qty(length(missing))}column{?s} {.val {missing}}.",
+        "i" = "Ingredient targeting reads the raw dm+d VPI strength fields {.val {fields}}, as in {.code dmd_ingredients} and the {.code $ingredients} of a {.fn dmd_load} database; the canonical columns are not read."
+      ),
+      class = "dmdprices_error_ingredient_columns",
+      call = call
+    )
+  }
+  invisible(ingredients)
+}
+
 # Resolve the per-ingredient strength table for a database: the loaded
 # `$ingredients` for a <dmd_db>, otherwise the bundled `dmd_ingredients`.
 .resolve_ingredients <- function(db) {
@@ -345,6 +403,7 @@
     ))
     return(enriched[0, , drop = FALSE])
   }
+  .check_ingredient_columns(ing_tbl)
 
   # Match the ingredient name on a word boundary so that, e.g., "codeine" does
   # not also match "dihydrocodeine". \Q...\E quotes any regex metacharacters in
@@ -654,8 +713,14 @@
 #'   to a mass dose; such candidates are skipped with a warning. The
 #'   ingredient's strength is applied to the same item the product's own
 #'   strength would be: the container volume the name states ("500mg/50ml"
-#'   vials hold 50 ml), the whole pack for a single bottle or tube, or one
-#'   denominator unit otherwise. Requires ingredient
+#'   vials hold 50 ml), the whole pack for a single bottle or tube, or
+#'   otherwise one unit of the ingredient's stated denominator, which
+#'   over-credits a container whose size appears in the name only as a bare
+#'   token ("500ml bags" of a strength recorded per litre count as one litre
+#'   each; see the limitations in `vignette("dose_optimisation")`). The
+#'   ingredient table must carry the raw dm+d strength fields
+#'   (`strength_value`, `strength_unit`, `denominator_value`,
+#'   `denominator_unit`); its canonical columns are not read. Requires ingredient
 #'   (VPI) data: the bundled [dmd_ingredients] (used when `db` is not a
 #'   `<dmd_db>`, including the default), the `$ingredients` table of a
 #'   [dmd_load()] database built with `f_vmp_VpiType.csv`, or the `ingredients`
@@ -863,7 +928,11 @@ dmd_dose_optimise <- function(
     enriched <- .apply_ingredient_targeting(enriched, db, ingredient)
   }
   enriched <- .drop_unsupported_compounds(enriched)
-  enriched <- .drop_unknown_dose_counts(enriched)
+  enriched <- .drop_unknown_dose_counts(
+    enriched,
+    candidate = .preparation_matches(enriched, preparation) &
+      .dose_unit_matches(enriched, dose_canon$unit)
+  )
   if (nrow(enriched) == 0) {
     return(.empty_dose_result())
   }
@@ -871,16 +940,7 @@ dmd_dose_optimise <- function(
   # Drop rows we cannot optimise (no strength, no preparation, or mismatched
   # canonical unit vs requested dose).
   keep <- !is.na(enriched$per_item_dose) &
-    !is.na(enriched$strength_unit_canon)
-
-  # Compare dose canonical unit to each row's unit. Concentrations
-  # (mg/ml) yield a mass per-item, so treat those as the mass side of the unit.
-  row_mass_unit <- ifelse(
-    grepl("/", enriched$strength_unit_canon),
-    sub("/.*", "", enriched$strength_unit_canon),
-    enriched$strength_unit_canon
-  )
-  keep <- keep & (row_mass_unit == dose_canon$unit)
+    .dose_unit_matches(enriched, dose_canon$unit)
 
   skipped <- sum(!keep)
   enriched <- enriched[keep, , drop = FALSE]
@@ -897,23 +957,13 @@ dmd_dose_optimise <- function(
   # Filter to requested preparation if supplied. Accepts either an exact key
   # (e.g. "solution for infusion|none|intravenous") or any case-insensitive
   # plain substring (e.g. "infusion") matched against preparation_group or
-  # preparation_label. tolower() on both sides gives case-insensitivity while
-  # fixed = TRUE ensures pipe characters in preparation keys are treated
-  # literally, not as regex alternation.
+  # preparation_label.
   if (!is.null(preparation)) {
-    enriched <- dplyr::filter(
-      enriched,
-      grepl(
-        tolower(preparation),
-        tolower(.data$preparation_group),
-        fixed = TRUE
-      ) |
-        grepl(
-          tolower(preparation),
-          tolower(.data$preparation_label),
-          fixed = TRUE
-        )
-    )
+    enriched <- enriched[
+      .preparation_matches(enriched, preparation),
+      ,
+      drop = FALSE
+    ]
     if (nrow(enriched) == 0) {
       cli::cli_warn(
         "No candidates remain after filtering to preparation {.val {preparation}}."
@@ -1159,40 +1209,30 @@ dmd_dose_cost <- function(
   if (!is.null(ingredient)) {
     enriched <- .apply_ingredient_targeting(enriched, db, ingredient)
   }
-  enriched <- .drop_unsupported_compounds(enriched)
-  enriched <- .drop_unknown_dose_counts(enriched)
-  if (nrow(enriched) == 0) {
-    return(rep(na_value, length(dose)))
-  }
-
-  # ── Static row filters applied once ───────────────────────────────────────
   dose_unit_info <- .canonicalise_unit(1, dose_unit)
   if (is.na(dose_unit_info$unit)) {
     cli::cli_abort("Unsupported {.arg dose_unit}: {.val {dose_unit}}.")
   }
   unit_canon <- dose_unit_info$unit
 
-  keep <- !is.na(enriched$per_item_dose) & !is.na(enriched$strength_unit_canon)
-  row_mass_unit <- ifelse(
-    grepl("/", enriched$strength_unit_canon),
-    sub("/.*", "", enriched$strength_unit_canon),
-    enriched$strength_unit_canon
+  enriched <- .drop_unsupported_compounds(enriched)
+  enriched <- .drop_unknown_dose_counts(
+    enriched,
+    candidate = .preparation_matches(enriched, preparation) &
+      .dose_unit_matches(enriched, unit_canon)
   )
-  keep <- keep & (row_mass_unit == unit_canon)
+  if (nrow(enriched) == 0) {
+    return(rep(na_value, length(dose)))
+  }
+
+  # ── Static row filters applied once ───────────────────────────────────────
+  keep <- !is.na(enriched$per_item_dose) &
+    .dose_unit_matches(enriched, unit_canon)
   enriched <- enriched[keep, , drop = FALSE]
 
   if (!is.null(preparation)) {
     enriched <- enriched[
-      grepl(
-        tolower(preparation),
-        tolower(enriched$preparation_group),
-        fixed = TRUE
-      ) |
-        grepl(
-          tolower(preparation),
-          tolower(enriched$preparation_label),
-          fixed = TRUE
-        ),
+      .preparation_matches(enriched, preparation),
       ,
       drop = FALSE
     ]

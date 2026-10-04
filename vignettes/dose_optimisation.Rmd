@@ -405,6 +405,15 @@ term matches several distinct ingredients or a non-mass strength.
   pack and the strength are in different physical units (a 500micrograms/g
   shampoo in a 125 ml bottle). Cost them as whole packs with
   `dmd_price_lookup()`.
+- Container sizes that appear in a product name only as a bare token
+  ("500ml bags", "100ml bottles", "0.25g unit dose", "3ml pens") are not
+  parsed. A container-count pack whose name states no strength denominator
+  is dosed per one unit of the strength's stated denominator, on both
+  paths: with `ingredient =`, a 500 ml bag of a strength recorded per litre
+  is credited with one litre (twice its content), and a 0.25 g unit dose of
+  a 15mg/g eye drop with 1 g (15 mg rather than 3.75 mg). Where the name
+  states the volume as the strength's denominator ("500mg/50ml") the
+  container is sized correctly.
 - Combination products (multiple active ingredients in one VMP) are skipped
   with a warning unless an `ingredient` is named — see "Combination products"
   above. Packs holding several products are skipped with a warning of their

@@ -32,31 +32,42 @@
   Behaviour changes).
 - **Ingredient-targeted doses (`ingredient =`) applied the ingredient's
   strength to the wrong quantity.** The dm+d states an ingredient strength
-  per a stated denominator quantity ("9 g per 1 litre" for a sodium chloride
-  bag, "10 mg per 1 ml" for a rituximab vial). The dose functions converted
-  the numerator to milligrams but kept the denominator as written, and then
-  dosed each container as one denominator unit. A 500 ml bag of 0.9% sodium
-  chloride therefore counted 9000 mg of sodium chloride per millilitre (1000
-  times too much), and a 500mg/50ml rituximab vial counted 10 mg (one
-  millilitre) rather than 500 mg, so `dmd_dose_cost("rituximab", dose = 375,
-  dose_unit = "mg", ingredient = "rituximab")` was costed in up to 50 times
-  too many vials. Every strength, parsed from a name or taken from the VPI
-  data, is now brought to one convention before any arithmetic: canonical
-  numerator per one canonical denominator unit (`20mg/g` is 0.02 mg per mg,
-  `500mg/50ml` is 10 mg per ml). The item an ingredient strength is applied
-  to is the same item the product's own strength would be: the container
-  volume the name states, the whole pack for a single bottle or tube, or one
-  denominator unit otherwise. Products costable both ways now cost the same
-  either way (375 mg of rituximab is 62,866p on both paths; 1200 mg of
-  delgocitinib 59,500p). In the bundled release this changes the per-item
-  dose of 11,827 product-ingredient pairs (2,751 medicines; 4,987 priced
-  pairs across 1,158 priced medicines): 3,113 priced pairs were 1000 times
-  too large (193 medicines, mostly infusion bags, vials, pre-filled
-  injections and ampoules whose VPI denominator is 1 g or 1 litre), and
-  1,855 priced pairs (955 medicines) now take the container volume from the
-  product name. Re-run any analysis that used `ingredient =` with an earlier
-  version. This corrects the 0.6.2 notes that said results with
-  `ingredient =` were unchanged by the cream fix.
+  per a stated denominator quantity ("500 mg per 1 litre" for an amino acid
+  in an infusion bottle, "10 mg per 1 ml" for rituximab). The dose functions
+  converted the numerator to milligrams but kept the denominator as written,
+  and then dosed each container as one denominator unit. A 1 litre bottle of
+  Aminoplasmal 15% therefore counted 500 g of L-tyrosine rather than 500 mg,
+  so `dmd_dose_cost("Aminoplasmal 15%", dose = 3, dose_unit = "g",
+  ingredient = "L-Tyrosine")` costed one bottle (2,300p) and now costs six
+  (13,800p); a 500mg/50ml rituximab vial counted 10 mg (one millilitre)
+  rather than 500 mg. Every strength, parsed from a name or taken from the
+  VPI data, is now brought to one convention before any arithmetic:
+  canonical numerator per one canonical denominator unit (`20mg/g` is
+  0.02 mg per mg, `500mg/50ml` is 10 mg per ml). The item an ingredient
+  strength is applied to is the item the product's own strength would use:
+  the container volume the name states as the strength's denominator
+  ("500mg/50ml" vials hold 50 ml), the whole pack for a single bottle or
+  tube, or otherwise one unit of the ingredient's stated denominator. That
+  last case is a known limitation rather than a correction: a container
+  whose size appears in the name only as a bare token ("500ml bags", "100ml
+  bottles", "0.25g unit dose") is still taken to hold one denominator unit,
+  so a 500 ml bag of a strength recorded per litre is credited with twice
+  its content, and a 0.25 g unit dose of a 15mg/g eye drop with four times
+  (see the vignette's limitations). Products costable on both paths now
+  agree wherever the name states the container volume and the dm+d records
+  the concentration exactly (375 mg of rituximab is 62,866p on both paths,
+  1200 mg of delgocitinib 59,500p); they still differ where the dm+d rounds
+  a concentration (a 128mg/0.36ml syringe is recorded as 355.56 mg/ml, so
+  the ingredient path sees 128.0016 mg) or where only a bare token sizes the
+  container. In the bundled release this changes the per-item dose of
+  11,827 product-ingredient pairs (2,751 medicines; 4,987 priced pairs
+  across 1,158 priced medicines): 3,113 priced pairs (193 medicines) lose a
+  factor of 1000, which leaves them right where the container is one
+  denominator unit (1 litre bags and bottles) and off by the container's
+  true size otherwise, and 1,855 priced pairs (955 medicines) now take the
+  container volume from the product name. Re-run any analysis that used
+  `ingredient =` with an earlier version. This corrects the 0.6.2 notes
+  that said results with `ingredient =` were unchanged by the cream fix.
 - **Packs whose number of doses is unknown are skipped with a warning
   instead of being costed as one dose per millilitre or gram.** For a
   product whose strength is per dose or actuation but whose pack is measured
@@ -80,7 +91,9 @@
   pack is in millilitres; 30 of those pairs are still costable from the
   product name. Inhalers and nasal sprays whose pack is counted in doses,
   and bottles, vials and ampoules measured in the strength's own unit, are
-  unaffected.
+  unaffected. The warning names only products the call would otherwise have
+  costed: one that the `preparation` filter or the dose unit excludes is
+  dropped without it.
 
 ## Behaviour changes
 
@@ -111,6 +124,15 @@
   warning, which now names the denominator unit. Ingredient tables loaded
   with `dmd_load()` or passed to `as_dmd_db()` are read from their raw
   strength fields, so a table built to the old convention targets correctly.
+- **Ingredient tables must carry the raw dm+d strength fields.** Ingredient
+  targeting now reads `strength_value`, `strength_unit`, `denominator_value`
+  and `denominator_unit` from the ingredient table (as in `dmd_ingredients`
+  and the `$ingredients` of a `dmd_load()` database) and no longer reads its
+  canonical columns, so a table built to any convention targets alike. A
+  table passed to `as_dmd_db()` without those columns, or one met during
+  targeting, is refused with an error naming the missing columns; 0.6.2
+  accepted a table carrying only `strength_canonical` and
+  `strength_unit_canon`.
 - **A new dose warning to match.** Code that silences the dose warnings by
   matching their text should also match "doses per pack is unknown".
   `quiet = TRUE` does not silence it, like the unsupported-compound and

@@ -76,8 +76,14 @@ no canonical form (per hour, per square centimetre), cannot be converted
 to a mass dose; such candidates are skipped with a warning. The
 ingredient's strength is applied to the same item the product's own
 strength would be: the container volume the name states ("500mg/50ml"
-vials hold 50 ml), the whole pack for a single bottle or tube, or one
-denominator unit otherwise. Requires ingredient
+vials hold 50 ml), the whole pack for a single bottle or tube, or
+otherwise one unit of the ingredient's stated denominator, which
+over-credits a container whose size appears in the name only as a bare
+token ("500ml bags" of a strength recorded per litre count as one litre
+each; see the limitations in \code{vignette("dose_optimisation")}). The
+ingredient table must carry the raw dm+d strength fields
+(\code{strength_value}, \code{strength_unit}, \code{denominator_value},
+\code{denominator_unit}); its canonical columns are not read. Requires ingredient
 (VPI) data: the bundled \link{dmd_ingredients} (used when \code{db} is not a
 \verb{<dmd_db>}, including the default), the \verb{$ingredients} table of a
 \code{\link[=dmd_load]{dmd_load()}} database built with \code{f_vmp_VpiType.csv}, or the \code{ingredients}

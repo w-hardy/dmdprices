@@ -475,6 +475,8 @@
 # Two rows only the ingredient path can classify: Nicospray (no strength in
 # its name; VPI 1 mg per 1 dose, 13.2 ml) and Oilatine 5mg/ml lotion (parsed
 # per ml, one 250 ml bottle; VPI 5 mg per 1 g, which the ml pack cannot count).
+# Lidocaine 100mg lozenges (fake; 20 at 400p) sit beside the lidocaine spray so
+# a preparation filter can exclude the spray.
 # VPI rows cover nicotine (1 mg per 1 dose, both sprays), lidocaine (10 mg per
 # 1 actuation), the salbutamol inhaler (100 microgram per 1 dose) and oilatine.
 .fake_dose_count_db <- function(loaded_at = .fixed_loaded_at) {
@@ -495,33 +497,35 @@
       "Covivax 30micrograms/0.3ml dose suspension for injection multidose vials",
       "Tiotropium 18micrograms/dose inhalation powder capsules",
       "Nicospray oromucosal spray",
-      "Oilatine 5mg/ml lotion"
+      "Oilatine 5mg/ml lotion",
+      "Lidocaine 100mg lozenges"
     ),
     pack_size = c(
-      13.2, 26.4, 50, 300, 15, 125, 200, 150, 30, 100, 60, 5, 10, 30, 13.2, 250
+      13.2, 26.4, 50, 300, 15, 125, 200, 150, 30, 100, 60, 5, 10, 30, 13.2, 250,
+      20
     ),
     unit = c(
       "ml", "ml", "ml", "g", "ml", "ml",
       "dose", "dose", "dose", "ml", "g", "ampoule", "dose", "capsule",
-      "ml", "ml"
+      "ml", "ml", "lozenge"
     ),
     vmp_snomed_code = c(
       "V_NIC", "V_NIC", "V_LID", "V_ISP", "V_FLU", "V_CLO",
       "V_INH", "V_NAS", "V_BEN", "V_MOR", "V_DEL", "V_AMP", "V_VAC", "V_CAP",
-      "V_NSP", "V_OIL"
+      "V_NSP", "V_OIL", "V_LOZ"
     ),
-    vmpp_snomed_code = paste0("VPP", seq_len(16)),
-    drug_tariff_category = rep("Part VIIIA Category C", 16),
+    vmpp_snomed_code = paste0("VPP", seq_len(17)),
+    drug_tariff_category = rep("Part VIIIA Category C", 17),
     basic_price = c(
       1497L, 2329L, 629L, 800L, 500L, 1000L,
-      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L, 1200L, 700L
+      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L, 1200L, 700L, 400L
     ),
     nhs_indicative_price = c(
       1497L, 2329L, 629L, 800L, 500L, 1000L,
-      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L, 1200L, 700L
+      150L, 300L, 400L, 300L, 1000L, 190L, 500L, 2000L, 1200L, 700L, 400L
     ),
-    price_basis = rep("NHS Indicative Price", 16),
-    price_date = rep("2025-08-08", 16),
+    price_basis = rep("NHS Indicative Price", 17),
+    price_date = rep("2025-08-08", 17),
     ampp_name = c(
       "Nicorette QuickMist 1mg/dose mouthspray 13.2 ml",
       "Nicorette QuickMist 1mg/dose mouthspray 26.4 ml",
@@ -538,9 +542,10 @@
       "Covivax multidose vials 10 dose",
       "Tiotropium 18micrograms/dose capsules 30 capsule",
       "Nicospray mouthspray 13.2 ml",
-      "Oilatine lotion 250 ml"
+      "Oilatine lotion 250 ml",
+      "Lidocaine 100mg lozenges 20 lozenge"
     ),
-    ampp_snomed_code = paste0("APP", seq_len(16))
+    ampp_snomed_code = paste0("APP", seq_len(17))
   )
   ingredients <- tibble::tibble(
     vmp_snomed_code = c("V_NIC", "V_LID", "V_INH", "V_NSP", "V_OIL"),

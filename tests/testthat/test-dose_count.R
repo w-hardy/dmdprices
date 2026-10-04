@@ -203,6 +203,54 @@ test_that("ingredient targeting classifies the dose count from the VPI denominat
   expect_length(.unknown_count_warnings(got$conditions), 1L)
 })
 
+test_that("the warning names only products the call would otherwise have costed", {
+  .local_fresh_dose_cache()
+  # The lozenges are costed; the spray the preparation filter excludes is
+  # dropped without a warning.
+  got <- .with_warnings(dmd_dose_optimise(
+    "Lidocaine",
+    dose = 100,
+    dose_unit = "mg",
+    db = db,
+    preparation = "lozenge",
+    objective = "cheapest"
+  ))
+  expect_equal(nrow(got$value), 1L)
+  expect_equal(got$value$dose_cost_pence, 20)
+  expect_length(.unknown_count_warnings(got$conditions), 0L)
+
+  got <- .with_warnings(dmd_dose_cost(
+    "Lidocaine",
+    dose = c(100, 200),
+    dose_unit = "mg",
+    db = db,
+    preparation = "lozenge"
+  ))
+  expect_equal(got$value, c(20, 40))
+  expect_length(.unknown_count_warnings(got$conditions), 0L)
+
+  # A dose unit no lidocaine product is stated in excludes the spray too.
+  got <- .with_warnings(dmd_dose_cost(
+    "Lidocaine",
+    dose = 1,
+    dose_unit = "ml",
+    db = db
+  ))
+  expect_equal(got$value, NA_real_)
+  expect_length(.unknown_count_warnings(got$conditions), 0L)
+
+  # With no filter the spray is a candidate, so it is named.
+  got <- .with_warnings(dmd_dose_optimise(
+    "Lidocaine",
+    dose = 100,
+    dose_unit = "mg",
+    db = db,
+    objective = "cheapest"
+  ))
+  expect_equal(nrow(got$value), 1L)
+  expect_length(.unknown_count_warnings(got$conditions), 1L)
+})
+
 test_that("every route refuses to cost an unknown dose count", {
   .local_fresh_dose_cache()
   shared <- list(query = "Nicotine", dose_unit = "mg", db = db)

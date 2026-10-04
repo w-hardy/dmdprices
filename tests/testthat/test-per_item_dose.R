@@ -292,6 +292,19 @@ test_that("an ingredient table without canonical columns is targeted from its ra
   expect_equal(sort(targeted$per_item_dose), c(100, 500))
 })
 
+test_that("an ingredient table without the raw strength fields is refused", {
+  .local_fresh_dose_cache()
+  canon_only <- vpi_db
+  canon_only$ingredients <- canon_only$ingredients[, c(
+    "vmp_snomed_code", "ingredient_snomed_code", "ingredient_name",
+    "strength_canonical", "strength_unit_canon"
+  )]
+  expect_snapshot(
+    error = TRUE,
+    .targeted("Rituximab", "Rituximab", db = canon_only)
+  )
+})
+
 test_that(".per_item_dose() has one convention and no flag", {
   # A deliberate guard against reintroducing a per-source convention flag
   # (0.6.2's `canonical_pack_quantity`): the behaviour it stood for is
