@@ -66,9 +66,9 @@ Key data flow: `dmd_price_lookup()` → `.dmd_prepare_candidates()` (memoized) �
 
 ## Dependencies
 
-Runtime: `dplyr`, `readr`, `stringr`, `stringdist`, `rlang`, `cli`, `tibble`, `memoise`, `cachem`, `shiny`, `DT`
+Runtime (DESCRIPTION `Imports`): `bslib`, `cachem`, `dplyr`, `DT`, `lifecycle`, `readr`, `stringr`, `stringdist`, `rlang`, `cli`, `tibble`, `memoise`, `shiny`
 
-`cachem` is used directly in `.dmd_prepare_candidates_memo` but may not be listed in DESCRIPTION — check and add if missing.
+`cachem` is used directly in `.dmd_prepare_candidates_memo`; it is listed in `Imports` and must stay there.
 
 ## Testing
 

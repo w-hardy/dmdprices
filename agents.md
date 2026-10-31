@@ -72,7 +72,7 @@ pkgdown::build_site()  # Rebuild docs site
 ## Common Pitfalls
 
 - After changing any `@` roxygen tag or function signature, run `devtools::document()` before testing — stale `NAMESPACE`/`man/` files cause confusing failures.
-- `cachem` is used directly in the memoization setup. Ensure it is listed under `Imports` in `DESCRIPTION`.
+- `cachem` is used directly in the memoization setup; it is listed under `Imports` in `DESCRIPTION` and must stay there.
 - `dmd_dose_cost()` only accepts **numeric** `dose` vectors (not strings like `"500 mg"`). `dmd_dose_optimise()` accepts both.
 - Snapshot files in `tests/testthat/_snaps/` must be updated deliberately with `testthat::snapshot_accept()` after intentional output changes — don't silently overwrite them.
 - The bundled dataset (`dmd_master`) uses `LazyData: true` — it loads on first access, not at `library()`. Don't assume it's available before first use in tests.

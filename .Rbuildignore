@@ -2,6 +2,7 @@
 ^\.git$
 ^agents\.md$
 ^SKILLS_AUDIT\.md$
+^GLOSSARY\.md$
 ^renv$
 ^renv\.lock$
 ^\.Rprofile$

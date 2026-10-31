@@ -1,3 +1,44 @@
+# dmdprices (development version)
+
+## Bug fixes
+
+- **A dose too large for the solver is refused cleanly (#39).** A dose past
+  R's integer range (around 2.1 billion grid units, e.g. 1e12 mg against
+  1 mg tablets) and an infinite dose stopped the dose functions with
+  "NAs introduced by coercion to integer range" and "missing value where
+  TRUE/FALSE needed". They now get the refusal a dose past the
+  5,000,000-cell dose table already got: no row from `dmd_dose_optimise()`,
+  `NA` from `dmd_dose_cost()` and `dmd_dose_cost_range()`, and one "could not
+  be resolved" warning. Whole containers off the solver grid, covered by
+  single products, are refused the same way when the container count would
+  pass the integer range, and their whole-pack cost is now summed in double
+  precision, so a pack count times a pack price past 2^31 - 1 pence no
+  longer overflows to `NA` with an "integer overflow" warning.
+- **`dmd_dose_cost_range()` shows the ingredient warnings once (#38).** With
+  `ingredient =`, the warnings that a name matched several distinct
+  ingredients, or that candidates have a non-mass strength, were raised once
+  per bound. They are now shown once per call, like the other dose warnings.
+- **An `ingredient` that none of the query's candidates contains is warned
+  about (#37).** `dmd_dose_cost(..., ingredient = "Simvastatin")` for a
+  paracetamol query returned `NA` with no condition, indistinguishable from a
+  dose that cannot be made. A warning of class
+  `dmdprices_warning_ingredient_no_candidate` now names the ingredient and the
+  candidates. Like the other ingredient-matching warnings, `quiet = TRUE` does
+  not silence it, and `dmd_dose_cost_range()` shows it once.
+- **The over-delivery warning from `dmd_dose_cost()` and
+  `dmd_dose_cost_range()` describes the returned cost (#42).** It named every
+  preparation group whose cost was usable and over-delivered, including groups
+  whose cost was not the one returned: `dmd_dose_cost("ibuprofen", 400, "mg",
+  over_delivery = "minimise")` warned about three modified-release and
+  effervescent groups while returning the exact cost of plain tablets. It now
+  names only the groups that supply the returned cost, and is not raised when
+  an exact combination reaches the same cost. With several doses, its first
+  line says how many doses are affected ("for 1 of 3 doses, in 1 preparation
+  group"). `dmd_dose_cost_range()` raises one warning that names the groups
+  behind `lo_pence` and `hi_pence` separately, where it previously kept the
+  first bound's warning and dropped the second's. `dmd_dose_optimise()`,
+  which returns every group, is unchanged.
+
 # dmdprices 0.6.2
 
 ## Bug fixes

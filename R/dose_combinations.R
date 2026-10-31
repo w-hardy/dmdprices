@@ -125,12 +125,15 @@
   if (identical(over_delivery, "forbid") && !target$on_grid) {
     return(.no_exact_result())
   }
-  dose_int <- as.integer(target$t_lo)
   max_over <- max(strengths_int)
 
-  if ((dose_int + max_over + 1L) > 5e6) {
+  # The cell cap is checked in double precision before the target becomes an
+  # integer: a dose past .Machine$integer.max would otherwise coerce to NA
+  # (#39). Every such dose is far past the cap, so it gets the cap's refusal.
+  if ((target$t_lo + max_over + 1) > 5e6) {
     return(.unresolved_result("table"))
   }
+  dose_int <- as.integer(target$t_lo)
 
   dp <- .dose_dp(strengths_int, prices, dose_int, max_over)
   best <- if (is_max) {
@@ -223,7 +226,11 @@
     }
   }
   cover <- .cover_counts(strengths, prices, dose_canonical, objective)
-  if (!is.null(cover)) {
+  if (.is_unresolved(cover)) {
+    if (length(candidates) == 0L) {
+      return(cover)
+    }
+  } else if (!is.null(cover)) {
     candidates$cover <- list(
       counts = cover,
       dose_delivered = sum(cover * strengths),
@@ -255,7 +262,10 @@
 # The single product that best meets the objective, taken whole as many
 # times as needed to cover the dose; for whole containers and packs the
 # surplus is wastage in the container, never a dose to the patient. Returns
-# the per-strength counts, or NULL when no product is priced.
+# the per-strength counts, NULL when no product is priced, or the cell-cap
+# refusal when the product that best meets the objective would need more
+# containers than an integer count holds (#39). The choice is made among all
+# priced products first, so a product is never passed over for its count.
 .cover_counts <- function(strengths, prices, dose_canonical, objective) {
   n <- pmax(1, ceiling((dose_canonical - .dose_tol(dose_canonical)) / strengths))
   cost <- n * prices
@@ -271,6 +281,9 @@
     order(cost, delivered, n)
   )
   pick <- order_by[usable[order_by]][1L]
+  if (n[pick] > .Machine$integer.max) {
+    return(.unresolved_result("table"))
+  }
   counts <- rep(0L, length(strengths))
   counts[pick] <- as.integer(n[pick])
   counts
@@ -665,6 +678,12 @@
   can_split_vials = FALSE,
   over_delivery = "allow"
 ) {
+  # An infinite dose has no place on any grid, no finite cover and no vial
+  # fraction; it is refused as past the cell cap, like any dose too large to
+  # solve, before any of the group's paths runs (#39).
+  if (!is.finite(dose_canonical)) {
+    return(.unresolved_result("table"))
+  }
   # Detect whether every row in this group is concentration-based.
   all_concentration <- all(!is.na(group_df$denominator_unit))
 
@@ -844,7 +863,9 @@
       subtotal_whole <- NA_real_
     } else {
       packs_to_buy <- as.integer(ceiling(counts[i] / items_per_pack))
-      subtotal_whole <- as.numeric(packs_to_buy * chosen$pack_price_pence)
+      # In double precision: an integer pack count times an integer price
+      # overflows past 2^31 - 1 pence (#39).
+      subtotal_whole <- as.numeric(packs_to_buy) * chosen$pack_price_pence
     }
 
     if (isTRUE(chosen$price_fallback)) {
@@ -1113,7 +1134,7 @@
     } else {
       pick <- if (is_max) which.max else which.min
       chosen <- priced[pick(priced$pack_price_pence), , drop = FALSE]
-      subtotal_whole <- chosen$pack_price_pence * counts[i]
+      subtotal_whole <- as.numeric(chosen$pack_price_pence) * counts[i]
     }
 
     if (isTRUE(chosen$price_fallback)) {
