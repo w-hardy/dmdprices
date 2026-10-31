@@ -12,7 +12,7 @@ _Source_: NHS Dictionary of Medicines and Devices (dm+d), NHSBSA; the expansion 
 _Avoid_: Pack (unqualified), SKU
 
 **Candidate**:
-A priced AMPP that a query matched and that is eligible for dose costing.
+An AMPP that a query matched and that is eligible for dose costing; by default only packs with a price are.
 _Source_: project definition
 _Avoid_: Match, product (unqualified)
 
