@@ -1204,10 +1204,16 @@ dmd_dose_optimise <- function(
 #'   the cheapest container or pack covering the dose, without a warning.
 #'   Pass `"minimise"` or `"allow"` to cost over-delivering combinations.
 #' @param quiet As in [dmd_dose_optimise()]. Because this function returns bare
-#'   numbers, the warnings are the only signal that a cost is for an
-#'   over-delivered dose in the groups the over-delivery policy governs
-#'   (whole-container and whole-pack groups are not warned about);
-#'   `TRUE` silences them for bulk costing runs.
+#'   numbers, the over-delivery warning is the only signal that a returned
+#'   cost is for an over-delivered dose. It describes the returned costs only:
+#'   it is raised when a returned cost is reached only by combinations that
+#'   deliver more than the requested dose (an exact combination at the same
+#'   cost counts as exact), and it names the preparation groups that supply
+#'   such a cost, not other groups that were considered. It is raised once per
+#'   call, so with several doses it says how many are affected but not which;
+#'   to see each dose's combination, use [dmd_dose_optimise()]. Whole-container
+#'   and whole-pack groups are exempt from the over-delivery policy and are not
+#'   warned about. `TRUE` silences the dose warnings for bulk costing runs.
 #' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
 #'   or negative elements are returned as `na_value` without error.
 #' @param na_value Scalar returned for doses that are `NA`, non-positive, or for
@@ -1254,8 +1260,66 @@ dmd_dose_cost <- function(
   quiet = FALSE,
   na_value = NA_real_
 ) {
+  res <- .dose_cost(
+    query = query,
+    dose = dose,
+    dose_unit = dose_unit,
+    db = db,
+    method = method,
+    max_dist = max_dist,
+    price = price,
+    objective = objective,
+    preparation = preparation,
+    ingredient = ingredient,
+    active_only = active_only,
+    can_split = can_split,
+    can_split_vials = can_split_vials,
+    over_delivery = over_delivery,
+    quiet = quiet,
+    na_value = na_value
+  )
+  .warn_over_delivery(
+    res$over$impossible,
+    res$over$available,
+    quiet,
+    n_over = res$over$n_doses,
+    n_doses = length(dose)
+  )
+  res$costs
+}
+
+# The body of dmd_dose_cost(). It raises the candidate, no-exact and
+# unresolved warnings itself, and returns the over-delivery it found instead
+# of warning about it, so that dmd_dose_cost_range() can report both bounds
+# in one warning (#42). Returns list(costs, over), where `over` holds the
+# labels of the supplying groups whose combination over-delivers
+# (`impossible`: no exact combination exists in the group; `available`: one
+# does) and `n_doses`, the number of doses whose returned cost is reached
+# only by over-delivering combinations.
+.dose_cost <- function(
+  query,
+  dose,
+  dose_unit = NULL,
+  db = dmdprices::dmd_master,
+  method = c("partial", "exact", "fuzzy"),
+  max_dist = 3,
+  price = c("basic_price", "nhs_indicative_price"),
+  objective = c("cheapest", "min_items"),
+  preparation = NULL,
+  ingredient = NULL,
+  active_only = TRUE,
+  can_split = TRUE,
+  can_split_vials = FALSE,
+  over_delivery = c("forbid", "minimise", "allow"),
+  quiet = FALSE,
+  na_value = NA_real_,
+  call = rlang::caller_env(),
+  user_env = rlang::caller_env(2)
+) {
+  # `call` and `user_env` attribute errors and the deprecation to the
+  # exported function the caller used, not to this helper.
   .validate_ingredient(ingredient)
-  .validate_flag(quiet, "quiet")
+  .validate_flag(quiet, "quiet", call = call)
   method <- match.arg(method)
   price <- match.arg(price)
   over_delivery <- match.arg(over_delivery)
@@ -1267,13 +1331,15 @@ dmd_dose_cost <- function(
     lifecycle::deprecate_warn(
       when = "0.6.0",
       what = I('`objective = "both"`'),
-      details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.'
+      details = 'Use objective = c("cheapest", "min_items") or objective = "all" instead.',
+      user_env = user_env
     )
     objective <- unique(c(setdiff(objective, "both"), "cheapest", "min_items"))
   }
   if (length(objective) == 0L) {
     cli::cli_abort(
-      '{.arg objective} must contain at least one of {.val cheapest}, {.val min_items}, {.val most_expensive} (or {.val all}).'
+      '{.arg objective} must contain at least one of {.val cheapest}, {.val min_items}, {.val most_expensive} (or {.val all}).',
+      call = call
     )
   }
   objective <- match.arg(
@@ -1290,7 +1356,7 @@ dmd_dose_cost <- function(
         "a dose string. Supply a numeric vector, e.g. {.code dose = 900} ",
         "rather than {.code dose = \"900 mg\"}."
       )
-    ))
+    ), call = call)
   }
   if (is.null(dose_unit)) {
     dose_unit <- "mg"
@@ -1307,14 +1373,14 @@ dmd_dose_cost <- function(
     price = price
   )
   if (is.null(enriched)) {
-    return(rep(na_value, length(dose)))
+    return(.no_dose_costs(dose, na_value))
   }
   if (!is.null(ingredient)) {
     enriched <- .apply_ingredient_targeting(enriched, db, ingredient)
   }
   dose_unit_info <- .canonicalise_unit(1, dose_unit)
   if (is.na(dose_unit_info$unit)) {
-    cli::cli_abort("Unsupported {.arg dose_unit}: {.val {dose_unit}}.")
+    cli::cli_abort("Unsupported {.arg dose_unit}: {.val {dose_unit}}.", call = call)
   }
   unit_canon <- dose_unit_info$unit
 
@@ -1325,7 +1391,7 @@ dmd_dose_cost <- function(
       .dose_unit_matches(enriched, unit_canon)
   )
   if (nrow(enriched) == 0) {
-    return(rep(na_value, length(dose)))
+    return(.no_dose_costs(dose, na_value))
   }
 
   # ── Static row filters applied once ───────────────────────────────────────
@@ -1342,7 +1408,7 @@ dmd_dose_cost <- function(
   }
 
   if (nrow(enriched) == 0) {
-    return(rep(na_value, length(dose)))
+    return(.no_dose_costs(dose, na_value))
   }
 
   medicine_root <- .medicine_root(enriched$drug_stem)
@@ -1364,6 +1430,7 @@ dmd_dose_cost <- function(
   no_exact <- character()
   over_impossible <- character()
   over_available <- character()
+  over_doses <- 0L
   unresolved_precision <- character()
   unresolved_table <- character()
 
@@ -1375,11 +1442,15 @@ dmd_dose_cost <- function(
       }
       dose_canon <- .canonicalise_unit(d, dose_unit)
 
-      per_obj_cost <- vapply(
+      # Per objective: its aggregate cost and every usable group result,
+      # so that the combinations behind the returned cost can be found once
+      # it is known (#42).
+      per_obj <- lapply(
         objective,
         function(obj) {
           is_max <- identical(obj, "most_expensive")
           best <- if (is_max) -Inf else Inf
+          seen <- list()
           for (g in seq_len(nrow(groups))) {
             sub <- enriched[
               enriched$preparation_group == groups$preparation_group[g],
@@ -1424,39 +1495,86 @@ dmd_dose_cost <- function(
             if (is.na(cost)) {
               next
             }
-            # Recorded only once the cost is usable, so the warning describes
-            # numbers the caller actually receives.
-            if (.policy_row(row) && !row$dose_exact) {
-              if (.exact_feasible(row)) {
-                over_available <<- c(over_available, groups$preparation_label[g])
-              } else {
-                over_impossible <<- c(
-                  over_impossible,
-                  groups$preparation_label[g]
-                )
-              }
-            }
+            seen[[length(seen) + 1L]] <- list(
+              cost = cost,
+              label = groups$preparation_label[g],
+              exact = isTRUE(row$dose_exact),
+              warned = .policy_row(row) && !isTRUE(row$dose_exact),
+              feasible = .exact_feasible(row)
+            )
             if (is_max) {
               if (cost > best) best <- cost
             } else {
               if (cost < best) best <- cost
             }
           }
-          if (is.infinite(best)) NA_real_ else best
-        },
-        numeric(1L)
+          list(best = if (is.infinite(best)) NA_real_ else best, seen = seen)
+        }
       )
 
-      finite <- per_obj_cost[!is.na(per_obj_cost)]
-      if (length(finite) == 0L) na_value else min(finite)
+      bests <- vapply(per_obj, function(p) p$best, numeric(1L))
+      finite <- bests[!is.na(bests)]
+      if (length(finite) == 0L) {
+        return(na_value)
+      }
+      returned <- min(finite)
+
+      # The supplying combinations: every group result, under any objective
+      # whose aggregate is the returned cost, that reaches that cost. The
+      # warning describes the number the caller receives, so it is raised
+      # only when no supplying combination delivers the dose exactly, and it
+      # names the supplying groups the over-delivery policy governs.
+      supplying <- unlist(
+        lapply(per_obj, function(p) {
+          if (is.na(p$best) || !.same_cost(p$best, returned)) {
+            return(list())
+          }
+          Filter(function(e) .same_cost(e$cost, returned), p$seen)
+        }),
+        recursive = FALSE
+      )
+      exact <- vapply(supplying, function(e) e$exact, logical(1L))
+      warned <- Filter(function(e) e$warned, supplying)
+      if (!any(exact) && length(warned) > 0L) {
+        over_doses <<- over_doses + 1L
+        for (e in warned) {
+          if (e$feasible) {
+            over_available <<- c(over_available, e$label)
+          } else {
+            over_impossible <<- c(over_impossible, e$label)
+          }
+        }
+      }
+      returned
     },
     numeric(1L)
   )
 
   .warn_no_exact(no_exact, quiet)
-  .warn_over_delivery(over_impossible, over_available, quiet)
   .warn_unresolved(unresolved_precision, unresolved_table, quiet)
-  costs
+  list(
+    costs = costs,
+    over = list(
+      impossible = over_impossible,
+      available = over_available,
+      n_doses = over_doses
+    )
+  )
+}
+
+# What .dose_cost() returns when no candidate survives its filters.
+.no_dose_costs <- function(dose, na_value) {
+  list(
+    costs = rep(na_value, length(dose)),
+    over = list(impossible = character(), available = character(), n_doses = 0L)
+  )
+}
+
+# Two costs in pence are the same when they differ by no more than one part
+# in a billion: pro-rata prices are fractions of a pence, and the same
+# combination can be priced through different arithmetic.
+.same_cost <- function(a, b) {
+  abs(a - b) <= 1e-9 * max(1, abs(b))
 }
 
 # ── Cost range lookup ─────────────────────────────────────────────────────────
@@ -1474,6 +1592,10 @@ dmd_dose_cost <- function(
 #' within a session.
 #'
 #' @inheritParams dmd_dose_cost
+#' @param quiet As in [dmd_dose_cost()]. Each warning is raised once per call,
+#'   not once per bound. The over-delivery warning names, for each of
+#'   `lo_pence` and `hi_pence`, the preparation groups that supply an
+#'   over-delivered cost for that bound.
 #' @param dose A **numeric vector** of dose values in `dose_unit`. `NA`, zero,
 #'   or negative elements yield `na_value` in both output columns.
 #' @param na_value Scalar returned for doses that are `NA`, non-positive, or
@@ -1546,18 +1668,20 @@ dmd_dose_cost_range <- function(
     can_split_vials = can_split_vials,
     over_delivery = over_delivery,
     quiet = quiet,
-    na_value = na_value
+    na_value = na_value,
+    call = rlang::current_env()
   )
   # Both bounds run the same candidate set, so each of these warnings would
   # otherwise be raised twice for one user-visible call.
   seen <- character()
+  # Over-delivery is not in this list: it can differ between the bounds, so
+  # it is collected per bound and reported in one warning below (#42).
   once <- c(
     "unsupported compound product",
     "multi-product pack",
     "doses per pack is unknown",
     "amount of drug per container is unknown",
     "No exact-dose combination exists",
-    "Delivering more than the requested dose",
     "could not be resolved",
     "distinct ingredients",
     "non-mass strength",
@@ -1565,7 +1689,7 @@ dmd_dose_cost_range <- function(
   )
   call_cost <- function(obj) {
     withCallingHandlers(
-      do.call(dmd_dose_cost, c(shared, list(objective = obj))),
+      do.call(.dose_cost, c(shared, list(objective = obj))),
       warning = function(w) {
         # cli wraps conditionMessage() to the console width, which can break a
         # pattern across lines; collapse the whitespace before matching.
@@ -1584,7 +1708,8 @@ dmd_dose_cost_range <- function(
 
   lo <- call_cost("cheapest")
   hi <- call_cost("most_expensive")
-  tibble::tibble(lo_pence = lo, hi_pence = hi)
+  .warn_over_delivery_range(lo$over, hi$over, quiet, n_doses = length(dose))
+  tibble::tibble(lo_pence = lo$costs, hi_pence = hi$costs)
 }
 
 # Warn once about preparation groups that were dropped because no combination
@@ -1611,14 +1736,26 @@ dmd_dose_cost_range <- function(
 # preferred an over-delivering combination (reachable only under "allow").
 # A dose off the strengths' grid has no exact combination, so an
 # over-delivering row for it is `impossible`.
-.warn_over_delivery <- function(impossible, available, quiet = FALSE) {
+# `n_over` and `n_doses` (dmd_dose_cost()) count the doses whose returned
+# cost over-delivers; the count is stated when more than one dose was costed.
+.warn_over_delivery <- function(
+  impossible,
+  available,
+  quiet = FALSE,
+  n_over = NULL,
+  n_doses = NULL
+) {
   impossible <- unique(impossible[!is.na(impossible)])
   available <- unique(available[!is.na(available)])
   n <- length(impossible) + length(available)
   if (isTRUE(quiet) || n == 0L) {
     return(invisible())
   }
-  msg <- "Delivering more than the requested dose for {n} preparation group{?s}."
+  msg <- if (!is.null(n_doses) && n_doses > 1L) {
+    "Delivering more than the requested dose for {n_over} of {n_doses} doses, in {n} preparation group{?s}."
+  } else {
+    "Delivering more than the requested dose for {n} preparation group{?s}."
+  }
   if (length(impossible) > 0L) {
     msg <- c(
       msg,
@@ -1635,6 +1772,45 @@ dmd_dose_cost_range <- function(
     msg,
     "i" = 'Pass {.code over_delivery = "forbid"} to return only exact-dose combinations, or {.code quiet = TRUE} to silence this.'
   ))
+  invisible()
+}
+
+# dmd_dose_cost_range()'s over-delivery warning: one per call, naming the
+# supplying groups behind each bound (`lo` and `hi` are .dose_cost()'s
+# `over` lists), so a caller can tell which number is for an over-delivered
+# dose (#42).
+.warn_over_delivery_range <- function(lo, hi, quiet = FALSE, n_doses = 1L) {
+  clean <- function(x) unique(x[!is.na(x)])
+  lo_impossible <- clean(lo$impossible)
+  lo_available <- clean(lo$available)
+  hi_impossible <- clean(hi$impossible)
+  hi_available <- clean(hi$available)
+  n <- length(unique(c(lo_impossible, lo_available, hi_impossible, hi_available)))
+  if (isTRUE(quiet) || n == 0L) {
+    return(invisible())
+  }
+  # cli interpolates each line when the warning is raised, so each bound's
+  # groups live in their own variables.
+  where <- function(bound, b) {
+    if (n_doses > 1L) {
+      paste0("`", bound, "` (", b$n_doses, " of ", n_doses, " doses)")
+    } else {
+      paste0("`", bound, "`")
+    }
+  }
+  lo_where <- where("lo_pence", lo)
+  hi_where <- where("hi_pence", hi)
+  none <- "no exact-dose combination exists."
+  some <- "an exact-dose combination exists, but the objective preferred an over-delivering one."
+  msg <- c(
+    "Delivering more than the requested dose for {n} preparation group{?s}.",
+    if (length(lo_impossible) > 0L) c("*" = "{lo_where}: {.val {lo_impossible}}: {none}"),
+    if (length(lo_available) > 0L) c("*" = "{lo_where}: {.val {lo_available}}: {some}"),
+    if (length(hi_impossible) > 0L) c("*" = "{hi_where}: {.val {hi_impossible}}: {none}"),
+    if (length(hi_available) > 0L) c("*" = "{hi_where}: {.val {hi_available}}: {some}"),
+    "i" = 'Pass {.code over_delivery = "forbid"} to return only exact-dose combinations, or {.code quiet = TRUE} to silence this.'
+  )
+  cli::cli_warn(msg)
   invisible()
 }
 

@@ -25,6 +25,19 @@
   `dmdprices_warning_ingredient_no_candidate` now names the ingredient and the
   candidates. Like the other ingredient-matching warnings, `quiet = TRUE` does
   not silence it, and `dmd_dose_cost_range()` shows it once.
+- **The over-delivery warning from `dmd_dose_cost()` and
+  `dmd_dose_cost_range()` describes the returned cost (#42).** It named every
+  preparation group whose cost was usable and over-delivered, including groups
+  whose cost was not the one returned: `dmd_dose_cost("ibuprofen", 400, "mg",
+  over_delivery = "minimise")` warned about three modified-release and
+  effervescent groups while returning the exact cost of plain tablets. It now
+  names only the groups that supply the returned cost, and is not raised when
+  an exact combination reaches the same cost. With several doses, its first
+  line says how many doses are affected ("for 1 of 3 doses, in 1 preparation
+  group"). `dmd_dose_cost_range()` raises one warning that names the groups
+  behind `lo_pence` and `hi_pence` separately, where it previously kept the
+  first bound's warning and dropped the second's. `dmd_dose_optimise()`,
+  which returns every group, is unchanged.
 
 # dmdprices 0.6.2
 

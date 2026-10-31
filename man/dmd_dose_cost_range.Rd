@@ -40,11 +40,10 @@ packs (\code{can_split = FALSE}) are exempt from the policy: they are costed as
 the cheapest container or pack covering the dose, without a warning.
 Pass \code{"minimise"} or \code{"allow"} to cost over-delivering combinations.}
 
-\item{quiet}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. Because this function returns bare
-numbers, the warnings are the only signal that a cost is for an
-over-delivered dose in the groups the over-delivery policy governs
-(whole-container and whole-pack groups are not warned about);
-\code{TRUE} silences them for bulk costing runs.}
+\item{quiet}{As in \code{\link[=dmd_dose_cost]{dmd_dose_cost()}}. Each warning is raised once per call,
+not once per bound. The over-delivery warning names, for each of
+\code{lo_pence} and \code{hi_pence}, the preparation groups that supply an
+over-delivered cost for that bound.}
 
 \item{na_value}{Scalar returned for doses that are \code{NA}, non-positive, or
 for which no solution is found. Default \code{NA_real_}.}

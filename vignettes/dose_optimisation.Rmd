@@ -118,8 +118,11 @@ preparation groups affected and says which case it is — no exact combination
 exists, or one exists but the objective preferred an over-delivering combination
 (only possible under `"allow"`). These warnings are the only signal in
 `dmd_dose_cost()` and `dmd_dose_cost_range()`, which return bare numbers with
-no `notes` column to inspect. Pass `quiet = TRUE` to silence them in bulk
-costing runs; unrelated warnings still come through:
+no `notes` column to inspect, so there they describe the returned costs only:
+they name the groups that supply an over-delivered cost (for the range, per
+bound), stay silent when an exact combination reaches the same cost, and, with
+several doses, say how many doses are affected. Pass `quiet = TRUE` to silence
+them in bulk costing runs; unrelated warnings still come through:
 
 ```{r, eval = FALSE}
 # warns: an exact 3 mg combination existed but the cheapest one over-delivers

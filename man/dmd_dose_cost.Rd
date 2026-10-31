@@ -51,10 +51,16 @@ the cheapest container or pack covering the dose, without a warning.
 Pass \code{"minimise"} or \code{"allow"} to cost over-delivering combinations.}
 
 \item{quiet}{As in \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. Because this function returns bare
-numbers, the warnings are the only signal that a cost is for an
-over-delivered dose in the groups the over-delivery policy governs
-(whole-container and whole-pack groups are not warned about);
-\code{TRUE} silences them for bulk costing runs.}
+numbers, the over-delivery warning is the only signal that a returned
+cost is for an over-delivered dose. It describes the returned costs only:
+it is raised when a returned cost is reached only by combinations that
+deliver more than the requested dose (an exact combination at the same
+cost counts as exact), and it names the preparation groups that supply
+such a cost, not other groups that were considered. It is raised once per
+call, so with several doses it says how many are affected but not which;
+to see each dose's combination, use \code{\link[=dmd_dose_optimise]{dmd_dose_optimise()}}. Whole-container
+and whole-pack groups are exempt from the over-delivery policy and are not
+warned about. \code{TRUE} silences the dose warnings for bulk costing runs.}
 
 \item{na_value}{Scalar returned for doses that are \code{NA}, non-positive, or for
 which no solution is found. Default \code{NA_real_}.}
