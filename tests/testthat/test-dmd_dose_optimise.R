@@ -2034,7 +2034,7 @@ test_that("dmd_dose_cost() and _range() warn once about over-delivery", {
 # Two preparation groups of one drug, tablets and capsules, in packs of 10, so
 # which group supplies the returned cost is set by the strengths and prices
 # per item (in pence).
-.two_group_db <- function(tab_mg, tab_p, cap_mg, cap_p) {
+.two_group_db <- function(tab_mg, tab_p, cap_mg, cap_p, capsules_first = FALSE) {
   master <- tibble::tibble(
     medicine = c(
       paste0("Pairdrug ", tab_mg, "mg tablets"),
@@ -2055,6 +2055,9 @@ test_that("dmd_dose_cost() and _range() warn once about over-delivery", {
     ),
     ampp_snomed_code = c("APP1", "APP2")
   )
+  if (capsules_first) {
+    master <- master[2:1, ]
+  }
   structure(list(master = master, loaded_at = .fixed_loaded_at), class = "dmd_db")
 }
 
@@ -2109,6 +2112,40 @@ test_that("an exact combination at the returned cost suppresses the warning (#42
   ))
   expect_equal(got$value, 20)
   expect_length(.over_warnings(got$warnings), 0L)
+
+  # The same tie with the over-delivering group listed, and named, first: 4 mg
+  # from two 2 mg tablets at 10p (exact) or one 10 mg capsule at 20p.
+  tie_first <- .two_group_db(
+    tab_mg = 2, tab_p = 10, cap_mg = 10, cap_p = 20, capsules_first = TRUE
+  )
+  got <- .with_warnings(dmd_dose_cost(
+    "pairdrug", dose = 4, dose_unit = "mg", db = tie_first,
+    over_delivery = "minimise"
+  ))
+  expect_equal(got$value, 20)
+  expect_length(.over_warnings(got$warnings), 0L)
+})
+
+test_that("the returned cost follows the objectives in the over-delivery warning (#42)", {
+  .local_fresh_dose_cache()
+  over_cheapest <- .two_group_db(tab_mg = 1, tab_p = 20, cap_mg = 2, cap_p = 10)
+  # most_expensive alone returns the tablets' exact 60p: no warning.
+  got <- .with_warnings(dmd_dose_cost(
+    "pairdrug", dose = 3, dose_unit = "mg", db = over_cheapest,
+    objective = "most_expensive", over_delivery = "minimise"
+  ))
+  expect_equal(got$value, 60)
+  expect_length(.over_warnings(got$warnings), 0L)
+  # "all" returns the minimum of the three aggregates, the capsules' 20p.
+  got <- .with_warnings(dmd_dose_cost(
+    "pairdrug", dose = 3, dose_unit = "mg", db = over_cheapest,
+    objective = "all", over_delivery = "minimise"
+  ))
+  expect_equal(got$value, 20)
+  over <- .over_warnings(got$warnings)
+  expect_length(over, 1L)
+  expect_match(over, "capsule (oral)", fixed = TRUE)
+  expect_no_match(over, "tablet (oral)", fixed = TRUE)
 })
 
 test_that("dmd_dose_cost() counts the doses whose returned cost over-delivers (#42)", {
@@ -2162,6 +2199,17 @@ test_that("dmd_dose_cost_range() names the group behind each over-delivered boun
   expect_match(over, "for 2 preparation groups", fixed = TRUE)
   expect_match(over, "`lo_pence`: \"tablet (oral)\"", fixed = TRUE)
   expect_match(over, "`hi_pence`: \"capsule (oral)\"", fixed = TRUE)
+
+  # With several doses, each bound states its own count once. 4 mg is exact
+  # in both groups, so each bound over-delivers for 3 mg only.
+  got <- .with_warnings(dmd_dose_cost_range(
+    "pairdrug", dose = c(3, 4), dose_unit = "mg", db = both_over,
+    over_delivery = "minimise"
+  ))
+  over <- .over_warnings(got$warnings)
+  expect_length(over, 1L)
+  expect_match(over, "`lo_pence` (1 of 2 doses): \"tablet (oral)\"", fixed = TRUE)
+  expect_match(over, "`hi_pence` (1 of 2 doses): \"capsule (oral)\"", fixed = TRUE)
 
   # Neither bound over-delivers: no warning.
   exact_cheapest <- .two_group_db(tab_mg = 1, tab_p = 20, cap_mg = 1, cap_p = 40)

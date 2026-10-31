@@ -492,6 +492,8 @@
 .apply_ingredient_targeting <- function(enriched, db, ingredient) {
   ing_tbl <- .resolve_ingredients(db)
   if (is.null(ing_tbl) || nrow(ing_tbl) == 0L) {
+    # dmd_dose_cost_range() de-duplicates this warning, and the "No
+    # ingredient matching" one below, by matching their first words.
     cli::cli_warn(c(
       "No ingredient data available to target {.val {ingredient}}.",
       "i" = "Load a dm+d release that includes the VPI extract with {.fn dmd_load}, or pass {.arg ingredients} to {.fn as_dmd_db}."
@@ -1352,8 +1354,9 @@ dmd_dose_cost <- function(
     cli::cli_abort(c(
       "{.arg dose} must be a numeric vector.",
       "i" = paste0(
-        "Unlike {.fn dmd_dose_optimise}, {.fn dmd_dose_cost} does not accept ",
-        "a dose string. Supply a numeric vector, e.g. {.code dose = 900} ",
+        "Unlike {.fn dmd_dose_optimise}, {.fn dmd_dose_cost} and ",
+        "{.fn dmd_dose_cost_range} do not accept a dose string. Supply a ",
+        "numeric vector, e.g. {.code dose = 900} ",
         "rather than {.code dose = \"900 mg\"}."
       )
     ), call = call)
@@ -1683,6 +1686,8 @@ dmd_dose_cost_range <- function(
     "amount of drug per container is unknown",
     "No exact-dose combination exists",
     "could not be resolved",
+    "No ingredient data available",
+    "No ingredient matching",
     "distinct ingredients",
     "non-mass strength",
     "is not an ingredient of any"
@@ -1790,24 +1795,30 @@ dmd_dose_cost_range <- function(
     return(invisible())
   }
   # cli interpolates each line when the warning is raised, so each bound's
-  # groups live in their own variables.
-  where <- function(bound, b) {
-    if (n_doses > 1L) {
+  # groups live in their own variables. Each bound gets one line, so its dose
+  # count is stated once.
+  none <- "no exact-dose combination exists"
+  some <- "an exact-dose combination exists, but the objective preferred an over-delivering one"
+  bound_line <- function(bound, b, impossible, available) {
+    if (length(impossible) + length(available) == 0L) {
+      return(NULL)
+    }
+    where <- if (n_doses > 1L) {
       paste0("`", bound, "` (", b$n_doses, " of ", n_doses, " doses)")
     } else {
       paste0("`", bound, "`")
     }
+    prefix <- substr(bound, 1L, 2L)
+    parts <- c(
+      if (length(impossible) > 0L) paste0("{.val {", prefix, "_impossible}}: {none}"),
+      if (length(available) > 0L) paste0("{.val {", prefix, "_available}}: {some}")
+    )
+    c("*" = paste0(where, ": ", paste(parts, collapse = "; "), "."))
   }
-  lo_where <- where("lo_pence", lo)
-  hi_where <- where("hi_pence", hi)
-  none <- "no exact-dose combination exists."
-  some <- "an exact-dose combination exists, but the objective preferred an over-delivering one."
   msg <- c(
     "Delivering more than the requested dose for {n} preparation group{?s}.",
-    if (length(lo_impossible) > 0L) c("*" = "{lo_where}: {.val {lo_impossible}}: {none}"),
-    if (length(lo_available) > 0L) c("*" = "{lo_where}: {.val {lo_available}}: {some}"),
-    if (length(hi_impossible) > 0L) c("*" = "{hi_where}: {.val {hi_impossible}}: {none}"),
-    if (length(hi_available) > 0L) c("*" = "{hi_where}: {.val {hi_available}}: {some}"),
+    bound_line("lo_pence", lo, lo_impossible, lo_available),
+    bound_line("hi_pence", hi, hi_impossible, hi_available),
     "i" = 'Pass {.code over_delivery = "forbid"} to return only exact-dose combinations, or {.code quiet = TRUE} to silence this.'
   )
   cli::cli_warn(msg)

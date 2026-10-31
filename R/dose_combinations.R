@@ -174,11 +174,6 @@
   is_max,
   policy_applies
 ) {
-  # An infinite dose has no place on any grid and no finite cover; it is
-  # refused as past the cell cap, like any dose too large to solve (#39).
-  if (!is.finite(dose_canonical)) {
-    return(.unresolved_result("table"))
-  }
   scale <- .pick_scale_safe(strengths, dose_canonical)
   if (.strengths_on_grid(strengths, scale)) {
     return(.dp_counts(
@@ -268,19 +263,16 @@
 # times as needed to cover the dose; for whole containers and packs the
 # surplus is wastage in the container, never a dose to the patient. Returns
 # the per-strength counts, NULL when no product is priced, or the cell-cap
-# refusal when every priced product would need more containers than an
-# integer count holds (#39).
+# refusal when the product that best meets the objective would need more
+# containers than an integer count holds (#39). The choice is made among all
+# priced products first, so a product is never passed over for its count.
 .cover_counts <- function(strengths, prices, dose_canonical, objective) {
   n <- pmax(1, ceiling((dose_canonical - .dose_tol(dose_canonical)) / strengths))
   cost <- n * prices
   delivered <- n * strengths
-  priced <- is.finite(cost)
-  if (!any(priced)) {
-    return(NULL)
-  }
-  usable <- priced & n <= .Machine$integer.max
+  usable <- is.finite(cost)
   if (!any(usable)) {
-    return(.unresolved_result("table"))
+    return(NULL)
   }
   order_by <- switch(
     objective,
@@ -289,6 +281,9 @@
     order(cost, delivered, n)
   )
   pick <- order_by[usable[order_by]][1L]
+  if (n[pick] > .Machine$integer.max) {
+    return(.unresolved_result("table"))
+  }
   counts <- rep(0L, length(strengths))
   counts[pick] <- as.integer(n[pick])
   counts
@@ -683,6 +678,12 @@
   can_split_vials = FALSE,
   over_delivery = "allow"
 ) {
+  # An infinite dose has no place on any grid, no finite cover and no vial
+  # fraction; it is refused as past the cell cap, like any dose too large to
+  # solve, before any of the group's paths runs (#39).
+  if (!is.finite(dose_canonical)) {
+    return(.unresolved_result("table"))
+  }
   # Detect whether every row in this group is concentration-based.
   all_concentration <- all(!is.na(group_df$denominator_unit))
 

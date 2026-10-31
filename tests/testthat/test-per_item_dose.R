@@ -346,6 +346,17 @@ test_that("dmd_dose_cost_range() shows each ingredient warning once (#38)", {
   ))
   expect_equal(count(got$warnings, "distinct ingredients"), 1L)
   expect_false(is.na(got$value$lo_pence))
+
+  # An ingredient absent from the table, and a table with no ingredient data.
+  got <- .with_warnings(dmd_dose_cost_range(
+    "co", dose = 30, dose_unit = "mg", db = salts, ingredient = "zzzine"
+  ))
+  expect_equal(count(got$warnings, "No ingredient matching"), 1L)
+  got <- .with_warnings(dmd_dose_cost_range(
+    "metformin", dose = 500, dose_unit = "mg", db = .fake_dose_db(),
+    ingredient = "metformin"
+  ))
+  expect_equal(count(got$warnings, "No ingredient data available"), 1L)
 })
 
 test_that("an ingredient in none of the query's candidates is warned about (#37)", {
