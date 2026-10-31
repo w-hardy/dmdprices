@@ -427,3 +427,87 @@ test_that("a dose table past the cell cap is refused as such", {
   expect_length(grep("No exact-dose combination exists", got$warnings), 0L)
 })
 
+test_that("a dose beyond the integer range is refused like one past the cell cap (#39)", {
+  # 5e6 mg is the first 1 mg grid dose past the cap; 2^31 mg is one past
+  # .Machine$integer.max; 1e12 mg and Inf are far beyond it. Each is refused
+  # with the "could not be resolved" warning alone: no base R coercion
+  # warning, no error.
+  .local_fresh_dose_cache()
+  for (dose in c(5e6, 2^31, 1e12, Inf)) {
+    for (policy in c("forbid", "minimise")) {
+      got <- .with_warnings(dmd_dose_cost(
+        "testdrug",
+        dose = dose,
+        dose_unit = "mg",
+        db = db,
+        preparation = "tablet",
+        over_delivery = policy
+      ))
+      expect_equal(got$value, NA_real_)
+      expect_length(got$warnings, 1L)
+      expect_match(got$warnings, "could not be resolved", fixed = TRUE)
+      expect_match(got$warnings, "5,000,000 cells", fixed = TRUE)
+    }
+  }
+
+  got <- .with_warnings(.tablets(1e12))
+  expect_equal(nrow(got$value), 0L)
+  expect_length(got$warnings, 1L)
+  expect_match(got$warnings, "5,000,000 cells", fixed = TRUE)
+
+  got <- .with_warnings(dmd_dose_cost_range(
+    "testdrug",
+    dose = 1e12,
+    dose_unit = "mg",
+    db = db,
+    preparation = "tablet"
+  ))
+  expect_equal(got$value$lo_pence, NA_real_)
+  expect_equal(got$value$hi_pence, NA_real_)
+  expect_length(got$warnings, 1L)
+  expect_match(got$warnings, "5,000,000 cells", fixed = TRUE)
+})
+
+test_that("whole containers off the grid refuse a dose beyond the integer range (#39)", {
+  # Whole containers off the solver grid are covered by single products
+  # counted in integers: Semaglutest's 1.0135 mg devices alone, and Mixtest's
+  # 1.0135 mg vial beside its on-grid 1 mg and 2 mg vials. A count past
+  # .Machine$integer.max is refused, not coerced to NA.
+  containers <- .fake_container_amount_db()
+  .local_fresh_dose_cache()
+  for (query in c("Semaglutest", "Mixtest")) {
+    got <- .with_warnings(dmd_dose_cost(
+      query,
+      dose = 1e12,
+      dose_unit = "mg",
+      db = containers
+    ))
+    expect_equal(got$value, NA_real_)
+    expect_length(got$warnings, 1L)
+    expect_match(got$warnings, "could not be resolved", fixed = TRUE)
+  }
+  # Below the integer range the cover still answers, past the cell cap, and
+  # its whole-pack cost (2,466,667 packs at 29,300p, past 2^31 - 1 pence) is
+  # summed in double precision rather than overflowing to NA.
+  for (split in c(TRUE, FALSE)) {
+    got <- .with_warnings(dmd_dose_cost(
+      "Semaglutest",
+      dose = 1e7,
+      dose_unit = "mg",
+      db = containers,
+      can_split = split
+    ))
+    expect_false(is.na(got$value))
+    expect_length(got$warnings, 0L)
+  }
+  opt <- dmd_dose_optimise(
+    "Semaglutest",
+    dose = 1e7,
+    dose_unit = "mg",
+    db = containers,
+    objective = "cheapest"
+  )
+  devices <- ceiling(1e7 / (0.25 / 0.37 * 1.5))
+  expect_equal(opt$cost_whole_pack_pence, ceiling(devices / 4) * 29300)
+})
+

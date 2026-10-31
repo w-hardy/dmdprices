@@ -1,3 +1,20 @@
+# dmdprices (development version)
+
+## Bug fixes
+
+- **A dose too large for the solver is refused cleanly (#39).** A dose past
+  R's integer range (around 2.1 billion grid units, e.g. 1e12 mg against
+  1 mg tablets) and an infinite dose stopped the dose functions with
+  "NAs introduced by coercion to integer range" and "missing value where
+  TRUE/FALSE needed". They now get the refusal a dose past the
+  5,000,000-cell dose table already got: no row from `dmd_dose_optimise()`,
+  `NA` from `dmd_dose_cost()` and `dmd_dose_cost_range()`, and one "could not
+  be resolved" warning. Whole containers off the solver grid, covered by
+  single products, are refused the same way when the container count would
+  pass the integer range, and their whole-pack cost is now summed in double
+  precision, so a pack count times a pack price past 2^31 - 1 pence no
+  longer overflows to `NA` with an "integer overflow" warning.
+
 # dmdprices 0.6.2
 
 ## Bug fixes
