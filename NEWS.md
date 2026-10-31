@@ -18,6 +18,13 @@
   `ingredient =`, the warnings that a name matched several distinct
   ingredients, or that candidates have a non-mass strength, were raised once
   per bound. They are now shown once per call, like the other dose warnings.
+- **An `ingredient` that none of the query's candidates contains is warned
+  about (#37).** `dmd_dose_cost(..., ingredient = "Simvastatin")` for a
+  paracetamol query returned `NA` with no condition, indistinguishable from a
+  dose that cannot be made. A warning of class
+  `dmdprices_warning_ingredient_no_candidate` now names the ingredient and the
+  candidates. Like the other ingredient-matching warnings, `quiet = TRUE` does
+  not silence it, and `dmd_dose_cost_range()` shows it once.
 
 # dmdprices 0.6.2
 

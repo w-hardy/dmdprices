@@ -348,6 +348,61 @@ test_that("dmd_dose_cost_range() shows each ingredient warning once (#38)", {
   expect_false(is.na(got$value$lo_pence))
 })
 
+test_that("an ingredient in none of the query's candidates is warned about (#37)", {
+  .local_fresh_dose_cache()
+  ing_db <- .fake_ingredient_db()
+  # "Paracetamol" is in the ingredient table, but not in codeine phosphate
+  # tablets, the one candidate the query matches.
+  got <- .with_warnings(dmd_dose_cost(
+    "Codeine phosphate",
+    dose = 500,
+    dose_unit = "mg",
+    db = ing_db,
+    ingredient = "Paracetamol"
+  ))
+  expect_equal(got$value, NA_real_)
+  expect_length(got$conditions, 1L)
+  expect_s3_class(
+    got$conditions[[1]],
+    "dmdprices_warning_ingredient_no_candidate"
+  )
+  expect_match(got$warnings, "Paracetamol", fixed = TRUE)
+  expect_match(got$warnings, "Codeine phosphate", fixed = TRUE)
+
+  # `quiet` governs the dose warnings only; this one stays.
+  got <- .with_warnings(dmd_dose_optimise(
+    "Codeine phosphate",
+    dose = 500,
+    dose_unit = "mg",
+    db = ing_db,
+    ingredient = "Paracetamol",
+    quiet = TRUE
+  ))
+  expect_equal(nrow(got$value), 0L)
+  expect_length(got$warnings, 1L)
+
+  # Shown once by the range function.
+  got <- .with_warnings(dmd_dose_cost_range(
+    "Codeine phosphate",
+    dose = 500,
+    dose_unit = "mg",
+    db = ing_db,
+    ingredient = "Paracetamol"
+  ))
+  expect_length(got$warnings, 1L)
+
+  # An ingredient that a candidate does contain raises no such warning.
+  got <- .with_warnings(dmd_dose_cost(
+    "Co-codamol",
+    dose = 500,
+    dose_unit = "mg",
+    db = ing_db,
+    ingredient = "Paracetamol"
+  ))
+  expect_false(is.na(got$value))
+  expect_length(got$warnings, 0L)
+})
+
 test_that("an ingredient table without canonical columns is targeted from its raw fields", {
   .local_fresh_dose_cache()
   raw_db <- vpi_db

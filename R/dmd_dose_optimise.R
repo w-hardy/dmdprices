@@ -533,6 +533,21 @@
 
   idx <- match(enriched$vmp_snomed_code, matches$vmp_snomed_code)
   keep <- !is.na(idx)
+  if (nrow(enriched) > 0L && !any(keep)) {
+    # The ingredient exists, but no candidate the query matched contains it,
+    # so the NA that follows would otherwise be unexplained (#37). Like the
+    # other ingredient-matching warnings, `quiet` does not silence it.
+    # dmd_dose_cost_range() de-duplicates it by matching "is not an
+    # ingredient of any".
+    ex <- .skipped_examples(enriched$medicine)
+    cli::cli_warn(
+      c(
+        "{.arg ingredient} {.val {ingredient}} is not an ingredient of any candidate product the query matched.",
+        "i" = "{ex$n} candidate{?s}: {.val {ex$shown}}{ex$more}."
+      ),
+      class = "dmdprices_warning_ingredient_no_candidate"
+    )
+  }
   enriched <- enriched[keep, , drop = FALSE]
   idx <- idx[keep]
   if (nrow(enriched) == 0L) {
@@ -792,7 +807,10 @@
 #'   so `"codeine"` matches `"Codeine phosphate"` but not `"dihydrocodeine"`;
 #'   ingredient names are matched as written in the dm+d (including salt forms).
 #'   If the term still resolves to more than one distinct ingredient, all are
-#'   used and a warning lists them. Ingredients recorded in non-mass units
+#'   used and a warning lists them. If it names an ingredient that none of the
+#'   query's candidate products contains, a warning of class
+#'   `dmdprices_warning_ingredient_no_candidate` says so, and there is no
+#'   result. Ingredients recorded in non-mass units
 #'   (e.g. radioactivity in GBq, electrolytes in mmol), or per a quantity with
 #'   no canonical form (per hour, per square centimetre), cannot be converted
 #'   to a mass dose; such candidates are skipped with a warning. The
@@ -1542,7 +1560,8 @@ dmd_dose_cost_range <- function(
     "Delivering more than the requested dose",
     "could not be resolved",
     "distinct ingredients",
-    "non-mass strength"
+    "non-mass strength",
+    "is not an ingredient of any"
   )
   call_cost <- function(obj) {
     withCallingHandlers(

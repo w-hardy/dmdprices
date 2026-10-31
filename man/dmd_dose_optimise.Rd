@@ -70,7 +70,10 @@ one ingredient. Matching is case-insensitive and \strong{word-boundary} based,
 so \code{"codeine"} matches \code{"Codeine phosphate"} but not \code{"dihydrocodeine"};
 ingredient names are matched as written in the dm+d (including salt forms).
 If the term still resolves to more than one distinct ingredient, all are
-used and a warning lists them. Ingredients recorded in non-mass units
+used and a warning lists them. If it names an ingredient that none of the
+query's candidate products contains, a warning of class
+\code{dmdprices_warning_ingredient_no_candidate} says so, and there is no
+result. Ingredients recorded in non-mass units
 (e.g. radioactivity in GBq, electrolytes in mmol), or per a quantity with
 no canonical form (per hour, per square centimetre), cannot be converted
 to a mass dose; such candidates are skipped with a warning. The
