@@ -319,6 +319,35 @@ test_that("the non-mass warning names a bad numerator and a bad denominator toge
   expect_equal(targeted$per_item_dose, c(NA_real_, NA_real_))
 })
 
+test_that("dmd_dose_cost_range() shows each ingredient warning once (#38)", {
+  .local_fresh_dose_cache()
+  count <- function(warnings, phrase) {
+    sum(grepl(phrase, gsub("[[:space:]]+", " ", warnings), fixed = TRUE))
+  }
+
+  got <- .with_warnings(dmd_dose_cost_range(
+    "Expatch",
+    dose = 5,
+    dose_unit = "mg",
+    db = vpi_db,
+    ingredient = "Expatchine"
+  ))
+  expect_equal(count(got$warnings, "non-mass strength"), 1L)
+
+  # "codeine" now names two distinct ingredients, a base and its salt.
+  salts <- .fake_ingredient_db()
+  salts$ingredients$ingredient_name[5] <- "Codeine phosphate hemihydrate"
+  got <- .with_warnings(dmd_dose_cost_range(
+    "co",
+    dose = 30,
+    dose_unit = "mg",
+    db = salts,
+    ingredient = "codeine"
+  ))
+  expect_equal(count(got$warnings, "distinct ingredients"), 1L)
+  expect_false(is.na(got$value$lo_pence))
+})
+
 test_that("an ingredient table without canonical columns is targeted from its raw fields", {
   .local_fresh_dose_cache()
   raw_db <- vpi_db

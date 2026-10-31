@@ -518,6 +518,8 @@
 
   # The term may still resolve to more than one distinct ingredient (e.g. a
   # base substance and its salt). Surface that rather than silently choosing.
+  # dmd_dose_cost_range() de-duplicates this warning by matching "distinct
+  # ingredients", so that phrase must stay in its first line.
   distinct_names <- sort(unique(matches$ingredient_name))
   if (length(distinct_names) > 1L) {
     cli::cli_warn(c(
@@ -573,7 +575,8 @@
   # mass dose: a non-mass numerator (GBq, mmol, vaccine units) or a denominator
   # with no canonical form (per hour for a patch, per square centimetre). Those
   # rows yield an NA per-item dose and are dropped downstream; warn instead of
-  # failing silently, naming the unit at fault.
+  # failing silently, naming the unit at fault. dmd_dose_cost_range()
+  # de-duplicates this warning by matching "non-mass strength".
   na_canon <- is.na(enriched$strength_canonical)
   if (any(na_canon)) {
     num_na <- is.na(.canonicalise_units(
@@ -1537,7 +1540,9 @@ dmd_dose_cost_range <- function(
     "amount of drug per container is unknown",
     "No exact-dose combination exists",
     "Delivering more than the requested dose",
-    "could not be resolved"
+    "could not be resolved",
+    "distinct ingredients",
+    "non-mass strength"
   )
   call_cost <- function(obj) {
     withCallingHandlers(

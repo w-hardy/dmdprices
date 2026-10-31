@@ -14,6 +14,10 @@
   pass the integer range, and their whole-pack cost is now summed in double
   precision, so a pack count times a pack price past 2^31 - 1 pence no
   longer overflows to `NA` with an "integer overflow" warning.
+- **`dmd_dose_cost_range()` shows the ingredient warnings once (#38).** With
+  `ingredient =`, the warnings that a name matched several distinct
+  ingredients, or that candidates have a non-mass strength, were raised once
+  per bound. They are now shown once per call, like the other dose warnings.
 
 # dmdprices 0.6.2
 
